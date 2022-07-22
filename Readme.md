@@ -46,7 +46,6 @@ You can experiment and use this [example]() repository right away to get familia
 3. Commit changes to the ```main``` branch or create a new one from it. By creating a new branch you can safely work without affecting the original. Once your modifications are done, you can merge these into the ```main``` branch.
 
 ![](https://docs.github.com/assets/cb-32137/images/help/repository/choose-commit-branch.png)
-![](https://docs.github.com/assets/cb-13681/images/help/repository/propose-file-change-quick-pull.png)
 
 4. Watch your changes being reflected onto the API. Clone the repository to use it!
 
