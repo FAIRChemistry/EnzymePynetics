@@ -29,17 +29,17 @@ In order to inherit attributes to another object, the object definition addition
 
 &rarr; ```## Child [_Parent_]```
 
-In the following an [example]() data model is defined using above rules. Feel free to use this example also as a template for your own application.
+In the following an [example](https://github.com/JR-1991/sdrdm-template/tree/main/specifications) data model is defined using above rules. Feel free to use this example also as a template for your own application.
 
 ### 👁 How can I used it by myself?
 
-You can experiment and use this [example]() repository right away to get familiar with teh concept. This repository includes an [action]() that is triggered whenever changes are pushed. Thus, when you introduce changes to the markdown document, these will directly be reflected onto the generated software. Follow these steps to start out:
+You can experiment and use this [example](https://github.com/JR-1991/sdrdm-template/tree/main/specifications) repository right away to get familiar with teh concept. This repository includes an [action](https://github.com/JR-1991/sdrdm-template/blob/main/.github/workflows/generate_api.yaml) that is triggered whenever changes are pushed. Thus, when you introduce changes to the markdown document, these will directly be reflected onto the generated software. Follow these steps to start out:
 
 1. Fork this repository into your own profile. This will create an exact copy, but you have all rights to modify it without affecting the original.
 
 ![](https://www.earthdatascience.org/images/earth-analytics/git-version-control/githubguides-bootcamp-fork.png)
 
-2. Open the ```Example.md``` file and edit it according to the syntax. You can also press ```Preview``` to inspect the rendered Markdown.
+2. Open the ```specifications/Example.md``` file and edit it according to the syntax. You can also press ```Preview``` to inspect the rendered Markdown.
    
 ![](https://docs.github.com/assets/cb-118903/images/help/repository/edit-file-edit-dropdown.png)
 
