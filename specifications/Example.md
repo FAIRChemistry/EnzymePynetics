@@ -43,6 +43,7 @@ This is the root of the data model and contains all objects defined in this exam
   - Dataverse: pyDaRUS.Citation.title
 - __subject*__
   - Type: string
+  - Multiple: True
   - Description: Subject of matter linked to the dataset
   - Dataverse: pyDaRUS.Citation.subject
 - __authors*__
