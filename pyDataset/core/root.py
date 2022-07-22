@@ -23,10 +23,10 @@ class Root(sdRDM.DataModel):
         dataverse="pyDaRUS.Citation.title",
     )
 
-    subject: str = Field(
-        ...,
+    subject: List[str] = Field(
         description="Subject of matter linked to the dataset",
         dataverse="pyDaRUS.Citation.subject",
+        default_factory=list,
     )
 
     authors: List[Author] = Field(

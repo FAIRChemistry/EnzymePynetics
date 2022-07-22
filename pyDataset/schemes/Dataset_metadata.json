@@ -11,6 +11,7 @@
         "dataverse": "pyDaRUS.Citation.title"
       },
       "subject": {
+        "multiple": "True",
         "description": "Subject of matter linked to the dataset",
         "dataverse": "pyDaRUS.Citation.subject"
       },
