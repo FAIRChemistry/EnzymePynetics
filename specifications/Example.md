@@ -75,8 +75,10 @@ This is another object used to describe the parameters of given dataset. As a fi
 - __key*__
   - Type: string
   - Description: Name of the parameter
+  - xml: @key
   - Dataverse: pyDaRUS.Process.method_parameters.name
 - __value*__
   - Type: float
   - Description: Respective value of a parameter
+  - xml: @value
   - Dataverse: pyDaRUS.Process.method_parameters.value
