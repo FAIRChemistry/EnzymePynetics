@@ -27,9 +27,9 @@ class Root(sdRDM.DataModel):
         dataverse="pyDaRUS.Citation.title",
     )
 
-    subject: List[str] = Field(
+    subjects: List[str] = Field(
         description="Subject of matter linked to the dataset",
-        xml="Subjects",
+        xml="subject",
         dataverse="pyDaRUS.Citation.subject",
         default_factory=ListPlus,
     )
@@ -48,7 +48,7 @@ class Root(sdRDM.DataModel):
         default="git://github.com/JR-1991/sdrdm-template.git"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="56622fd0fa904e16d0e5bc3f74b83d77f43203fe"
+        default="3cd57a9e0dc6d86641e3257995979868cedf3550"
     )
 
     def add_to_authors(

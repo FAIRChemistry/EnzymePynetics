@@ -10,10 +10,10 @@
         "description": "Title of the work",
         "dataverse": "pyDaRUS.Citation.title"
       },
-      "subject": {
+      "subjects": {
         "multiple": "True",
         "description": "Subject of matter linked to the dataset",
-        "xml": "Subjects",
+        "xml": "subject",
         "dataverse": "pyDaRUS.Citation.subject"
       },
       "authors": {
