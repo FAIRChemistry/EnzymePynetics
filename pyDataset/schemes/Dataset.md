@@ -6,7 +6,7 @@ classDiagram
     class Root {
         +string description*
         +string title*
-        +string[0..*] subject*
+        +string[0..*] subjects*
         +Author[0..*] authors*
         +Parameter[0..*] parameters*
     }

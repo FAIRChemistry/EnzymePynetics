@@ -41,10 +41,11 @@ This is the root of the data model and contains all objects defined in this exam
   - Type: string
   - Description: Title of the work
   - Dataverse: pyDaRUS.Citation.title
-- __subject*__
+- __subjects*__
   - Type: string
   - Multiple: True
   - Description: Subject of matter linked to the dataset
+  - XML: subject
   - Dataverse: pyDaRUS.Citation.subject
 - __authors*__
   - Type: Author
@@ -75,8 +76,10 @@ This is another object used to describe the parameters of given dataset. As a fi
 - __key*__
   - Type: string
   - Description: Name of the parameter
+  - xml: @key
   - Dataverse: pyDaRUS.Process.method_parameters.name
 - __value*__
   - Type: float
   - Description: Respective value of a parameter
+  - xml: @value
   - Dataverse: pyDaRUS.Process.method_parameters.value
