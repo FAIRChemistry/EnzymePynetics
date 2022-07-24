@@ -50,6 +50,8 @@ You can experiment and use this [example](https://github.com/JR-1991/sdrdm-templ
 4. Watch your changes being reflected onto the API. You can also directly fetch this model using the [sdRDM](https://github.com/JR-1991/software-driven-rdm) library. For this, you can use the following example code that should run as is. 
 
 ```python
+from sdRDM import DataModel
+
 Root, Author, Parameter = DataModel.from_git(
     url="https://github.com/JR-1991/sdrdm-template.git",
     import_modules = ["Author", "Parameter"]
