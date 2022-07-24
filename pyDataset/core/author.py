@@ -1,7 +1,9 @@
 import sdRDM
 
-from pydantic import Field
+
 from typing import Optional
+from pydantic import PrivateAttr
+from pydantic import Field
 
 
 class Author(sdRDM.DataModel):
@@ -14,8 +16,8 @@ class Author(sdRDM.DataModel):
         dataverse="pyDaRUS.Citation.author.name",
     )
 
-    affiliation: Optional[str] = Field(
+    affiliation: str = Field(
+        ...,
         description="To which organization the author is affiliated to",
         dataverse="pyDaRUS.Citation.author.affiliation",
-        default=None,
     )

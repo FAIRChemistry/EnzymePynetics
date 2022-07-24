@@ -13,7 +13,7 @@ classDiagram
     
     class Author {
         +string name*
-        +string affiliation
+        +string affiliation*
     }
     
     class Parameter {

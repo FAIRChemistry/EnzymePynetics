@@ -1,8 +1,10 @@
 import sdRDM
 
+
+from typing import Optional
+from pydantic import PrivateAttr
 from pydantic import Field
 from typing import List
-from typing import Optional
 from .author import Author
 from .parameter import Parameter
 
@@ -42,14 +44,14 @@ class Root(sdRDM.DataModel):
     def add_to_authors(
         self,
         name: str,
-        affiliation: Optional[str] = None,
+        affiliation: str,
     ) -> None:
         """
         Adds an instance of 'Author' to the attribute 'authors'.
 
         Args:
             name (str): Full name including given and family name.
-            affiliation (Optional[str]): To which organization the author is affiliated to. Defaults to None
+            affiliation (str): To which organization the author is affiliated to.
         """
 
         self.authors.append(
