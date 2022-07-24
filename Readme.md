@@ -72,7 +72,7 @@ print(dataset.yaml())
 dataset.to_dataverse()
 
 # Option: Export your dataset to another format
-with open("my_dataset.json") as f:
+with open("my_dataset.json", "w") as f:
     f.write(dataset.json())
 
 # Re-opening your dataset using sdRDM will cause the library
