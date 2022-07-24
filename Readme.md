@@ -47,6 +47,35 @@ You can experiment and use this [example](https://github.com/JR-1991/sdrdm-templ
 
 ![](https://docs.github.com/assets/cb-32137/images/help/repository/choose-commit-branch.png)
 
-4. Watch your changes being reflected onto the API. Clone the repository to use it!
+4. Watch your changes being reflected onto the API. You can also directly fetch this model using the [sdRDM](https://github.com/JR-1991/software-driven-rdm) library. For this, you can use the following example code that should run as is. 
+
+```python
+Root, Author, Parameter = DataModel.from_git(
+    url="https://github.com/JR-1991/sdrdm-template.git",
+    import_modules = ["Author", "Parameter"]
+)
+
+# Visualize the data model
+Root.visualize_tree()
+
+# Enter your data
+dataset = Root(title="Some Title", description="Some Description")
+dataset.add_to_authors(name="Jan Range", affiliation="SimTech")
+dataset.add_to_parameters(key="Param", value=10.0)
+
+# Inspect your dataset
+print(dataset.yaml())
+
+# Option: Link your dataset to an option --> Dataverse
+dataset.to_dataverse()
+
+# Option: Export your dataset to another format
+with open("my_dataset.json") as f:
+    f.write(dataset.json())
+
+# Re-opening your dataset using sdRDM will cause the library
+# to re-build the software state in which the dataset was created
+
+```
 
 *(Images were taken from GitHub's ["Editing Files" tutorial](https://docs.github.com/en/repositories/working-with-files/managing-files/editing-files))*
