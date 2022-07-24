@@ -13,6 +13,7 @@
       "subject": {
         "multiple": "True",
         "description": "Subject of matter linked to the dataset",
+        "xml": "Subjects",
         "dataverse": "pyDaRUS.Citation.subject"
       },
       "authors": {
