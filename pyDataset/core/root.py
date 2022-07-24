@@ -11,7 +11,15 @@ from .parameter import Parameter
 
 class Root(sdRDM.DataModel):
 
-    """This is the root of the data model and contains all objects defined in this example. While its good practice to have a single root, you can define as many roots as you like. Furthermore, the name does not have to be ```Root``` and can be any other name."""
+    __url__: Optional[str] = PrivateAttr(
+        default="git://github.com/JR-1991/sdrdm-template.git"
+    )
+    __commit__: Optional[str] = PrivateAttr(
+        default="3ef119eb64e4d575b5ec473e67b3e34fd1f8f09f"
+    )
+
+    """This is the root of the data model and contains all objects defined in this example. While its good practice to have a single root, you can define as many roots as you like. Furthermore, the name does not have to be ```Root``` and can be any other name.
+"""
 
     description: str = Field(
         ...,
