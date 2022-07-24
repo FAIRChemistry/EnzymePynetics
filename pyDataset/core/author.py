@@ -28,5 +28,5 @@ class Author(sdRDM.DataModel):
         default="git://github.com/JR-1991/sdrdm-template.git"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="e1d8dce31419b7ff3c2c18ef550a0c75da62fe89"
+        default="59ea337e58bc3f249b14bd1ccb8f54d7cdcc5674"
     )
