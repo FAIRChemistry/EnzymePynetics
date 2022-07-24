@@ -20,7 +20,15 @@ jobs:
         run: python3 -m pip install git+https://github.com/JR-1991/software-driven-rdm.git
         
       - name: Generate API
-        run: sdrdm generate --path ./specifications/ --out . --name "$LIB_NAME"
+        env:
+          URL: ${{github.repositoryUrl}}
+          COMMIT: ${{github.sha}}
+        run: sdrdm generate \ 
+              --path ./specifications/ \
+              --out . \
+              --name "$LIB_NAME" \
+              --url "$URL" \
+              --commit "$COMMIT"
 
       - name: Push source code
         run: |
