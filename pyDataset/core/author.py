@@ -3,21 +3,14 @@ import sdRDM
 
 from typing import Optional
 from pydantic import PrivateAttr
+from sdRDM.base.listplus import ListPlus
 from pydantic import Field
 from typing import Optional
 
 
 class Author(sdRDM.DataModel):
 
-    __url__: Optional[str] = PrivateAttr(
-        default="git://github.com/JR-1991/sdrdm-template.git"
-    )
-    __commit__: Optional[str] = PrivateAttr(
-        default="4de08981d487b8f67e2258e55b6b8462b5257e99"
-    )
-
-    """This is another object that represents the author of the dataset. Please note, that the options here contain all required fields but also custom ones. In this example, the ```Dataverse``` option specifies where each field should be mapped, when exported to a Dataverse format. Hence, these options allow you to link your dataset towards any other data model without writing code by yourself.
-"""
+    """This is another object that represents the author of the dataset. Please note, that the options here contain all required fields but also custom ones. In this example, the ```Dataverse``` option specifies where each field should be mapped, when exported to a Dataverse format. Hence, these options allow you to link your dataset towards any other data model without writing code by yourself."""
 
     name: str = Field(
         ...,
@@ -29,4 +22,11 @@ class Author(sdRDM.DataModel):
         description="To which organization the author is affiliated to",
         dataverse="pyDaRUS.Citation.author.affiliation",
         default=None,
+    )
+
+    __repo__: Optional[str] = PrivateAttr(
+        default="git://github.com/JR-1991/sdrdm-template.git"
+    )
+    __commit__: Optional[str] = PrivateAttr(
+        default="62d6b003418002c676050984b3dab6dd6b174d0e"
     )

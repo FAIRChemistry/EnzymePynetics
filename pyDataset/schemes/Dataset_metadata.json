@@ -43,10 +43,12 @@
     "attributes": {
       "key": {
         "description": "Name of the parameter",
+        "xml": "@key",
         "dataverse": "pyDaRUS.Process.method_parameters.name"
       },
       "value": {
         "description": "Respective value of a parameter",
+        "xml": "@value",
         "dataverse": "pyDaRUS.Process.method_parameters.value"
       }
     },

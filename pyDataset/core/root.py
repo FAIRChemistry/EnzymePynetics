@@ -3,6 +3,7 @@ import sdRDM
 
 from typing import Optional
 from pydantic import PrivateAttr
+from sdRDM.base.listplus import ListPlus
 from pydantic import Field
 from typing import List
 from typing import Optional
@@ -12,15 +13,7 @@ from .parameter import Parameter
 
 class Root(sdRDM.DataModel):
 
-    __url__: Optional[str] = PrivateAttr(
-        default="git://github.com/JR-1991/sdrdm-template.git"
-    )
-    __commit__: Optional[str] = PrivateAttr(
-        default="4de08981d487b8f67e2258e55b6b8462b5257e99"
-    )
-
-    """This is the root of the data model and contains all objects defined in this example. While its good practice to have a single root, you can define as many roots as you like. Furthermore, the name does not have to be ```Root``` and can be any other name.
-"""
+    """This is the root of the data model and contains all objects defined in this example. While its good practice to have a single root, you can define as many roots as you like. Furthermore, the name does not have to be ```Root``` and can be any other name."""
 
     description: str = Field(
         ...,
@@ -37,17 +30,24 @@ class Root(sdRDM.DataModel):
     subject: List[str] = Field(
         description="Subject of matter linked to the dataset",
         dataverse="pyDaRUS.Citation.subject",
-        default_factory=list,
+        default_factory=ListPlus,
     )
 
     authors: List[Author] = Field(
         description="Authors of this dataset.",
-        default_factory=list,
+        default_factory=ListPlus,
     )
 
     parameters: List[Parameter] = Field(
         description="Parameters to start and configure some process",
-        default_factory=list,
+        default_factory=ListPlus,
+    )
+
+    __repo__: Optional[str] = PrivateAttr(
+        default="git://github.com/JR-1991/sdrdm-template.git"
+    )
+    __commit__: Optional[str] = PrivateAttr(
+        default="62d6b003418002c676050984b3dab6dd6b174d0e"
     )
 
     def add_to_authors(
