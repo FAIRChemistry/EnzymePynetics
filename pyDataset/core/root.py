@@ -5,6 +5,7 @@ from typing import Optional
 from pydantic import PrivateAttr
 from pydantic import Field
 from typing import List
+from typing import Optional
 from .author import Author
 from .parameter import Parameter
 
@@ -15,7 +16,7 @@ class Root(sdRDM.DataModel):
         default="git://github.com/JR-1991/sdrdm-template.git"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="3ef119eb64e4d575b5ec473e67b3e34fd1f8f09f"
+        default="4de08981d487b8f67e2258e55b6b8462b5257e99"
     )
 
     """This is the root of the data model and contains all objects defined in this example. While its good practice to have a single root, you can define as many roots as you like. Furthermore, the name does not have to be ```Root``` and can be any other name.
@@ -52,14 +53,14 @@ class Root(sdRDM.DataModel):
     def add_to_authors(
         self,
         name: str,
-        affiliation: str,
+        affiliation: Optional[str] = None,
     ) -> None:
         """
         Adds an instance of 'Author' to the attribute 'authors'.
 
         Args:
             name (str): Full name including given and family name.
-            affiliation (str): To which organization the author is affiliated to.
+            affiliation (Optional[str]): To which organization the author is affiliated to. Defaults to None
         """
 
         self.authors.append(
