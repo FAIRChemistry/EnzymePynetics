@@ -31,7 +31,7 @@ In order to inherit attributes to another object, the object definition addition
 
 In the following an [example](https://github.com/JR-1991/sdrdm-template/tree/main/specifications) data model is defined using above rules. Feel free to use this example also as a template for your own application.
 
-### 👁 How can I used it by myself?
+### 👁 How can I use it by myself?
 
 You can experiment and use this [example](https://github.com/JR-1991/sdrdm-template/tree/main/specifications) repository right away to get familiar with teh concept. This repository includes an [action](https://github.com/JR-1991/sdrdm-template/blob/main/.github/workflows/generate_api.yaml) that is triggered whenever changes are pushed. Thus, when you introduce changes to the markdown document, these will directly be reflected onto the generated software. Follow these steps to start out:
 
