@@ -63,7 +63,7 @@ This is another object that represents the author of the dataset. Please note, t
   - Type: string
   - Description: Full name including given and family name
   - Dataverse: pyDaRUS.Citation.author.name
-- __affiliation__
+- __affiliation*__
   - Type: string
   - Description: To which organization the author is affiliated to
   - Dataverse: pyDaRUS.Citation.author.affiliation
