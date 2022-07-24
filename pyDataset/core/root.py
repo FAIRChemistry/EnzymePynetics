@@ -48,7 +48,7 @@ class Root(sdRDM.DataModel):
         default="git://github.com/JR-1991/sdrdm-template.git"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="59ea337e58bc3f249b14bd1ccb8f54d7cdcc5674"
+        default="6aa415cb09360648ff18aa0d9e977b017dd79c9e"
     )
 
     def add_to_authors(
