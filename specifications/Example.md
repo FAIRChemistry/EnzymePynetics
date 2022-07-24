@@ -45,7 +45,7 @@ This is the root of the data model and contains all objects defined in this exam
   - Type: string
   - Multiple: True
   - Description: Subject of matter linked to the dataset
-  - XML: subject
+  - xml: subject
   - Dataverse: pyDaRUS.Citation.subject
 - __authors*__
   - Type: Author
