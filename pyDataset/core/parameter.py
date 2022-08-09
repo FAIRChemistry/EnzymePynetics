@@ -14,14 +14,12 @@ class Parameter(sdRDM.DataModel):
     key: str = Field(
         ...,
         description="Name of the parameter",
-        xml="@key",
         dataverse="pyDaRUS.Process.method_parameters.name",
     )
 
     value: float = Field(
         ...,
         description="Respective value of a parameter",
-        xml="@value",
         dataverse="pyDaRUS.Process.method_parameters.value",
     )
 
@@ -29,5 +27,5 @@ class Parameter(sdRDM.DataModel):
         default="git://github.com/JR-1991/sdrdm-template.git"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="947ca909831fa8838f1ad95eaa68dc1eda5cd84d"
+        default="2e6c6d2488a46547b281b6243038ee0eb29c0b97"
     )

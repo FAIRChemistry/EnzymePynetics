@@ -10,10 +10,8 @@
         "description": "Title of the work",
         "dataverse": "pyDaRUS.Citation.title"
       },
-      "subjects": {
-        "multiple": "True",
+      "subject": {
         "description": "Subject of matter linked to the dataset",
-        "xml": "subject",
         "dataverse": "pyDaRUS.Citation.subject"
       },
       "authors": {
@@ -44,12 +42,10 @@
     "attributes": {
       "key": {
         "description": "Name of the parameter",
-        "xml": "@key",
         "dataverse": "pyDaRUS.Process.method_parameters.name"
       },
       "value": {
         "description": "Respective value of a parameter",
-        "xml": "@value",
         "dataverse": "pyDaRUS.Process.method_parameters.value"
       }
     },
