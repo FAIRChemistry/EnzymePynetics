@@ -1,9 +1,15 @@
-This is an example of how to set up a data model using the Software-Driven Research Data Management (sdRDM) library which is based on abstract object models. Furthermore, the sdRDM library supports the conversion of data models defined in the Markdown format. 
+<h2 align="center">
+  Markdown Example for sdRDM
+</h2>
+
+<p align="center"> 
+This is an example of how to set up a data model using the Software-Driven Research Data Management (sdRDM) library which is based on abstract object models. Furthermore, the sdRDM library supports the conversion of data models defined in the Markdown format.</p>
+ 
 
 Data models defined in the Markdown format follow these conventions:
 
 - **Modules** are denoted by a heading level 1 ```#```
-- **Object** are started with a heading level 2 ```##``` or 3 ```###``` 
+- **Objects** are started with a heading level 3 ```###``` 
 - Each object contains **fields** in bold as a list &rarr; ```- __name__```
 - **Required fields** are denoted with an asterix &rarr; ```- __name*__```
 - Each field has **options** as a list of name to value mapping &rarr; ```- Type: string```
@@ -41,11 +47,9 @@ This is the root of the data model and contains all objects defined in this exam
   - Type: string
   - Description: Title of the work
   - Dataverse: pyDaRUS.Citation.title
-- __subjects*__
+- __subject*__
   - Type: string
-  - Multiple: True
   - Description: Subject of matter linked to the dataset
-  - xml: subject
   - Dataverse: pyDaRUS.Citation.subject
 - __authors*__
   - Type: Author
@@ -76,10 +80,8 @@ This is another object used to describe the parameters of given dataset. As a fi
 - __key*__
   - Type: string
   - Description: Name of the parameter
-  - xml: @key
   - Dataverse: pyDaRUS.Process.method_parameters.name
 - __value*__
   - Type: float
   - Description: Respective value of a parameter
-  - xml: @value
   - Dataverse: pyDaRUS.Process.method_parameters.value
