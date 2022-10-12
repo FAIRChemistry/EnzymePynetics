@@ -52,16 +52,15 @@ You can experiment and use this [example](https://github.com/JR-1991/sdrdm-templ
 ```python
 from sdRDM import DataModel
 
-Root, Author, Parameter = DataModel.from_git(
+lib = DataModel.from_git(
     url="https://github.com/JR-1991/sdrdm-template.git",
-    import_modules = ["Author", "Parameter"]
 )
 
 # Visualize the data model
-Root.visualize_tree()
+lib.Root.visualize_tree()
 
 # Enter your data
-dataset = Root(title="Some Title", description="Some Description")
+dataset = lib.Root(title="Some Title", description="Some Description")
 dataset.add_to_authors(name="Jan Range", affiliation="SimTech")
 dataset.add_to_parameters(key="Param", value=10.0)
 
