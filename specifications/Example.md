@@ -1,10 +1,6 @@
 <h2 align="center">
   Data model for PyEnzymeKinetics
 </h2>
----------
-# Dataset
-
-This is the place where you can describe the complete module/dataset and give information about all the details. Markdown offers a convenient way to enable as much space as needed to elucidate purpose and capabilities of your data model.
 
 ### EnzymeKinetics
 
