@@ -1,7 +1,3 @@
-<h2 align="center">
-  Data model for PyEnzymeKinetics
-</h2>
-
 ### EnzymeKinetics
 
 Base class, dealing with measurement data of an enzyme kinetics assay.
