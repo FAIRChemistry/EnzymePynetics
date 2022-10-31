@@ -12,7 +12,7 @@ Base class, dealing with measurement data of an enzyme kinetics assay.
   - Description: Name of the measured reactant.
 - __measurements*__
   - Type: Measurement
-  - Despription: Measurement data for a given initial substrate concentration.
+  - Description: Measurement data for a given initial substrate concentration.
   - Multiple: True
 - __stoichiometry__
   - Type: StoichiometryTypes
