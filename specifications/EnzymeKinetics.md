@@ -8,7 +8,7 @@ Base class, dealing with measurement data of an enzyme kinetics assay.
   - Type: string
   - Description: Title of the kinetic experiment
 - __reactant_name__
-  - Type: Substance
+  - Type: string
   - Description: Name of the measured reactant.
 - __measurements*__
   - Type: Measurement
