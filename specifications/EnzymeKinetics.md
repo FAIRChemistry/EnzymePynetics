@@ -50,7 +50,7 @@ A Measurement object contains information about the applied enzyme concentration
   - Description: One or multiple time-course concentration data arrays
   - Multiple: True
 
-#### Series
+### Series
 - __values__
   - Type: float
   - Description: Time-course data of an individual reaction.
