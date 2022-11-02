@@ -73,7 +73,7 @@ H = "h"
 
 #### ConcentrationTypes
 
-```
+```python
 MOLAR = "mole / l"
 MILLIMOLAR = "mmole / l"
 MICROMOLAR = "umole / l"
