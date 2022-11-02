@@ -16,7 +16,8 @@ classDiagram
     }
     
     class Measurement {
-        +float initial_conc
+        +float initial_substrate_conc*
+        +float enzyme
     }
     
     class StoichiometryTypes {

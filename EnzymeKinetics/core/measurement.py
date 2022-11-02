@@ -20,8 +20,12 @@ class Measurement(sdRDM.DataModel):
         xml="@id",
     )
 
-    initial_conc: Optional[float] = Field(
-        description="Initial substrate concentration of the measurement.", default=None
+    initial_substrate_conc: float = Field(
+        ..., description="Initial substrate concentration of the measurement."
+    )
+
+    enzyme: Optional[float] = Field(
+        description="Enzyme concentration in the reaction.", default=None
     )
 
     __repo__: Optional[str] = PrivateAttr(
