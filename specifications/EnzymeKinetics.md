@@ -11,7 +11,7 @@ Base class, dealing with measurement data of an enzyme kinetics assay.
   - Type: string
   - Description: Name of the measured reactant.
 - __measurements*__
-  - Type: Measurement
+  - Type: float
   - Description: Measurement data for a given initial substrate concentration.
   - Multiple: True
 - __stoichiometry__
@@ -28,15 +28,6 @@ Base class, dealing with measurement data of an enzyme kinetics assay.
   - Type: TimeTypes
   - Description: Time data unit.
 
-### Measurement
-
-A Measurement object contains information about the applied enzyme concentration and one or multiple time-course concentration measurements. Additionally, the initial substrate concentration should be specified. This is neccessary to derive the substrate concentration for the modeling process. If an inhibitor was applied to the measurement, its concentration and the respective conetration unit can be specified to account for inhibition in kinetic modeling.
-
-- __initial_substrate_conc*__
-  - Type: float
-  - Description: Initial substrate concentration of the measurement.
-  - Multiple: True
-
 #### StoichiometryTypes
 
 Description.
@@ -46,3 +37,21 @@ SUBSTRATE = "substrate"
 PRODUCT = "product"
 ```
 
+#### ConcentrationTypes
+
+```python
+MOLAR = "mole / l"
+MILLIMOLAR = "mmole / l"
+MICROMOLAR = "umole / l"
+NANAMOLAR = "nmole / l"
+```
+
+#### TimeTypes
+
+Description.
+
+```python
+S = "s"
+MIN = "min"
+H = "h"
+```
