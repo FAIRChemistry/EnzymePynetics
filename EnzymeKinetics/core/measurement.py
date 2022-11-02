@@ -38,6 +38,11 @@ class Measurement(sdRDM.DataModel):
         description="Inhibitor concentration in the reaction, if applied.", default=None
     )
 
+    data: List[float] = Field(
+        description="One or multiple time-course concentration data arrays.",
+        default_factory=ListPlus,
+    )
+
     __repo__: Optional[str] = PrivateAttr(
         default="git://github.com/haeussma/enzyme-kinetics-datamodel.git"
     )

@@ -4,6 +4,7 @@ classDiagram
     EnzymeKinetics *-- StoichiometryTypes
     EnzymeKinetics *-- ConcentrationTypes
     EnzymeKinetics *-- TimeTypes
+    Measurement *-- ConcentrationTypes
     
     class EnzymeKinetics {
         +string title
@@ -20,6 +21,7 @@ classDiagram
         +float enzyme_conc
         +float inhibitor_conc
         +ConcentrationTypes inhibitor_conc_unit
+        +float[0..*] data*
     }
     
     class StoichiometryTypes {

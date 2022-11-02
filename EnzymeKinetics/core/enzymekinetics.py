@@ -65,6 +65,7 @@ class EnzymeKinetics(sdRDM.DataModel):
     def add_to_measurements(
         self,
         initial_substrate_conc: float,
+        data: List[float],
         enzyme_conc: Optional[float] = None,
         inhibitor_conc: Optional[float] = None,
         inhibitor_conc_unit: Optional[ConcentrationTypes] = None,
@@ -82,6 +83,9 @@ class EnzymeKinetics(sdRDM.DataModel):
             initial_substrate_conc (float): Initial substrate concentration of the measurement.
 
 
+            data (List[float]): One or multiple time-course concentration data arrays.
+
+
             enzyme_conc (Optional[float]): Enzyme concentration in the reaction. Defaults to None
 
 
@@ -93,6 +97,7 @@ class EnzymeKinetics(sdRDM.DataModel):
 
         params = {
             "initial_substrate_conc": initial_substrate_conc,
+            "data": data,
             "enzyme_conc": enzyme_conc,
             "inhibitor_conc": inhibitor_conc,
             "inhibitor_conc_unit": inhibitor_conc_unit,
