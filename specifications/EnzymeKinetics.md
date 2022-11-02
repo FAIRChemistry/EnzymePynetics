@@ -1,6 +1,11 @@
 # EnzymeKineticsDatamodel
 
+Description.
+
 ### EnzymeKinetics
+
+Description.
+
 - __title__
   - Type: string
   - Description: Title of the kinetic experiment.
@@ -44,10 +49,13 @@ A Measurement object contains information about the applied enzyme concentration
   - Description: Concentration unit of the inhibitior.
 - __data*__
   - Type: Series
-  - Description: One or multiple time-course concentration data arrays
+  - Description: One or multiple time-course concentration data arrays.
   - Multiple: True
 
 ### Series
+
+Description.
+
 - __values__
   - Type: float
   - Description: Time-course data of an individual reaction.
@@ -55,12 +63,16 @@ A Measurement object contains information about the applied enzyme concentration
 
 #### StoichiometryTypes
 
+Description.
+
 ```python
 SUBSTRATE = "substrate"
 PRODUCT = "product"
 ```
 
 #### TimeTypes
+
+Description.
 
 ```python
 S = "s"
