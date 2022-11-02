@@ -32,6 +32,14 @@
         "description": "Time data unit."
       }
     },
-    "docstring": "Base class, dealing with measurement data of an enzyme kinetics assay."
+    "docstring": "Base class, dealing with measurement data of an enzyme kinetics assay.\n"
+  },
+  "Measurement": {
+    "attributes": {
+      "test": {
+        "description": "Test field."
+      }
+    },
+    "docstring": "Description."
   }
 }

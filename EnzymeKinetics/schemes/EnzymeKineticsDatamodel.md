@@ -1,16 +1,22 @@
 ```mermaid
 classDiagram
+    EnzymeKinetics *-- Measurement
     EnzymeKinetics *-- StoichiometryTypes
     EnzymeKinetics *-- ConcentrationTypes
+    EnzymeKinetics *-- TimeTypes
     
     class EnzymeKinetics {
         +string title
         +string reactant_name
-        +float[0..*] measurements*
+        +Measurement[0..*] measurements*
         +StoichiometryTypes stoichiometry
         +ConcentrationTypes data_conc_unit*
         +float[0..*] time*
         +TimeTypes time_unit*
+    }
+    
+    class Measurement {
+        +string test
     }
     
     class StoichiometryTypes {

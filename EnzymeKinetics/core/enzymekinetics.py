@@ -9,6 +9,7 @@ from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
 
 from .stoichiometrytypes import StoichiometryTypes
+from .measurement import Measurement
 
 
 @forge_signature
@@ -59,3 +60,24 @@ class EnzymeKinetics(sdRDM.DataModel):
     __commit__: Optional[str] = PrivateAttr(
         default="e2fad0d34e83be28e91495256d6f0dc4f7c278e8"
     )
+
+    def add_to_measurements(
+        self, test: Optional[str] = None, id: Optional[str] = None
+    ) -> None:
+        """
+        Adds an instance of 'Measurement' to the attribute 'measurements'.
+
+        Args:
+
+
+            id (str): Unique identifier of the 'Measurement' object. Defaults to 'None'.
+
+
+            test (Optional[str]): Test field. Defaults to None
+        """
+
+        params = {"test": test}
+        if id is not None:
+            params["id"] = id
+        measurements = [Measurement(**params)]
+        self.measurements = self.measurements + measurements
