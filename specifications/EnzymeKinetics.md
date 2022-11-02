@@ -36,3 +36,13 @@ A Measurement object contains information about the applied enzyme concentration
   - Type: float
   - Description: Initial substrate concentration of the measurement.
   - Multiple: True
+
+#### StoichiometryTypes
+
+Description.
+
+```python
+SUBSTRATE = "substrate"
+PRODUCT = "product"
+```
+
