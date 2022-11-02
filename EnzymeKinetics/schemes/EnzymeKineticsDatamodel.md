@@ -17,7 +17,9 @@ classDiagram
     
     class Measurement {
         +float initial_substrate_conc*
-        +float enzyme
+        +float enzyme_conc
+        +float inhibitor_conc
+        +ConcentrationTypes inhibitor_conc_unit
     }
     
     class StoichiometryTypes {
@@ -32,6 +34,10 @@ classDiagram
         +MILLIMOLAR = "mmole / l"
         +MICROMOLAR = "umole / l"
         +NANAMOLAR = "nmole / l"
+        +GRAMLITER = "g / l"
+        +MILIGRAMLITER = "mg / l"
+        +MICROGRAMLITER = "ug / l"
+        +NAN=GRAMLITER = "ng / l"
     }
     
     class TimeTypes {

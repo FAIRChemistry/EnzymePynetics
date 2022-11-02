@@ -10,6 +10,7 @@ from sdRDM.base.utils import forge_signature, IDGenerator
 
 from .stoichiometrytypes import StoichiometryTypes
 from .measurement import Measurement
+from .concentrationtypes import ConcentrationTypes
 
 
 @forge_signature
@@ -64,7 +65,9 @@ class EnzymeKinetics(sdRDM.DataModel):
     def add_to_measurements(
         self,
         initial_substrate_conc: float,
-        enzyme: Optional[float] = None,
+        enzyme_conc: Optional[float] = None,
+        inhibitor_conc: Optional[float] = None,
+        inhibitor_conc_unit: Optional[ConcentrationTypes] = None,
         id: Optional[str] = None,
     ) -> None:
         """
@@ -79,10 +82,21 @@ class EnzymeKinetics(sdRDM.DataModel):
             initial_substrate_conc (float): Initial substrate concentration of the measurement.
 
 
-            enzyme (Optional[float]): Enzyme concentration in the reaction. Defaults to None
+            enzyme_conc (Optional[float]): Enzyme concentration in the reaction. Defaults to None
+
+
+            inhibitor_conc (Optional[float]): Inhibitor concentration in the reaction, if applied. Defaults to None
+
+
+            inhibitor_conc_unit (Optional[ConcentrationTypes]): Inhibitor concentration in the reaction, if applied. Defaults to None
         """
 
-        params = {"initial_substrate_conc": initial_substrate_conc, "enzyme": enzyme}
+        params = {
+            "initial_substrate_conc": initial_substrate_conc,
+            "enzyme_conc": enzyme_conc,
+            "inhibitor_conc": inhibitor_conc,
+            "inhibitor_conc_unit": inhibitor_conc_unit,
+        }
         if id is not None:
             params["id"] = id
         measurements = [Measurement(**params)]

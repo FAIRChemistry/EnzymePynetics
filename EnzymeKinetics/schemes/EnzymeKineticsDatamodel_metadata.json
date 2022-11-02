@@ -39,8 +39,14 @@
       "initial_substrate_conc": {
         "description": "Initial substrate concentration of the measurement."
       },
-      "enzyme": {
+      "enzyme_conc": {
         "description": "Enzyme concentration in the reaction."
+      },
+      "inhibitor_conc": {
+        "description": "Inhibitor concentration in the reaction, if applied."
+      },
+      "inhibitor_conc_unit": {
+        "description": "Inhibitor concentration in the reaction, if applied."
       }
     },
     "docstring": "A Measurement object contains information about the applied enzyme concentration and one or multiple time-course concentration measurements. Additionally, the initial substrate concentration should be specified. This is neccessary to derive the substrate concentration for the modeling process. If an inhibitor was applied to the measurement, its concentration and the respective conetration unit can be specified to account for inhibition in kinetic modeling."

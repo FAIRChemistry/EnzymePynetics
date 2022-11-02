@@ -8,6 +8,8 @@ from pydantic import Field
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
 
+from .concentrationtypes import ConcentrationTypes
+
 
 @forge_signature
 class Measurement(sdRDM.DataModel):
@@ -24,8 +26,16 @@ class Measurement(sdRDM.DataModel):
         ..., description="Initial substrate concentration of the measurement."
     )
 
-    enzyme: Optional[float] = Field(
+    enzyme_conc: Optional[float] = Field(
         description="Enzyme concentration in the reaction.", default=None
+    )
+
+    inhibitor_conc: Optional[float] = Field(
+        description="Inhibitor concentration in the reaction, if applied.", default=None
+    )
+
+    inhibitor_conc_unit: Optional[ConcentrationTypes] = Field(
+        description="Inhibitor concentration in the reaction, if applied.", default=None
     )
 
     __repo__: Optional[str] = PrivateAttr(
