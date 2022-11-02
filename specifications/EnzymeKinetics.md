@@ -35,9 +35,9 @@ A Measurement object contains information about the applied enzyme concentration
 - __initial_substrate_conc*__
   - Type: float
   - Description: Initial substrate concentration of the measurement.
-- __enzyme_conc*__
+- __enzyme__
   - Type: float
-  - Multiple: True
+  - Description: Enzyme concentration in the reaction.
 
 #### StoichiometryTypes
 
