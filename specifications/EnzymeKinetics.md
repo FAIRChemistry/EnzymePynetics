@@ -45,9 +45,19 @@ A Measurement object contains information about the applied enzyme concentration
   - Type: ConcentrationTypes
   - Description: Inhibitor concentration in the reaction, if applied.
 - __data*__
-  - Type: float
+  - Type: Data
   - Description: One or multiple time-course concentration data arrays.
-  - Multiple: True
+
+### Data
+
+Time-course data of an measurement.
+
+- __values__
+  - Type: float
+  - Description: Time-course data of an individual measurement.
+- __test__
+  - Type: string
+  - Description: test.
 
 #### StoichiometryTypes
 
