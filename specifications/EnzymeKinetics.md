@@ -74,8 +74,8 @@ H = "h"
 #### ConcentrationTypes
 
 ```
-M = "mole / l"
-mM = "mmole / l"
-uM = "umole / l"
-nM = "nmole / l"
+MOLAR = "mole / l"
+MILLIMOLAR = "mmole / l"
+MICROMOLAR = "umole / l"
+NANAMOLAR = "nmole / l"
 ```
