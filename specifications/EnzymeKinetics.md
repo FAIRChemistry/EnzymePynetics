@@ -1,9 +1,6 @@
 # EnzymeKineticsDatamodel
 
-Data-model of pyEnzymeKinetics.
-
 ### EnzymeKinetics
-
 - __title__
   - Type: string
   - Description: Title of the kinetic experiment.
