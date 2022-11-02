@@ -35,9 +35,15 @@ A Measurement object contains information about the applied enzyme concentration
 - __initial_substrate_conc*__
   - Type: float
   - Description: Initial substrate concentration of the measurement.
-- __enzyme__
+- __enzyme_conc__
   - Type: float
   - Description: Enzyme concentration in the reaction.
+- __inhibitor_conc__
+  - Type: float
+  - Description: Inhibitor concentration in the reaction, if applied.
+- __inhibitor_conc_unit__
+  - Type: ConcentrationTypes
+  - Description: Inhibitor concentration in the reaction, if applied.
 
 #### StoichiometryTypes
 
@@ -55,6 +61,10 @@ MOLAR = "mole / l"
 MILLIMOLAR = "mmole / l"
 MICROMOLAR = "umole / l"
 NANAMOLAR = "nmole / l"
+GRAMLITER = "g / l"
+MILIGRAMLITER = "mg / l"
+MICROGRAMLITER = "ug / l"
+NAN=GRAMLITER = "ng / l"
 ```
 
 #### TimeTypes
