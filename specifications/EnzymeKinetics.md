@@ -11,7 +11,7 @@ Base class, dealing with measurement data of an enzyme kinetics assay.
   - Type: string
   - Description: Name of the measured reactant.
 - __measurements*__
-  - Type: float
+  - Type: Measurement
   - Description: Measurement data for a given initial substrate concentration.
   - Multiple: True
 - __stoichiometry__
@@ -27,6 +27,14 @@ Base class, dealing with measurement data of an enzyme kinetics assay.
 - __time_unit*__
   - Type: TimeTypes
   - Description: Time data unit.
+
+### Measurement
+
+Description.
+
+- __test__
+  - Type: string
+  - Description: Test field.
 
 #### StoichiometryTypes
 
