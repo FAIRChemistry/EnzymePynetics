@@ -62,7 +62,7 @@ class EnzymeKinetics(sdRDM.DataModel):
     )
 
     def add_to_measurements(
-        self, test: Optional[str] = None, id: Optional[str] = None
+        self, initial_conc: Optional[float] = None, id: Optional[str] = None
     ) -> None:
         """
         Adds an instance of 'Measurement' to the attribute 'measurements'.
@@ -73,10 +73,10 @@ class EnzymeKinetics(sdRDM.DataModel):
             id (str): Unique identifier of the 'Measurement' object. Defaults to 'None'.
 
 
-            test (Optional[str]): Test field. Defaults to None
+            initial_conc (Optional[float]): Initial substrate concentration of the measurement. Defaults to None
         """
 
-        params = {"test": test}
+        params = {"initial_conc": initial_conc}
         if id is not None:
             params["id"] = id
         measurements = [Measurement(**params)]

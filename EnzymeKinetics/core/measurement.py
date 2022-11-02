@@ -20,7 +20,9 @@ class Measurement(sdRDM.DataModel):
         xml="@id",
     )
 
-    test: Optional[str] = Field(description="Test field.", default=None)
+    initial_conc: Optional[float] = Field(
+        description="Initial substrate concentration of the measurement.", default=None
+    )
 
     __repo__: Optional[str] = PrivateAttr(
         default="git://github.com/haeussma/enzyme-kinetics-datamodel.git"

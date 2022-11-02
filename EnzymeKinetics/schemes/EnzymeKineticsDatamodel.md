@@ -16,7 +16,7 @@ classDiagram
     }
     
     class Measurement {
-        +string test
+        +float initial_conc
     }
     
     class StoichiometryTypes {
