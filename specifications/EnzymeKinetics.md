@@ -54,7 +54,7 @@ Descriptionn.
 
 - __values__
   - Type: float
-  - Description: Initial substrate concentration of the measurement.
+  - Description: Time-course data of an individual reaction.
   - Multiple: True
 
 #### StoichiometryTypes
@@ -74,7 +74,7 @@ MILLIMOLAR = "mmole / l"
 MICROMOLAR = "umole / l"
 NANAMOLAR = "nmole / l"
 GRAMLITER = "g / l"
-MILIGRAMLITER = "mg / l"
+MILLIGRAMLITER = "mg / l"
 MICROGRAMLITER = "ug / l"
 NAN=GRAMLITER = "ng / l"
 ```
