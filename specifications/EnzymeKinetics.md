@@ -1,12 +1,12 @@
 # EnzymeKineticsDatamodel
 
-### EnzymeKinetics
+Data-model of pyEnzymeKinetics.
 
-Base class, dealing with measurement data of an enzyme kinetics assay.
+### EnzymeKinetics
 
 - __title__
   - Type: string
-  - Description: Title of the kinetic experiment
+  - Description: Title of the kinetic experiment.
 - __reactant_name__
   - Type: string
   - Description: Name of the measured reactant.
