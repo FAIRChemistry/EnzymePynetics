@@ -77,7 +77,7 @@ NANAMOLAR = "nmole / l"
 GRAMLITER = "g / l"
 MILLIGRAMLITER = "mg / l"
 MICROGRAMLITER = "ug / l"
-NANOGRAMLITER = "ng / l"
+NANGRAMLITER = "ng / l"
 ```
 
 #### TimeTypes
