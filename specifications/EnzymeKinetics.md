@@ -47,6 +47,7 @@ A Measurement object contains information about the applied enzyme concentration
 - __data*__
   - Type: Series
   - Description: One or multiple time-course concentration data arrays.
+  - Multiple: True
 
 ### Series
 
