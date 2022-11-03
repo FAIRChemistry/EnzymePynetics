@@ -51,7 +51,7 @@ A Measurement object contains information about the applied enzyme concentration
 
 ### Series
 
-Descriptionn.
+Time-course data of an individual reaction.
 
 - __values__
   - Type: float
