@@ -51,7 +51,7 @@ A Measurement object contains information about the applied enzyme concentration
   - Multiple: True
 - __inhibitor__
   - Type: Inhibitor
-  - Desciption: Inhibitor instance, of the respective inhibitor applied to the reaction.
+  - Description: Inhibitor instance, of the respective inhibitor applied to the reaction.
 
 ### Inhibitor
 
