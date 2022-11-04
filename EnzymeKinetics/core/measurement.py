@@ -1,21 +1,20 @@
 import sdRDM
 
 from typing import Optional, Union
+from typing import List
+from typing import Optional
 from pydantic import PrivateAttr
+from pydantic import Field
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
 
-from pydantic import Field
-from typing import List
-from typing import Optional
-
 from .concentrationtypes import ConcentrationTypes
 from .series import Series
+from .inhibitor import Inhibitor
 
 
 @forge_signature
 class Measurement(sdRDM.DataModel):
-
     """A Measurement object contains information about the applied enzyme concentration and one or multiple time-course concentration measurements. Additionally, the initial substrate concentration should be specified. This is neccessary to derive the substrate concentration for the modeling process. If an inhibitor was applied to the measurement, its concentration and the respective conetration unit can be specified to account for inhibition in kinetic modeling.
     """
 
@@ -24,24 +23,17 @@ class Measurement(sdRDM.DataModel):
         default_factory=IDGenerator("measurementINDEX"),
         xml="@id",
     )
+
     initial_substrate_conc: float = Field(
-        ...,
-        description="Initial substrate concentration of the measurement.",
+        ..., description="Initial substrate concentration of the measurement."
     )
 
     enzyme_conc: Optional[float] = Field(
-        description="Enzyme concentration in the reaction.",
-        default=None,
-    )
-
-    inhibitor_conc: Optional[float] = Field(
-        description="Inhibitor concentration in the reaction, if applied.",
-        default=None,
+        description="Enzyme concentration in the reaction.", default=None
     )
 
     inhibitor_conc_unit: Optional[ConcentrationTypes] = Field(
-        description="Inhibitor concentration in the reaction, if applied.",
-        default=None,
+        description="Inhibitor concentration in the reaction, if applied.", default=None
     )
 
     data: List[Series] = Field(
@@ -49,9 +41,17 @@ class Measurement(sdRDM.DataModel):
         default_factory=ListPlus,
     )
 
+    inhibitor: Optional[Inhibitor] = Field(
+        description=(
+            "Inhibitor instance, of the respective inhibitor applied to the reaction."
+        ),
+        default=None,
+    )
+
     __repo__: Optional[str] = PrivateAttr(
         default="git://github.com/haeussma/enzyme-kinetics-datamodel.git"
     )
+
     __commit__: Optional[str] = PrivateAttr(
         default="618620591831f969dcda4fa6751bb740594ce6b4"
     )
@@ -61,17 +61,16 @@ class Measurement(sdRDM.DataModel):
         Adds an instance of 'Series' to the attribute 'data'.
 
         Args:
+
+
             id (str): Unique identifier of the 'Series' object. Defaults to 'None'.
+
+
             values (List[float]): Time-course data of an individual reaction.
         """
 
-        params = {
-            "values": values,
-        }
-
+        params = {"values": values}
         if id is not None:
             params["id"] = id
-
         data = [Series(**params)]
-
         self.data = self.data + data
