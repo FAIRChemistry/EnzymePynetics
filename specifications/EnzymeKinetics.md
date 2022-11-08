@@ -100,7 +100,7 @@ NANGRAMLITER = "ng / l"
 
 #### TimeTypes
 
-Description.
+Allowed time types.
 
 ```python
 S = "s"
