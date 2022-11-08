@@ -13,6 +13,7 @@ from .measurement import Measurement
 from .series import Series
 from .stoichiometrytypes import StoichiometryTypes
 from .inhibitor import Inhibitor
+from .timetypes import TimeTypes
 
 
 @forge_signature
