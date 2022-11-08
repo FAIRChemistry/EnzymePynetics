@@ -8,10 +8,10 @@ class Kinetics():
     def __init__(self, data: 'EnzymeKinetics'):
         self.data = data
         self._initialize_measurement_data()
+        self.initial_kcat = self._calculate_kcat()
+        self.initial_Km = self._calculate_Km()
 
     def _initialize_measurement_data(self):
-        print(self.data.stoichiometry)
-        print(StoichiometryTypes.SUBSTRATE.value)
 
         measurement_data = []
         initial_substrate = []
@@ -29,7 +29,7 @@ class Kinetics():
         if self.data.stoichiometry == StoichiometryTypes.SUBSTRATE.value:
             self.substrate = measurement_data
             self.product = self._calculate_product()
-        elif self.data.stoichiometry == "product": #TODO Fix missing Stoichiometry type
+        elif self.data.stoichiometry == StoichiometryTypes.PRODUCT.value: 
             self.product = measurement_data
             self.substrate = self._calculate_substrate()
         else:
@@ -48,6 +48,21 @@ class Kinetics():
             product.append(
                 [initial_substrate - value for value in substrate])
         return product
+
+    def _calculate_rates(self):
+        concentration_intervals = np.diff(self.substrate)
+        time_intervals = np.diff(self.data.time)
+        rates = abs(concentration_intervals / time_intervals)
+        return rates
+
+    def _calculate_kcat(self) -> float:
+        rates = self._calculate_rates()
+        initial_substrate_tile = np.repeat(self.initial_substrate, rates.shape[1]).reshape(rates.shape)
+        kcat = np.nanmax(rates / initial_substrate_tile)
+        return kcat
+
+    def _calculate_Km(self):
+        return np.nanmax(self._calculate_rates()) / 2
 
 
         
@@ -81,27 +96,21 @@ if __name__ == "__main__":
     )
     m3.add_to_data([10,11,21,31,41,51])
     m3.add_to_data([10.3,11.3,21.3,31.3,41.3,51.3])
-    m3.add_to_data([10.6,11.6,21.6,31.6,41.6,51.6])
+    m3.add_to_data([10.6,11.6,float("nan"),31.6,41.6,71.6])
 
     testdata = EnzymeKinetics(
         data_conc_unit="mmole / l",
-        stoichiometry="substrate",
+        stoichiometry="product",
         data_conc="mmole / l",
         time_unit="min",
         title="test data",
         reactant_name="test product",
         measurements=[m1,m2,m3],
-        time=[0,1,2,3,4,5]
+        time=[0,2,4,6,8,9]
     )
 
     test = Kinetics(testdata)
-    print(test.product)
-    print(test.substrate)
+    print((test.initial_Km))
 
 
-    for s in test.substrate:
-        plt.scatter(np.arange(len(s)), s)
-    for p in test.product:
-        plt.scatter(np.arange(len(p)), p)
-    plt.show()
 
