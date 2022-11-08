@@ -9,3 +9,4 @@ class ConcentrationTypes(Enum):
     GRAMLITER = "g / l"
     MILLIGRAMLITER = "mg / l"
     MICROGRAMLITER = "ug / l"
+    NANGRAMLITER = "ng / l"
