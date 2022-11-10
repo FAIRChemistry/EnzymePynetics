@@ -27,10 +27,6 @@ Base class, dealing with measurement data of an enzyme kinetics assay.
 - __time_unit*__
   - Type: TimeTypes
   - Description: Time data unit.
-- __inhibitors__
-  - Type: Inhibitor
-  - Description: Inhibitor data, if applied to the reaction.
-  - Multiple: True
 
 ### Measurement
 
@@ -42,30 +38,16 @@ A Measurement object contains information about the applied enzyme concentration
 - __enzyme_conc__
   - Type: float
   - Description: Enzyme concentration in the reaction.
-- __inhibitor_conc_unit__
-  - Type: ConcentrationTypes
-  - Description: Inhibitor concentration in the reaction, if applied.
 - __data*__
   - Type: Series
   - Description: One or multiple time-course concentration data arrays.
   - Multiple: True
-- __inhibitor__
+- __inhibitor_conc__
   - Type: Inhibitor
-  - Description: Inhibitor instance, of the respective inhibitor applied to the reaction.
-
-### Inhibitor
-
-Parameters of the inhibitor, if inhibitor was applied to the enzyme reaction.
-
-- __name__
-  - Type: str
-  - Description: Name or ID of the inhibitor
-- __concentration__
-  - Type: float
-  - Description: Inhibitor concentration in the reaction.
-- __conconcentration_unit__
+  - Description: Inhibitor concentration, if applied to the reaction.
+- __inhibitor_conc_unit__
   - Type: ConcentrationTypes
-  - Description: Name or ID of the inhibitor
+  - Description: Inhibitor concentration in the reaction, if applied.
 
 ### Series
 
@@ -78,7 +60,7 @@ Time-course data of an individual reaction.
 
 #### StoichiometryTypes
 
-Description.
+Measurement data can eighter be substrate or product.
 
 ```python
 SUBSTRATE = "substrate"
