@@ -5,11 +5,8 @@ classDiagram
     EnzymeKinetics *-- StoichiometryTypes
     EnzymeKinetics *-- ConcentrationTypes
     EnzymeKinetics *-- TimeTypes
-    EnzymeKinetics *-- Inhibitor
-    Measurement *-- ConcentrationTypes
     Measurement *-- Series
-    Measurement *-- Inhibitor
-    Inhibitor *-- ConcentrationTypes
+    Measurement *-- ConcentrationTypes
     
     class EnzymeKinetics {
         +string title
@@ -19,21 +16,14 @@ classDiagram
         +ConcentrationTypes data_conc_unit*
         +float[0..*] time*
         +TimeTypes time_unit*
-        +Inhibitor[0..*] inhibitors
     }
     
     class Measurement {
         +float initial_substrate_conc*
         +float enzyme_conc
-        +ConcentrationTypes inhibitor_conc_unit
         +Series[0..*] data*
-        +Inhibitor inhibitor
-    }
-    
-    class Inhibitor {
-        +str name
-        +float concentration
-        +ConcentrationTypes conconcentration_unit
+        +float inhibitor_conc
+        +ConcentrationTypes inhibitor_conc_unit
     }
     
     class Series {

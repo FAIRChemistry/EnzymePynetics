@@ -12,7 +12,6 @@ from .concentrationtypes import ConcentrationTypes
 from .measurement import Measurement
 from .series import Series
 from .stoichiometrytypes import StoichiometryTypes
-from .inhibitor import Inhibitor
 from .timetypes import TimeTypes
 
 
@@ -57,11 +56,6 @@ class EnzymeKinetics(sdRDM.DataModel):
         default_factory=ListPlus,
     )
 
-    inhibitors: List[Inhibitor] = Field(
-        description="Inhibitor data, if applied to the reaction.",
-        default_factory=ListPlus,
-    )
-
     __repo__: Optional[str] = PrivateAttr(
         default="git://github.com/haeussma/enzyme-kinetics-datamodel.git"
     )
@@ -75,8 +69,8 @@ class EnzymeKinetics(sdRDM.DataModel):
         initial_substrate_conc: float,
         data: List[Series],
         enzyme_conc: Optional[float] = None,
+        inhibitor_conc: Optional[float] = None,
         inhibitor_conc_unit: Optional[ConcentrationTypes] = None,
-        inhibitor: Optional[Inhibitor] = None,
         id: Optional[str] = None,
     ) -> None:
         """
@@ -97,55 +91,20 @@ class EnzymeKinetics(sdRDM.DataModel):
             enzyme_conc (Optional[float]): Enzyme concentration in the reaction. Defaults to None
 
 
+            inhibitor_conc (Optional[float]): Inhibitor concentration, if applied to the reaction. Defaults to None
+
+
             inhibitor_conc_unit (Optional[ConcentrationTypes]): Inhibitor concentration in the reaction, if applied. Defaults to None
-
-
-            inhibitor (Optional[Inhibitor]): Inhibitor instance, of the respective inhibitor applied to the reaction. Defaults to None
         """
 
         params = {
             "initial_substrate_conc": initial_substrate_conc,
             "data": data,
             "enzyme_conc": enzyme_conc,
+            "inhibitor_conc": inhibitor_conc,
             "inhibitor_conc_unit": inhibitor_conc_unit,
-            "inhibitor": inhibitor,
         }
         if id is not None:
             params["id"] = id
         measurements = [Measurement(**params)]
         self.measurements = self.measurements + measurements
-
-    def add_to_inhibitors(
-        self,
-        name: Optional[str] = None,
-        concentration: Optional[float] = None,
-        conconcentration_unit: Optional[ConcentrationTypes] = None,
-        id: Optional[str] = None,
-    ) -> None:
-        """
-        Adds an instance of 'Inhibitor' to the attribute 'inhibitors'.
-
-        Args:
-
-
-            id (str): Unique identifier of the 'Inhibitor' object. Defaults to 'None'.
-
-
-            name (Optional[str]): Name or ID of the inhibitor. Defaults to None
-
-
-            concentration (Optional[float]): Inhibitor concentration in the reaction. Defaults to None
-
-
-            conconcentration_unit (Optional[ConcentrationTypes]): Name or ID of the inhibitor. Defaults to None
-        """
-
-        params = {
-            "name": name,
-            "concentration": concentration,
-            "conconcentration_unit": conconcentration_unit,
-        }
-        if id is not None:
-            params["id"] = id
-        inhibitors = [Inhibitor(**params)]
-        self.inhibitors = self.inhibitors + inhibitors

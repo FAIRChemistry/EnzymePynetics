@@ -10,7 +10,6 @@ from sdRDM.base.utils import forge_signature, IDGenerator
 
 from .concentrationtypes import ConcentrationTypes
 from .series import Series
-from .inhibitor import Inhibitor
 
 
 @forge_signature
@@ -41,11 +40,8 @@ class Measurement(sdRDM.DataModel):
         default_factory=ListPlus,
     )
 
-    inhibitor: Optional[Inhibitor] = Field(
-        description=(
-            "Inhibitor instance, of the respective inhibitor applied to the reaction."
-        ),
-        default=None,
+    inhibitor_conc: Optional[float] = Field(
+        description="Inhibitor concentration, if applied to the reaction.", default=None
     )
 
     __repo__: Optional[str] = PrivateAttr(
