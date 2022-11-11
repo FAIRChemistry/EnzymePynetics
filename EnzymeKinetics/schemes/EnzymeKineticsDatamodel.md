@@ -1,6 +1,5 @@
 ```mermaid
 classDiagram
-    direction LR
     EnzymeKinetics *-- Measurement
     EnzymeKinetics *-- StoichiometryTypes
     EnzymeKinetics *-- ConcentrationTypes
