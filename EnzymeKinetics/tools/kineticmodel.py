@@ -38,6 +38,8 @@ class KineticModel():
         if self.enzyme_inactivation:
             parameters.add("K_ie", value=0.01, min=0.0001, max=0.9999)
 
+        return parameters
+
 
 def irreversible_model(w0: tuple, t, params, flag_enzyme_inactivation: bool) -> tuple:
     cS, cE, cP, cI = w0

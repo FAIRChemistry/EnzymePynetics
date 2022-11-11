@@ -5,6 +5,8 @@ from EnzymeKinetics.core.stoichiometrytypes import StoichiometryTypes
 from kineticmodel import KineticModel, irreversible_model, competitive_product_inhibition_model, uncompetitive_product_inhibition_model, noncompetitive_product_inhibition_model, substrate_inhibition_model, competitive_inhibition_model
 
 import numpy as np
+from scipy.integrate import odeint
+from lmfit import minimize, report_fit
 
 
 class ParameterEstimator():
@@ -19,9 +21,6 @@ class ParameterEstimator():
         # TODO shapcheck funtion to check for consistent array lengths
 
     def _initialize_measurement_data(self):
-
-        print(type(self.data))
-
 
         measurement_data = []
         initial_substrate = []
@@ -51,7 +50,6 @@ class ParameterEstimator():
             self.substrate = np.array(self._calculate_substrate())
         else:
             raise AttributeError("Please define whether measured data is substrate or product data.")
-
 
     def _calculate_substrate(self):
         substrate = []
@@ -129,7 +127,7 @@ class ParameterEstimator():
             )
 
             competitive_product_inhibition = KineticModel(
-                name="irreversible Michaelis Menten",
+                name="competitive product inhibition",
                 params=["K_ic"],
                 w0={"cS": substrate, "cE": enzyme,
                     "cP": product, "cI": product},            
@@ -139,7 +137,7 @@ class ParameterEstimator():
                 enzyme_inactivation=enzyme_inactivation
             )
             uncompetitive_product_inhibition = KineticModel(
-                name="uncompetitive product inhibitioon",
+                name="uncompetitive product inhibition",
                 params=["K_iu"],
                 w0={"cS": substrate, "cE": enzyme,
                     "cP": product, "cI": product},            
@@ -149,7 +147,7 @@ class ParameterEstimator():
                 enzyme_inactivation=enzyme_inactivation
             )
             noncompetitive_product_inhibition = KineticModel(
-                name="non-competitive product inhibitiion",
+                name="non-competitive product inhibition",
                 params=["K_iu", "K_ic"],
                 w0={"cS": substrate, "cE": enzyme,
                     "cP": product, "cI": product},            
@@ -170,16 +168,60 @@ class ParameterEstimator():
             )
 
             return {
-                irreversible_Michaelis_Menten.name, irreversible_Michaelis_Menten,
-                competitive_product_inhibition.name, competitive_product_inhibition,
-                uncompetitive_product_inhibition.name, uncompetitive_product_inhibition,
-                noncompetitive_product_inhibition.name, noncompetitive_product_inhibition,
-                substrate_inhibition.name, substrate_inhibition
-            }
+                irreversible_Michaelis_Menten.name: irreversible_Michaelis_Menten,
+                competitive_product_inhibition.name: competitive_product_inhibition,
+                uncompetitive_product_inhibition.name: uncompetitive_product_inhibition,
+                noncompetitive_product_inhibition.name: noncompetitive_product_inhibition,
+                substrate_inhibition.name: substrate_inhibition}
 
                
         else:
             print("something went wrong")
+
+
+    def _run_minimization(
+        self, 
+        model_dict: Dict[str, KineticModel], 
+        time: np.ndarray, 
+        substrate: np.ndarray,
+        enzyme_inactivation: bool
+        ):
+
+        for kineticmodel in model_dict.values():
+
+            def g(time: np.ndarray, w0: tuple, params):
+                '''
+                Solution to the ODE w'(t)=f(t,w,p) with initial condition w(0)= w0 (= [S0])
+                '''
+                w = odeint(kineticmodel.model, w0, time, args=(params, enzyme_inactivation,)) #Pass flag over here
+                return w
+
+            def residual(params, time: np.ndarray, substrate: np.ndarray):
+
+                residuals = 0.0 * substrate  # initialize the residuals vector
+
+                for i, measurement in enumerate(substrate):
+
+                # compute residual per data set
+
+                    cS, cE, cP, cI = kineticmodel.w0.values()
+                    w0 = (cS[i, 0], cE[i], cP[i, 0], cI[i])
+
+                    model = g(time, w0, params)  # solve the ODE with sfb.
+
+                    # get modeled substrate
+                    model = model[:, 0]
+
+                    # compute distance to measured data
+                    residuals[i] = measurement-model
+
+                return residuals.flatten()
+
+            kineticmodel.result = minimize(residual, kineticmodel.parameters, args=(
+                time, substrate), method='leastsq', nan_policy='omit')
+            
+            return report_fit(kineticmodel.result)
+
 
     def fit_models(
         self,
@@ -191,15 +233,14 @@ class ParameterEstimator():
 
         # Subset data if any attribute is passed to the function
         if initial_substrate_concs != None or np.any([start_time_index, stop_time_index]):
-            substrate, product, enzyme, initial_substrate, time, inhibitor = self._subset_data(
+            substrate, product, enzyme, time, inhibitor = self._subset_data(
                 initial_substrates=initial_substrate_concs,
                 start_time_index=start_time_index,
                 stop_time_index=stop_time_index)            
         else:
-            substrate = self.substrate[:,0]
-            product = self.product[:,0]
+            substrate = self.substrate
+            product = self.product
             enzyme = self.enzyme
-            initial_substrate = self.initial_substrate
             time = self.time
             inhibitor = self.inhibitor
 
@@ -211,10 +252,9 @@ class ParameterEstimator():
             enzyme_inactivation=account_for_enzyme_inactivation
         )
 
-        ## Models
+        result = self._run_minimization(model_dict=model_dict, time=time, substrate=substrate, enzyme_inactivation=account_for_enzyme_inactivation)
 
-
-        return model_dict
+        return result
         
 
     
@@ -259,14 +299,11 @@ if __name__ == "__main__":
         measurements=[m1,m2,m3],
         time=[0,2,4,6,8,9]
     )
-    print(type(testdata), "YOOOOOO")
-
 
     estimator = ParameterEstimator(data=testdata)
-    print(type(estimator.data))
-    print(estimator.fit_models())
+    models = estimator.fit_models(account_for_enzyme_inactivation=True)
     #print(test.fit_models(initial_substrate_concs=[],start_time_index=4))
 
-
+# TODO Typo
 
 
