@@ -1,8 +1,8 @@
 from typing import List, Dict, Optional
 
-from EnzymeKinetics.core.enzymekinetics import EnzymeKinetics
+from EnzymeKinetics.core.enzymekineticsexperiment import EnzymeKineticsExperiment
 from EnzymeKinetics.core.stoichiometrytypes import StoichiometryTypes
-from kineticmodel import KineticModel, irreversible_model, competitive_product_inhibition_model, uncompetitive_product_inhibition_model, noncompetitive_product_inhibition_model, substrate_inhibition_model, competitive_inhibition_model
+from kineticmodel import KineticModel, irreversible_model, competitive_product_inhibition_model, uncompetitive_product_inhibition_model, noncompetitive_product_inhibition_model, substrate_inhibition_model, competitive_inhibition_model, uncompetitive_inhibition_model, noncompetitive_inhibition_model, partially_competitive_inhibition_model
 
 import numpy as np
 from pandas import DataFrame
@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 
 class ParameterEstimator():
 
-    def __init__(self, data: EnzymeKinetics):
+    def __init__(self, data: EnzymeKineticsExperiment):
         self.data = data
         self.models: Dict[str, KineticModel] = None
         self._initialize_measurement_data()
@@ -182,8 +182,52 @@ class ParameterEstimator():
 
                
         else:
-            print("something went wrong")
-
+            competitive_inhibition = KineticModel(
+                name="competitive inhibition",
+                params=["K_ic"],
+                w0={"cS": substrate, "cE": enzyme,
+                    "cP": product, "cI": inhibitor},            
+                kcat_initial=self.initial_kcat,
+                Km_initial=self.initial_Km,
+                model=competitive_inhibition_model,
+                enzyme_inactivation=self.enzyme_inactivation
+            )
+            uncompetitive_inhibition = KineticModel(
+                name="uncompetitive inhibition",
+                params=["K_iu"],
+                w0={"cS": substrate, "cE": enzyme,
+                    "cP": product, "cI": inhibitor},            
+                kcat_initial=self.initial_kcat,
+                Km_initial=self.initial_Km,
+                model=uncompetitive_inhibition_model,
+                enzyme_inactivation=self.enzyme_inactivation
+            )
+            noncompetitive_inhibition = KineticModel(
+                name="non-competitive inhibition",
+                params=["K_iu", "K_ic"],
+                w0={"cS": substrate, "cE": enzyme,
+                    "cP": product, "cI": inhibitor},
+                kcat_initial=self.initial_kcat,
+                Km_initial=self.initial_Km,
+                model=noncompetitive_inhibition_model,
+                enzyme_inactivation=self.enzyme_inactivation
+            )
+            partially_competitive_inhibition = KineticModel(
+                name="partially competitive inhibition",
+                params=["K_ic", "K_iu"],
+                w0={"cS": substrate, "cE": enzyme,
+                    "cP": product, "cI": inhibitor},            
+                kcat_initial=self.initial_kcat,
+                Km_initial=self.initial_Km,
+                model=partially_competitive_inhibition_model,
+                enzyme_inactivation=self.enzyme_inactivation
+            )
+            return {
+                competitive_inhibition.name: competitive_inhibition,
+                uncompetitive_inhibition.name: uncompetitive_inhibition,
+                noncompetitive_inhibition.name: noncompetitive_inhibition,
+                partially_competitive_inhibition.name: partially_competitive_inhibition,
+            }
 
     def _run_minimization(self) -> None:
 
@@ -381,7 +425,7 @@ class ParameterEstimator():
 
             # Plot data
             if plot_means:
-                ax = plt.errorbar(self.subset_time, data, stddev[i], label=self.subset_initial_substrate[i], fmt=marker_vector[i], color=color_vector[i], **plt_kwargs)
+                ax = plt.errorbar(self.subset_time, data, stddev[i], label=np.unique(self.subset_initial_substrate)[i], fmt=marker_vector[i], color=color_vector[i], **plt_kwargs)
             else:
                 ax = plt.scatter(x=self.subset_time, y=data, label=self.subset_initial_substrate[i], marker=marker_vector[i], color=color_vector[i], **plt_kwargs)
 
@@ -467,7 +511,7 @@ if __name__ == "__main__":
     m3.add_to_data([10.3,11.3,21.3,31.3,41.3,51.3])
     m3.add_to_data([10.6,11.6,15,31.6,41.6,71.6])
 
-    testdata = EnzymeKinetics(
+    testdata = EnzymeKineticsExperiment(
         data_conc_unit="mmole / l",
         stoichiometry="product",
         data_conc="mmole / l",

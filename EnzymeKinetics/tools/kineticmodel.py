@@ -160,14 +160,59 @@ def competitive_inhibition_model(w0: tuple, t, params, flag_enzyme_inactivation:
     return (dc_S, dc_E, dc_P, dc_I)
 
 
-auto_inhibition_model_dict: Dict[str, Callable] = {
-    "irreversible Michaelis Menten": irreversible_model,
-    "competitive product inhibition": competitive_product_inhibition_model,
-    "uncompetitive product inhibition": uncompetitive_product_inhibition_model,
-    "non-competitive product inhibition": noncompetitive_product_inhibition_model,
-    "substrate inhibition": substrate_inhibition_model
-}
+def uncompetitive_inhibition_model(w0: tuple, t, params, flag_enzyme_inactivation: bool) -> tuple:
+    cS, cE, cP, cI = w0
 
-external_inhibition_model_dict: Dict[str, Callable] = {
-    "competitive inhibition": competitive_inhibition_model
-} 
+    k_cat = params['k_cat'].value
+    Km = params['Km'].value
+    K_iu = params["K_iu"].value
+    if flag_enzyme_inactivation:
+        K_ie = params["K_ie"].value
+        dc_E = -K_ie * cE
+    else:
+        dc_E = 0
+
+    dc_S = -k_cat * cE * (cS) / (cS*(1+(cI / K_iu))+Km)
+    dc_P = -dc_S
+    dc_I = 0
+
+    return (dc_S, dc_E, dc_P, dc_I)
+
+def noncompetitive_inhibition_model(w0: tuple, t, params, flag_enzyme_inactivation: bool) -> tuple:
+    cS, cE, cP, cI = w0
+
+    k_cat = params['k_cat'].value
+    Km = params['Km'].value
+    K_iu = params["K_iu"].value
+    K_ic = params["K_ic"].value
+    if flag_enzyme_inactivation:
+        K_ie = params["K_ie"].value
+        dc_E = -K_ie * cE
+    else:
+        dc_E = 0
+
+    dc_S = -k_cat * cE * (cS) / (Km * (1+(cI/K_ic)) + (1+(cI/K_iu)) * cS)
+    dc_P = -dc_S
+    dc_I = 0
+
+    return (dc_S, dc_E, dc_P, dc_I)
+
+def partially_competitive_inhibition_model(w0: tuple, t, params, flag_enzyme_inactivation: bool) -> tuple:
+    cS, cE, cP, cI = w0
+
+    k_cat = params['k_cat'].value
+    Km = params['Km'].value
+    K_iu = params["K_iu"].value
+    K_ic = params["K_ic"].value
+    if flag_enzyme_inactivation:
+        K_ie = params["K_ie"].value
+        dc_E = -K_ie * cE
+    else:
+        dc_E = 0
+
+    dc_S = -k_cat * cE * (cS) / (Km * ((1+(cI/K_ic)) / (1+(cI/K_iu))) + cS)
+    dc_P = -dc_S
+    dc_I = 0
+
+    return (dc_S, dc_E, dc_P, dc_I)
+    
