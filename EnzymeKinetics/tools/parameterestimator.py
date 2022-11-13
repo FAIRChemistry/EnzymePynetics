@@ -22,9 +22,12 @@ class ParameterEstimator():
         self._check_negative_concentrations()
         self.initial_kcat = self._calculate_kcat()
         self.initial_Km = self._calculate_Km()
-        # TODO shapcheck funtion to check for consistent array lengths
+        # TODO shapcheck function to check for consistent array lengths
 
     def _initialize_measurement_data(self):
+        """
+        Extracts data from data objects and reshapes it for fitting.
+        """
 
         measurement_data = []
         initial_substrate = []
@@ -50,28 +53,39 @@ class ParameterEstimator():
 
         if self.data.stoichiometry == StoichiometryTypes.SUBSTRATE.value:
             self.substrate = np.array(measurement_data)
-            self.product = np.array(self._calculate_product())
+            self.product = np.array(self._calculate_missing_species(self.substrate))
         elif self.data.stoichiometry == StoichiometryTypes.PRODUCT.value: 
             self.product = np.array(measurement_data)
-            self.substrate = np.array(self._calculate_substrate())
+            self.substrate = np.array(self._calculate_missing_species(self.product))
         else:
             raise AttributeError("Please define whether measured data is substrate or product data.")
 
-    def _calculate_substrate(self):
-        substrate = []
-        for product, initial_substrate in zip(self.product, self.initial_substrate):
-            substrate.append(
-                [initial_substrate - value for value in product])
-        return substrate
+    def _calculate_missing_species(self, existing_species: np.ndarray) -> List[list]:
+        """
+        Calcualtes data or the species that was not measured, based on the assumption of mass conservation.
+        E.g.: If the substrate depletion was measured, the corresponding product concentration for each 
+        measurement point is calculated by:
+        P(t) = S0 - S(t) with
+        P(t): product concentration at time-point 't'
+        S0: initial substrate concentration of the measurement
+        S(t): measured substrate concentration at time-point 't'
 
-    def _calculate_product(self):
-        product = []
-        for substrate, initial_substrate in zip(self.substrate, self.initial_substrate):
-            product.append(
-                [initial_substrate - value for value in substrate])
-        return product
+        Args:
+            existing_species (np.ndarray): Existing measurement data.
+
+        Returns:
+            List[list]: Calculated species
+        """
+        species = []
+        for measurement, initial_substrate in zip(existing_species, self.initial_substrate):
+            species.append(
+                [initial_substrate - value for value in measurement])
+        return species
 
     def _calculate_rates(self):
+        """
+        Calculates the change per time-unit between all measurement points.
+        """
         concentration_intervals = np.diff(self.substrate)
         time_intervals = np.diff(self.data.time)
         rates = abs(concentration_intervals / time_intervals)
@@ -87,6 +101,11 @@ class ParameterEstimator():
         return np.nanmax(self._calculate_rates()) / 2
 
     def _check_negative_concentrations(self):
+        """
+        Checks if negative concentrations are entered or calculated by the "_calculate_missing_species" function.
+        If negatice concentrations are calculated, the data might not be blanced correctly, or the 'initial_substrate_concentration'
+        is lower than the measurement data.
+        """
         if np.any(self.substrate<0):
             raise ValueError(
                 "Substrate data contains negative concentrations. Check data.")        
@@ -95,6 +114,20 @@ class ParameterEstimator():
                 "Product data contains negative concentrations. Check data.")
 
     def _subset_data(self, initial_substrates: list = None, start_time_index: int = None, stop_time_index: int = None) -> tuple:
+        """This function allows to subset the actual measurement data. Thereby, measurements of specific initial substrate concentrations
+        can be specified. Additionally, the time-frame can be specified by defining the index of the first and last measurement time-point.
+
+        Args:
+            initial_substrates (list, optional). Defaults to None.
+            start_time_index (int, optional). Defaults to None.
+            stop_time_index (int, optional). Defaults to None.
+
+        Raises:
+            ValueError: If concentrations are passed, which are not defined in "initial_substrate_concentration"
+
+        Returns:
+            tuple: Data subset.
+        """
         idx = np.array([])
         if initial_substrates == None or len(initial_substrates) == 0:
             idx = np.arange(self.substrate.shape[0])
@@ -118,19 +151,22 @@ class ParameterEstimator():
 
 
     def _initialize_models(self, substrate, product, enzyme, inhibitor) -> Dict[str, KineticModel]:
+        """Initializer for all kinetic models. If an inhibitor is provided, inhibition models are initialized. If no inhibitor is specified,
+        inhibitory models for substrate and product inhibition are inizialized additionally to the irreversible Michaelis Menten model.
+        """
+
+        irreversible_Michaelis_Menten = KineticModel(
+            name="irreversible Michaelis Menten",
+            params=[],
+            w0={"cS": substrate, "cE": enzyme,
+                "cP": product, "cI": inhibitor},            
+            kcat_initial=self.initial_kcat,
+            Km_initial=self.initial_Km,
+            model=irreversible_model,
+            enzyme_inactivation=self.enzyme_inactivation
+        )
 
         if np.all(self.inhibitor == 0):
-
-            irreversible_Michaelis_Menten = KineticModel(
-                name="irreversible Michaelis Menten",
-                params=[],
-                w0={"cS": substrate, "cE": enzyme,
-                    "cP": product, "cI": inhibitor},            
-                kcat_initial=self.initial_kcat,
-                Km_initial=self.initial_Km,
-                model=irreversible_model,
-                enzyme_inactivation=self.enzyme_inactivation
-            )
 
             competitive_product_inhibition = KineticModel(
                 name="competitive product inhibition",
@@ -223,13 +259,20 @@ class ParameterEstimator():
                 enzyme_inactivation=self.enzyme_inactivation
             )
             return {
+                irreversible_Michaelis_Menten.name: irreversible_Michaelis_Menten,
                 competitive_inhibition.name: competitive_inhibition,
                 uncompetitive_inhibition.name: uncompetitive_inhibition,
                 noncompetitive_inhibition.name: noncompetitive_inhibition,
                 partially_competitive_inhibition.name: partially_competitive_inhibition,
             }
 
-    def _run_minimization(self) -> None:
+    def _run_minimization(self) -> DataFrame:
+        """Performs non-linear least-squared minimization to fit the data to the kinetic 
+        models by adjusting the kinetic parameters of the models.
+
+        Returns:
+            DataFrame: Overfiew of the kinetic parameters of all kinetic models.
+        """
 
         print("Fitting data to:")
         for kineticmodel in self.models.values():
@@ -243,6 +286,9 @@ class ParameterEstimator():
                 return w
 
             def residual(params, time: np.ndarray, substrate: np.ndarray):
+                """
+                Calculated the distance between measured and modeled data.
+                """
                 residuals = 0.0 * substrate
                 for i, measurement in enumerate(substrate):
 
@@ -264,7 +310,10 @@ class ParameterEstimator():
                 self.subset_time, self.subset_substrate), method='leastsq', nan_policy='omit')
             
 
-    def _result_overview(self):
+    def _result_overview(self) -> DataFrame:
+        """
+        Prettifies the results of all kinetic models and organized them in an pandas DataFrame.
+        """
 
         if np.all(self.inhibitor == 0):
             inhibitor_unit = self.data.data_conc_unit
@@ -316,6 +365,16 @@ class ParameterEstimator():
         stop_time_index: int = None,
         enzyme_inactivation: bool = False,
         ):
+        """Fits the measurement data to a set of kinetic models.
+
+        Args:
+            initial_substrate_concs (list, optional): Enables to subset the measurement data by choosing one ore multiple initial substrate concentrations. Defaults to None.
+            start_time_index (int, optional): Subset the data by choosing the index of thee first measurement point which should be condidered. Defaults to None.
+            stop_time_index (int, optional): Choose last measurement point which should be considered. Defaults to None.
+            enzyme_inactivation (bool, optional): _description_. Defaults to False.
+
+        Prints DataFrame of all kinetic parameters of all fitted models sorted by Akaike information criterion.
+        """
 
         self.enzyme_inactivation = enzyme_inactivation
 
@@ -347,6 +406,8 @@ class ParameterEstimator():
         display(self.result_dict)
 
     def _mean_w0(self, measurement_data: np.ndarray, init_substrate):
+        """Calculates the mean values of substrate product and inhibitor to initialize the fitter, if "plot_means" is set in the 'visualize' method.
+        """
         unique = np.unique(init_substrate)
         mean_array = np.array([])
         for concentration in unique:
@@ -365,8 +426,18 @@ class ParameterEstimator():
         path: Optional[str] = None,
         title: Optional[str] = None,
         visualize_species: Optional[str] = None,
-        plot_means: bool = False,
+        plot_means: bool = True,
         **plt_kwargs):
+        """Visualizes the measurement data as well as the fitted model. By default the fest fitting model is choosen for visualization 
+        (based on Akaice criterion)
+
+        Args:
+            model_name (Optional[str], optional): Specify the name of the model which should be visualized. Defaults to None.
+            path (Optional[str], optional): Provide path, were to save the plot.. Defaults to None.
+            title (Optional[str], optional): Choose alternative title for the plot. Defaults to None.
+            visualize_species (Optional[str], optional): Choose whether 'substrate' or 'product' should be visualized. By default the measured species is visualized. Defaults to None.
+            plot_means (bool, optional): Decide whether all measured data should be plotted or mean values with their respective standard deviation. Defaults to True.
+        """
 
         # Select which model to visualize
         best_model = self.result_dict.index[0]
@@ -466,6 +537,8 @@ class ParameterEstimator():
         report_fit(model.result)
 
     def _calculate_mean_std(self, data: np.ndarray):
+        """Calculated mean and stddev of data for visualization.
+        """
         mean_data = np.array([])
         std_data = np.array([])
         unique_initial_substrates = np.unique(self.subset_initial_substrate)
@@ -486,6 +559,8 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
     import numpy as np
 
+    # Create measurement data
+
     m1 = Measurement(
         initial_substrate_conc=100,
         enzyme_conc=0.05,
@@ -497,7 +572,7 @@ if __name__ == "__main__":
     m2 = Measurement(
     initial_substrate_conc=200,
     enzyme_conc=0.05,
-    inhibitor_conc=0.0
+    inhibitor_conc=2.7
     )
     m2.add_to_data([5,6,7,8,9,10])
     m2.add_to_data([5.3,6.3,7.3,8.3,9.3,10.3])
@@ -522,11 +597,11 @@ if __name__ == "__main__":
         time=[0,2,4,6,8,9]
     )
 
+    # Run parameter estimator
+
     estimator = ParameterEstimator(data=testdata)
     estimator.fit_models(stop_time_index=-1)
-    estimator.visualize(plot_means=True)
-    #print(test.fit_models(initial_substrate_concs=[],start_time_index=4))
+    estimator.visualize()
 
-# TODO Typo
 
 

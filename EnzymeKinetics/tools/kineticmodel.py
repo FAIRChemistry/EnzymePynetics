@@ -41,7 +41,6 @@ class KineticModel():
 
         return parameters
 
-
 def irreversible_model(w0: tuple, t, params, flag_enzyme_inactivation: bool) -> tuple:
     cS, cE, cP, cI = w0
 
@@ -215,4 +214,5 @@ def partially_competitive_inhibition_model(w0: tuple, t, params, flag_enzyme_ina
     dc_I = 0
 
     return (dc_S, dc_E, dc_P, dc_I)
-    
+
+
