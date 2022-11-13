@@ -7,7 +7,6 @@ from pydantic import PrivateAttr
 from pydantic import Field
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
-
 from .concentrationtypes import ConcentrationTypes
 from .measurement import Measurement
 from .series import Series
