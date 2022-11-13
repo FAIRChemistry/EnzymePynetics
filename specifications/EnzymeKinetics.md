@@ -1,6 +1,8 @@
-# EnzymeKineticsDatamodel
+# Enzyme Kinetics Data-model
 
-### EnzymeKinetics
+The following data-model describes (meta-)data from an enzyme kinetics experiment in a structured way. I constists out of multiple ```measurements```, describing one or multple measurements at diffrent initial substrate and/or enzyme concentrations. If and inhibitor was applied to the reaction, its concentration can be speciefied as well.
+
+### EnzymeKineticsExperiment
 
 Base class, dealing with measurement data of an enzyme kinetics assay.
 
