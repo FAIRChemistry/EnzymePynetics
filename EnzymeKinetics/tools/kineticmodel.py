@@ -1,4 +1,5 @@
 from lmfit import Parameters
+from lmfit.minimizer import MinimizerResult
 from typing import Dict, Callable, Tuple
 from numpy import ndarray
 
@@ -21,7 +22,7 @@ class KineticModel():
         self.kcat_initial = kcat_initial
         self.Km_initial = Km_initial
         self.parameters = self._set_parameters(params)
-        self.result = None
+        self.result: MinimizerResult = None
 
     def _set_parameters(self, params:list) -> Parameters:
 
