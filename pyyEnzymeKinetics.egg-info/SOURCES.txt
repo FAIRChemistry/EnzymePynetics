@@ -1,0 +1,17 @@
+setup.py
+EnzymeKinetics/__init__.py
+EnzymeKinetics/core/__init__.py
+EnzymeKinetics/core/concentrationtypes.py
+EnzymeKinetics/core/enzymekineticsexperiment.py
+EnzymeKinetics/core/measurement.py
+EnzymeKinetics/core/series.py
+EnzymeKinetics/core/stoichiometrytypes.py
+EnzymeKinetics/core/timetypes.py
+EnzymeKinetics/tools/__init__.py
+EnzymeKinetics/tools/kineticmodel.py
+EnzymeKinetics/tools/parameterestimator.py
+pyyEnzymeKinetics.egg-info/PKG-INFO
+pyyEnzymeKinetics.egg-info/SOURCES.txt
+pyyEnzymeKinetics.egg-info/dependency_links.txt
+pyyEnzymeKinetics.egg-info/requires.txt
+pyyEnzymeKinetics.egg-info/top_level.txt
