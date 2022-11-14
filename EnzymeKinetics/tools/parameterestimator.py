@@ -24,6 +24,169 @@ class ParameterEstimator():
         self.initial_Km = self._calculate_Km()
         # TODO shapcheck function to check for consistent array lengths
 
+    def fit_models(
+        self,
+        initial_substrate_concs: list = None,
+        start_time_index: int = None,
+        stop_time_index: int = None,
+        enzyme_inactivation: bool = False,
+        ) -> None:
+        """Fits the measurement data to a set of kinetic models.
+
+        Args:
+            initial_substrate_concs (list, optional): Enables to subset the measurement data by choosing one ore multiple initial substrate concentrations. Defaults to None.
+            start_time_index (int, optional): Subset the data by choosing the index of thee first measurement point which should be condidered. Defaults to None.
+            stop_time_index (int, optional): Choose last measurement point which should be considered. Defaults to None.
+            enzyme_inactivation (bool, optional): _description_. Defaults to False.
+
+        Prints DataFrame of all kinetic parameters of all fitted models sorted by Akaike information criterion.
+        """
+
+        self.enzyme_inactivation = enzyme_inactivation
+
+        # Subset data if one or multiple attributes are passed to the function
+        if np.any([initial_substrate_concs, start_time_index, stop_time_index]):
+            self.subset_substrate, self.subset_product, self.subset_enzyme, self.subset_initial_substrate, self.subset_time, self.subset_inhibitor = self._subset_data(
+                initial_substrates=initial_substrate_concs,
+                start_time_index=start_time_index,
+                stop_time_index=stop_time_index)            
+        else:
+            self.subset_substrate = self.substrate
+            self.subset_product = self.product
+            self.subset_enzyme = self.enzyme
+            self.subset_initial_substrate = self.initial_substrate
+            self.subset_time = self.time
+            self.subset_inhibitor = self.inhibitor
+
+
+        # Initialize kinetics models
+        self.models = self._initialize_models(
+            substrate=self.subset_substrate,
+            product=self.subset_product,
+            enzyme=self.subset_enzyme,
+            inhibitor=self.subset_inhibitor)
+
+        self._run_minimization()
+
+        self.result_dict = self._result_overview()
+        display(self.result_dict)
+
+    def visualize(
+        self,
+        model_name: Optional[str] = None,
+        path: Optional[str] = None,
+        title: Optional[str] = None,
+        visualize_species: Optional[str] = None,
+        plot_means: bool = True,
+        **plt_kwargs) -> None:
+        """Visualizes the measurement data as well as the fitted model. By default the fest fitting model is choosen for visualization 
+        (based on Akaice criterion)
+
+        Args:
+            model_name (Optional[str], optional): Specify the name of the model which should be visualized. Defaults to None.
+            path (Optional[str], optional): Provide path, were to save the plot.. Defaults to None.
+            title (Optional[str], optional): Choose alternative title for the plot. Defaults to None.
+            visualize_species (Optional[str], optional): Choose whether 'substrate' or 'product' should be visualized. By default the measured species is visualized. Defaults to None.
+            plot_means (bool, optional): Decide whether all measured data should be plotted or mean values with their respective standard deviation. Defaults to True.
+        """
+
+        # Select which model to visualize
+        best_model = self.result_dict.index[0]
+        if model_name is None:
+            model_name = best_model
+        model = self.models[model_name]
+
+        if plot_means:
+            cS, cE, cP, cI = [self._mean_w0(data, self.subset_initial_substrate) for data in model.w0.values()]
+        else:
+            cS, cE, cP, cI = model.w0.values()
+
+        # Visualization modes
+        plot_modes = {
+            "substrate": [self.subset_substrate,0, self.data.reactant_name], # Substrate
+            "product": [self.subset_product, 2, self.data.reactant_name], # TODO Product
+        }
+
+        if visualize_species is None:
+            if self.data.stoichiometry == StoichiometryTypes.SUBSTRATE:
+                experimental_data, reactant, name = plot_modes["substrate"]
+            else:
+                experimental_data, reactant, name = plot_modes["product"]
+        else:
+            experimental_data, reactant, name = plot_modes[visualize_species]
+
+        if plot_means:
+            experimental_data, stddev = self._calculate_mean_std(data=experimental_data)
+
+        def g(t, w0, params):
+
+            '''
+            Solution to the ODE w'(t)=f(t,w,p) with initial condition w(0)= w0 = cS
+            '''
+
+            w = odeint(model.model, w0, t, args=(params, self.enzyme_inactivation,))
+            return w
+
+        unique_a = np.unique(self.inhibitor)
+        markers = ["o", "x", "D", "X", "d"]
+        marker_mapping = dict(zip(unique_a, markers[:len(unique_a)]))
+        marker_vector = [marker_mapping[item] for item in self.inhibitor[:,0]]
+
+        unique_concs = np.unique(self.subset_initial_substrate)
+        cmap = get_cmap("tab20").colors
+        color_mapping = dict(zip(unique_concs, cmap[:len(unique_concs)]))
+        if plot_means:
+            color_vector = [color_mapping[item] for item in np.unique(self.subset_initial_substrate)]
+        else:
+            color_vector = [color_mapping[item] for item in self.subset_initial_substrate]
+
+        for i, data in enumerate(experimental_data):
+
+            w0 = (cS[i,0], cE[i], cP[i,0], cI[i,0])
+
+
+            # Plot data
+            if plot_means:
+                ax = plt.errorbar(self.subset_time, data, stddev[i], label=np.unique(self.subset_initial_substrate)[i], fmt=marker_vector[i], color=color_vector[i], **plt_kwargs)
+            else:
+                ax = plt.scatter(x=self.subset_time, y=data, label=self.subset_initial_substrate[i], marker=marker_vector[i], color=color_vector[i], **plt_kwargs)
+
+            data_fitted = g(t=self.subset_time, w0=w0, params=model.result.params)
+
+            # Plot model
+            ay = plt.plot(self.subset_time, data_fitted[:,reactant], color = color_vector[i])
+
+        if title is None:
+            plt.title(self.data.title)
+        else:
+            plt.title(title)
+
+        plt.ylabel(f"{name} [{self.data.data_conc_unit}]")
+        plt.xlabel(f"time [{self.data.time_unit}]")
+
+        # Legend
+        handles, labels = plt.gca().get_legend_handles_labels()
+
+        new_handles, new_labels = [[],[]]
+        for handle, label in zip(handles, labels):
+            if len(new_labels) == 0:
+                new_labels.append(label)
+                new_handles.append(handle)
+            else:
+                if label == new_labels[-1]:
+                    pass
+                else:
+                    new_labels.append(label)
+                    new_handles.append(handle)
+
+        plt.legend(title = f"initial substrate [{self.data.data_conc_unit}]", handles=new_handles, labels=new_labels, loc='center left', bbox_to_anchor=(1, 0.5))
+        if path != None:
+            plt.savefig(path, format="svg")
+        plt.show()
+        report_title = f"Fit report for {model.name} model"
+        print(f"{len(report_title)}")
+        report_fit(model.result)
+
     def _initialize_measurement_data(self):
         """
         Extracts data from data objects and reshapes it for fitting.
@@ -357,185 +520,6 @@ class ParameterEstimator():
 
         return df
 
-
-    def fit_models(
-        self,
-        initial_substrate_concs: list = None,
-        start_time_index: int = None,
-        stop_time_index: int = None,
-        enzyme_inactivation: bool = False,
-        ):
-        """Fits the measurement data to a set of kinetic models.
-
-        Args:
-            initial_substrate_concs (list, optional): Enables to subset the measurement data by choosing one ore multiple initial substrate concentrations. Defaults to None.
-            start_time_index (int, optional): Subset the data by choosing the index of thee first measurement point which should be condidered. Defaults to None.
-            stop_time_index (int, optional): Choose last measurement point which should be considered. Defaults to None.
-            enzyme_inactivation (bool, optional): _description_. Defaults to False.
-
-        Prints DataFrame of all kinetic parameters of all fitted models sorted by Akaike information criterion.
-        """
-
-        self.enzyme_inactivation = enzyme_inactivation
-
-        # Subset data if one or multiple attributes are passed to the function
-        if np.any([initial_substrate_concs, start_time_index, stop_time_index]):
-            self.subset_substrate, self.subset_product, self.subset_enzyme, self.subset_initial_substrate, self.subset_time, self.subset_inhibitor = self._subset_data(
-                initial_substrates=initial_substrate_concs,
-                start_time_index=start_time_index,
-                stop_time_index=stop_time_index)            
-        else:
-            self.subset_substrate = self.substrate
-            self.subset_product = self.product
-            self.subset_enzyme = self.enzyme
-            self.subset_initial_substrate = self.initial_substrate
-            self.subset_time = self.time
-            self.subset_inhibitor = self.inhibitor
-
-
-        # Initialize kinetics models
-        self.models = self._initialize_models(
-            substrate=self.subset_substrate,
-            product=self.subset_product,
-            enzyme=self.subset_enzyme,
-            inhibitor=self.subset_inhibitor)
-
-        self._run_minimization()
-
-        self.result_dict = self._result_overview()
-        display(self.result_dict)
-
-    def _mean_w0(self, measurement_data: np.ndarray, init_substrate):
-        """Calculates the mean values of substrate product and inhibitor to initialize the fitter, if "plot_means" is set in the 'visualize' method.
-        """
-        unique = np.unique(init_substrate)
-        mean_array = np.array([])
-        for concentration in unique:
-            idx = np.where(init_substrate == concentration)
-            mean = np.mean(measurement_data[idx], axis=0)
-            if mean_array.size == 0:
-                mean_array = np.append(mean_array, mean)
-            else:
-                mean_array = np.vstack([mean_array, mean])
-        return mean_array
-
-
-    def visualize(
-        self,
-        model_name: Optional[str] = None,
-        path: Optional[str] = None,
-        title: Optional[str] = None,
-        visualize_species: Optional[str] = None,
-        plot_means: bool = True,
-        **plt_kwargs):
-        """Visualizes the measurement data as well as the fitted model. By default the fest fitting model is choosen for visualization 
-        (based on Akaice criterion)
-
-        Args:
-            model_name (Optional[str], optional): Specify the name of the model which should be visualized. Defaults to None.
-            path (Optional[str], optional): Provide path, were to save the plot.. Defaults to None.
-            title (Optional[str], optional): Choose alternative title for the plot. Defaults to None.
-            visualize_species (Optional[str], optional): Choose whether 'substrate' or 'product' should be visualized. By default the measured species is visualized. Defaults to None.
-            plot_means (bool, optional): Decide whether all measured data should be plotted or mean values with their respective standard deviation. Defaults to True.
-        """
-
-        # Select which model to visualize
-        best_model = self.result_dict.index[0]
-        if model_name is None:
-            model_name = best_model
-        model = self.models[model_name]
-
-        if plot_means:
-            cS, cE, cP, cI = [self._mean_w0(data, self.subset_initial_substrate) for data in model.w0.values()]
-        else:
-            cS, cE, cP, cI = model.w0.values()
-
-        # Visualization modes
-        plot_modes = {
-            "substrate": [self.subset_substrate,0, self.data.reactant_name], # Substrate
-            "product": [self.subset_product, 2, self.data.reactant_name], # TODO Product
-        }
-
-        if visualize_species is None:
-            if self.data.stoichiometry == StoichiometryTypes.SUBSTRATE:
-                experimental_data, reactant, name = plot_modes["substrate"]
-            else:
-                experimental_data, reactant, name = plot_modes["product"]
-        else:
-            experimental_data, reactant, name = plot_modes[visualize_species]
-
-        if plot_means:
-            experimental_data, stddev = self._calculate_mean_std(data=experimental_data)
-
-        def g(t, w0, params):
-
-            '''
-            Solution to the ODE w'(t)=f(t,w,p) with initial condition w(0)= w0 = cS
-            '''
-
-            w = odeint(model.model, w0, t, args=(params, self.enzyme_inactivation,))
-            return w
-
-        unique_a = np.unique(self.inhibitor)
-        markers = ["o", "x", "D", "X", "d"]
-        marker_mapping = dict(zip(unique_a, markers[:len(unique_a)]))
-        marker_vector = [marker_mapping[item] for item in self.inhibitor[:,0]]
-
-        unique_concs = np.unique(self.subset_initial_substrate)
-        cmap = get_cmap("tab20").colors
-        color_mapping = dict(zip(unique_concs, cmap[:len(unique_concs)]))
-        if plot_means:
-            color_vector = [color_mapping[item] for item in np.unique(self.subset_initial_substrate)]
-        else:
-            color_vector = [color_mapping[item] for item in self.subset_initial_substrate]
-
-        for i, data in enumerate(experimental_data):
-
-            w0 = (cS[i,0], cE[i], cP[i,0], cI[i,0])
-
-
-            # Plot data
-            if plot_means:
-                ax = plt.errorbar(self.subset_time, data, stddev[i], label=np.unique(self.subset_initial_substrate)[i], fmt=marker_vector[i], color=color_vector[i], **plt_kwargs)
-            else:
-                ax = plt.scatter(x=self.subset_time, y=data, label=self.subset_initial_substrate[i], marker=marker_vector[i], color=color_vector[i], **plt_kwargs)
-
-            data_fitted = g(t=self.subset_time, w0=w0, params=model.result.params)
-
-            # Plot model
-            ay = plt.plot(self.subset_time, data_fitted[:,reactant], color = color_vector[i])
-
-        if title is None:
-            plt.title(self.data.title)
-        else:
-            plt.title(title)
-
-        plt.ylabel(f"{name} [{self.data.data_conc_unit}]")
-        plt.xlabel(f"time [{self.data.time_unit}]")
-
-        # Legend
-        handles, labels = plt.gca().get_legend_handles_labels()
-
-        new_handles, new_labels = [[],[]]
-        for handle, label in zip(handles, labels):
-            if len(new_labels) == 0:
-                new_labels.append(label)
-                new_handles.append(handle)
-            else:
-                if label == new_labels[-1]:
-                    pass
-                else:
-                    new_labels.append(label)
-                    new_handles.append(handle)
-
-        plt.legend(title = f"initial substrate [{self.data.data_conc_unit}]", handles=new_handles, labels=new_labels, loc='center left', bbox_to_anchor=(1, 0.5))
-        if path != None:
-            plt.savefig(path, format="svg")
-        plt.show()
-        report_title = f"Fit report for {model.name} model"
-        print(f"{len(report_title)}")
-        report_fit(model.result)
-
     def _calculate_mean_std(self, data: np.ndarray):
         """Calculated mean and stddev of data for visualization.
         """
@@ -552,7 +536,23 @@ class ParameterEstimator():
         
         return mean_data, std_data
 
-    
+    def _mean_w0(self, measurement_data: np.ndarray, init_substrate):
+        """Calculates the mean values of substrate product and inhibitor to initialize the fitter, if "plot_means" is set in the 'visualize' method.
+        """
+        unique = np.unique(init_substrate)
+        mean_array = np.array([])
+        for concentration in unique:
+            idx = np.where(init_substrate == concentration)
+            mean = np.mean(measurement_data[idx], axis=0)
+            if mean_array.size == 0:
+                mean_array = np.append(mean_array, mean)
+            else:
+                mean_array = np.vstack([mean_array, mean])
+        return mean_array
+
+
+
+
 
 if __name__ == "__main__":
     from EnzymeKinetics.core.measurement import Measurement
