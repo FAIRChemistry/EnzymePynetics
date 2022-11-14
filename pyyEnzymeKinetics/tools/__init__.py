@@ -1,1 +1,1 @@
-from .parameterestimator import Kinetics
+from .parameterestimator import ParameterEstimator
