@@ -1,8 +1,8 @@
 from typing import List, Dict, Optional
 
-from EnzymeKinetics.core.enzymekineticsexperiment import EnzymeKineticsExperiment
-from EnzymeKinetics.core.stoichiometrytypes import StoichiometryTypes
-from kineticmodel import KineticModel, irreversible_model, competitive_product_inhibition_model, uncompetitive_product_inhibition_model, noncompetitive_product_inhibition_model, substrate_inhibition_model, competitive_inhibition_model, uncompetitive_inhibition_model, noncompetitive_inhibition_model, partially_competitive_inhibition_model
+from pyyEnzymeKinetics.core.enzymekineticsexperiment import EnzymeKineticsExperiment
+from pyyEnzymeKinetics.core.stoichiometrytypes import StoichiometryTypes
+from pyyEnzymeKinetics.tools.kineticmodel import *
 
 import numpy as np
 from pandas import DataFrame
@@ -555,7 +555,7 @@ class ParameterEstimator():
 
 
 if __name__ == "__main__":
-    from EnzymeKinetics.core.measurement import Measurement
+    from pyyEnzymeKinetics.core.measurement import Measurement
     import matplotlib.pyplot as plt
     import numpy as np
 
