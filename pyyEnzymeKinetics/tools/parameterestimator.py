@@ -1,5 +1,6 @@
 from typing import List, Dict, Optional
 
+from pyenzyme import EnzymeMLDocument
 from pyyEnzymeKinetics.core.enzymekineticsexperiment import EnzymeKineticsExperiment
 from pyyEnzymeKinetics.core.stoichiometrytypes import StoichiometryTypes
 from pyyEnzymeKinetics.tools.kineticmodel import *
@@ -551,8 +552,17 @@ class ParameterEstimator():
         return mean_array
 
     @classmethod
-    def from_EnzymeML(cls):
-        return "bubu"
+    def from_EnzymeML(
+        cls,
+        enzmldoc: EnzymeMLDocument,
+        reactant_id: str,
+        measured_species: StoichiometryTypes,
+        inhibitor_id: str,
+        ):
+
+        experimental_data = None
+        return cls(experimental_data)
+
 
 
 
