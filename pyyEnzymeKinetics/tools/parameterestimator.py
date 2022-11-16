@@ -550,6 +550,10 @@ class ParameterEstimator():
                 mean_array = np.vstack([mean_array, mean])
         return mean_array
 
+    @classmethod
+    def from_EnzymeML(cls):
+        return "bubu"
+
 
 
 
