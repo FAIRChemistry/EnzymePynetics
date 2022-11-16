@@ -1,7 +1,10 @@
 from typing import List, Dict, Optional
 
+from pyenzyme import EnzymeMLDocument
 from pyyEnzymeKinetics.core.enzymekineticsexperiment import EnzymeKineticsExperiment
 from pyyEnzymeKinetics.core.stoichiometrytypes import StoichiometryTypes
+from pyyEnzymeKinetics.core.series import Series
+
 from kineticmodel import KineticModel, irreversible_model, competitive_product_inhibition_model, uncompetitive_product_inhibition_model, noncompetitive_product_inhibition_model, substrate_inhibition_model, competitive_inhibition_model, uncompetitive_inhibition_model, noncompetitive_inhibition_model, partially_competitive_inhibition_model
 
 import numpy as np
@@ -549,6 +552,56 @@ class ParameterEstimator():
             else:
                 mean_array = np.vstack([mean_array, mean])
         return mean_array
+
+
+    @classmethod
+    def from_EnzymeML(
+        cls,
+        enzmldoc: EnzymeMLDocument,
+        reactant_id: str,
+        measured_species: StoichiometryTypes,
+        inhibitor_id: str = None,
+        enzyme_id: str = "p0"
+        ):
+
+        meas = []
+        for measurement in enzmldoc.measurement_dict.values():
+            reactant = measurement.getReactant(reactant_id)
+            enzyme = measurement.getReactant(enzyme_id)
+            if inhibitor_id != None:
+                inhibitor = measurement.getReactant(inhibitor_id)
+            
+            reps = []
+            for data in reactant.replicates:
+                for replicates in data.data:
+                    reps.append(Series(values=replicates))
+
+                if inhibitor_id != None:
+                    inhibitor_conc=inhibitor.init_conc
+                    inhibitor_conc_unit=inhibitor.unit
+                else:
+                    inhibitor_conc = 0
+                    inhibitor_conc_unit=None
+
+                meas.append(Measurement(
+                    initial_substrate_conc=reactant.init_conc,
+                    enzyme_conc=enzyme.init_conc,
+                    inhibitor_conc=inhibitor_conc,
+                    inhibitor_conc_unit=inhibitor_conc_unit,
+                    data=reps
+                ))
+        return EnzymeKineticsExperiment(
+            data_conc_unit=data.data_unit,
+            time_unit=data.time_unit,
+            title=enzmldoc.name,
+            reactant_name=enzmldoc.getReactant(reactant_id).name,
+            stoichiometry=measured_species,
+            time=data.time,
+            measurements=meas)
+
+
+
+
 
 
 
