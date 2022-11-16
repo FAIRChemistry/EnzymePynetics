@@ -4,6 +4,7 @@ from pyenzyme import EnzymeMLDocument
 from pyyEnzymeKinetics.core.enzymekineticsexperiment import EnzymeKineticsExperiment
 from pyyEnzymeKinetics.core.stoichiometrytypes import StoichiometryTypes
 from pyyEnzymeKinetics.core.series import Series
+from pyyEnzymeKinetics.core.measurement import Measurement
 from pyyEnzymeKinetics.tools.kineticmodel import *
 
 import numpy as np
@@ -383,7 +384,7 @@ class ParameterEstimator():
             if not self.deactivate_product_inhibition:
                 model_dict[competitive_product_inhibition.name] = competitive_product_inhibition
                 model_dict[uncompetitive_product_inhibition.name] = uncompetitive_product_inhibition
-                model_dict[noncompetitive_product_inhibition.name] = noncompetitive_product_inhibition
+                #model_dict[noncompetitive_product_inhibition.name] = noncompetitive_product_inhibition
             if not self.deactivate_substrate_inhibition:
                 #model_dict[substrate_inhibition.name] = substrate_inhibition
                 pass
@@ -592,6 +593,8 @@ class ParameterEstimator():
                 inhibitor_conc=inhibitor_conc,
                 inhibitor_conc_unit=inhibitor_conc_unit,
                 data=reps))
+
+        print(reactant.replicates[0].data_unit)
 
         experimental_data = EnzymeKineticsExperiment(
             data_conc_unit=reactant.replicates[0].data_unit,
