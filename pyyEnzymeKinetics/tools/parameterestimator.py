@@ -3,6 +3,7 @@ from typing import List, Dict, Optional
 from pyenzyme import EnzymeMLDocument
 from pyyEnzymeKinetics.core.enzymekineticsexperiment import EnzymeKineticsExperiment
 from pyyEnzymeKinetics.core.stoichiometrytypes import StoichiometryTypes
+from pyyEnzymeKinetics.core.series import Series
 from pyyEnzymeKinetics.tools.kineticmodel import *
 
 import numpy as np
@@ -557,10 +558,42 @@ class ParameterEstimator():
         enzmldoc: EnzymeMLDocument,
         reactant_id: str,
         measured_species: StoichiometryTypes,
-        inhibitor_id: str,
+        substrate_id: str = "s0",
+        inhibitor_id: str = None,
+        protein_id: str = "p0"
         ):
 
-        experimental_data = None
+        measurements = []
+        for measurement in enzmldoc.measurement_dict.values():
+            substrate = measurement.getReactant(substrate_id)
+            reactant = measurement.getReactant(reactant_id)
+            protein = measurement.getReactant(protein_id)
+            if inhibitor_id != None:
+                inhibitor = measurement.getReactant(inhibitor_id)
+                inhibitor_conc = inhibitor.init_conc
+                inhibitor_conc_unit = inhibitor.unit
+            else:
+                inhibitor_conc = 0
+                inhibitor_conc_unit = None
+
+            reps = [Series(values=reps.data) for reps in reactant.replicates]
+
+            measurements.append(Measurement(
+                initial_substrate_conc=substrate.init_conc,
+                enzyme_conc=protein.init_conc,
+                inhibitor_conc=inhibitor_conc,
+                inhibitor_conc_unit=inhibitor_conc_unit,
+                data=reps))
+
+        experimental_data = EnzymeKineticsExperiment(
+            data_conc_unit=reactant.replicates[0].data_unit,
+            time_unit=reactant.replicates[0].time_unit,
+            title=enzmldoc.name,
+            reactant_name=enzmldoc.getReactant(reactant_id).name,
+            measurements=measurements,
+            stoichiometry=measured_species
+        )
+
         return cls(experimental_data)
 
 
@@ -613,9 +646,13 @@ if __name__ == "__main__":
 
     # Run parameter estimator
 
-    estimator = ParameterEstimator(data=testdata)
-    estimator.fit_models(stop_time_index=-1)
-    estimator.visualize()
+    import pyenzyme as pe
+
+    enzmldoc = pe.EnzymeMLDocument.fromFile("/Users/maxhaussler/Dropbox/master_thesis/data/sdRDM_ABTS_oxidation/test_ABTS.omex")
+
+    est = ParameterEstimator.from_EnzymeML(
+        enzmldoc, "s0", "substrate"
+    )
 
 
 
