@@ -110,10 +110,7 @@ class ParameterEstimator():
         }
 
         if visualize_species is None:
-            if self.data.stoichiometry == StoichiometryTypes.SUBSTRATE:
-                experimental_data, reactant, name = plot_modes["substrate"]
-            else:
-                experimental_data, reactant, name = plot_modes["product"]
+            experimental_data, reactant, name = plot_modes[self.data.stoichiometry]
         else:
             experimental_data, reactant, name = plot_modes[visualize_species]
 
@@ -271,12 +268,20 @@ class ParameterEstimator():
         If negatice concentrations are calculated, the data might not be blanced correctly, or the 'initial_substrate_concentration'
         is lower than the measurement data.
         """
-        if np.any(self.substrate<0):
-            raise ValueError(
-                "Substrate data contains negative concentrations. Check data.")        
-        if np.any(self.product<0):
-            raise ValueError(
-                "Product data contains negative concentrations. Check data.")
+        self.deactivate_substrate_inhibition = False
+        self.deactivate_product_inhibition = False
+
+        try:
+            assert np.any(self.substrate<0) == False
+        except AssertionError:
+            print(np.where(self.substrate<0))
+            print("Provided product concentration is higher than specified initial substrate concentration. Calculated substrate concentration results in negative values. Therefore, substrate inhibition models are excuded.")
+            self.deactivate_substrate_inhibition = True
+        try:
+            assert np.any(self.product<0) == False
+        except AssertionError:
+            print("Provided substrate concentration is higher than specified initial substrate concentration. Calculated product concentration results in negative values. Therefore, product inhibition models are excuded.")
+            self.deactivate_product_inhibition = True
 
     def _subset_data(self, initial_substrates: list = None, start_time_index: int = None, stop_time_index: int = None) -> tuple:
         """This function allows to subset the actual measurement data. Thereby, measurements of specific initial substrate concentrations
@@ -374,13 +379,16 @@ class ParameterEstimator():
                 enzyme_inactivation=self.enzyme_inactivation
             )
 
-            return {
-                irreversible_Michaelis_Menten.name: irreversible_Michaelis_Menten,
-                competitive_product_inhibition.name: competitive_product_inhibition,
-                uncompetitive_product_inhibition.name: uncompetitive_product_inhibition,
-                noncompetitive_product_inhibition.name: noncompetitive_product_inhibition,
-                substrate_inhibition.name: substrate_inhibition}
+            model_dict = {irreversible_Michaelis_Menten.name: irreversible_Michaelis_Menten}
+            if not self.deactivate_product_inhibition:
+                model_dict[competitive_product_inhibition.name] = competitive_product_inhibition
+                model_dict[uncompetitive_product_inhibition.name] = uncompetitive_product_inhibition
+                model_dict[noncompetitive_product_inhibition.name] = noncompetitive_product_inhibition
+            if not self.deactivate_substrate_inhibition:
+                #model_dict[substrate_inhibition.name] = substrate_inhibition
+                pass
 
+            return model_dict
                
         else:
             competitive_inhibition = KineticModel(
@@ -591,7 +599,8 @@ class ParameterEstimator():
             title=enzmldoc.name,
             reactant_name=enzmldoc.getReactant(reactant_id).name,
             measurements=measurements,
-            stoichiometry=measured_species
+            stoichiometry=measured_species,
+            time = reactant.replicates[0].time
         )
 
         return cls(experimental_data)
@@ -653,6 +662,6 @@ if __name__ == "__main__":
     est = ParameterEstimator.from_EnzymeML(
         enzmldoc, "s0", "substrate"
     )
-
-
+    est.fit_models()
+    est.visualize()
 
