@@ -28,5 +28,5 @@ class Series(sdRDM.DataModel):
     )
 
     __commit__: Optional[str] = PrivateAttr(
-        default="e06ad9939281e67f1b75b9137ae1be3086b62228"
+        default="d799f9496bc91adc7950e54d6b6ddbdbb67ac6d3"
     )

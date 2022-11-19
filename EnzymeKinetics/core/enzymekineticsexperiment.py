@@ -55,12 +55,22 @@ class EnzymeKineticsExperiment(sdRDM.DataModel):
         default_factory=ListPlus,
     )
 
+    temperature: Optional[float] = Field(
+        description="Temperature of the reaction.", default=None
+    )
+
+    temperature_unit: Optional[str] = Field(
+        description="Temperature unit.", default=None
+    )
+
+    pH: Optional[float] = Field(description="pH of the reaction", default=None)
+
     __repo__: Optional[str] = PrivateAttr(
         default="git://github.com/haeussma/pyyEnzymeKinetics.git"
     )
 
     __commit__: Optional[str] = PrivateAttr(
-        default="e06ad9939281e67f1b75b9137ae1be3086b62228"
+        default="d799f9496bc91adc7950e54d6b6ddbdbb67ac6d3"
     )
 
     def add_to_measurements(

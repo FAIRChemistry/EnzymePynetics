@@ -16,6 +16,15 @@
       "reactant_name": {
         "description": "Name of the measured reactant."
       },
+      "temperature": {
+        "description": "Temperature of the reaction."
+      },
+      "temperature_unit": {
+        "description": "Temperature unit."
+      },
+      "pH": {
+        "description": "pH of the reaction"
+      },
       "measurements": {
         "description": "Measurement data for a given initial substrate concentration.",
         "multiple": "True"
