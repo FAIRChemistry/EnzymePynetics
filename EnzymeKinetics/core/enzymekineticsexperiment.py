@@ -70,7 +70,7 @@ class EnzymeKineticsExperiment(sdRDM.DataModel):
     )
 
     __commit__: Optional[str] = PrivateAttr(
-        default="59643e37f3b1efe31015157c11a664985ef43fd4"
+        default="d34acdcfacfa2f08f6ee9fe878fbfad84bdb6c82"
     )
 
     def add_to_measurements(
