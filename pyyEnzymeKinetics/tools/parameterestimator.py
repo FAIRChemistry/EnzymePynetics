@@ -33,6 +33,7 @@ class ParameterEstimator():
         start_time_index: int = None,
         stop_time_index: int = None,
         enzyme_inactivation: bool = False,
+        only_irrev_MM: bool = False,
         ) -> None:
         """Fits the measurement data to a set of kinetic models.
 
@@ -67,7 +68,8 @@ class ParameterEstimator():
             substrate=self.subset_substrate,
             product=self.subset_product,
             enzyme=self.subset_enzyme,
-            inhibitor=self.subset_inhibitor)
+            inhibitor=self.subset_inhibitor,
+            only_irrev_MM=only_irrev_MM)
 
         self._run_minimization()
 
@@ -184,7 +186,7 @@ class ParameterEstimator():
             plt.savefig(path, format="svg")
         plt.show()
         report_title = f"Fit report for {model.name} model"
-        print(f"{len(report_title)}")
+        print(f"{report_title}")
         report_fit(model.result)
 
     def _initialize_measurement_data(self):
@@ -276,12 +278,12 @@ class ParameterEstimator():
             assert np.any(self.substrate<0) == False
         except AssertionError:
             print(np.where(self.substrate<0))
-            print("Provided product concentration is higher than specified initial substrate concentration. Calculated substrate concentration results in negative values. Therefore, substrate inhibition models are excuded.")
+            print("Provided product concentration is higher than specified initial substrate concentration. Calculated substrate concentration results in negative values. Therefore, substrate inhibition models are excluded.")
             self.deactivate_substrate_inhibition = True
         try:
             assert np.any(self.product<0) == False
         except AssertionError:
-            print("Provided substrate concentration is higher than specified initial substrate concentration. Calculated product concentration results in negative values. Therefore, product inhibition models are excuded.")
+            print("Provided substrate concentration is higher than specified initial substrate concentration. Calculated product concentration results in negative values. Therefore, product inhibition models are excluded.")
             self.deactivate_product_inhibition = True
 
     def _subset_data(self, initial_substrates: list = None, start_time_index: int = None, stop_time_index: int = None) -> tuple:
@@ -320,8 +322,10 @@ class ParameterEstimator():
 
         return (new_substrate, new_product, new_enzyme, new_initial_substrate, new_time, new_inhibitor)
 
+    def _result_kcat_Km(self):
+        self.kcat = self.models[next(iter(self.result_dict))].result["params"]["k_cat"]
 
-    def _initialize_models(self, substrate, product, enzyme, inhibitor) -> Dict[str, KineticModel]:
+    def _initialize_models(self, substrate, product, enzyme, inhibitor, only_irrev_MM: bool) -> Dict[str, KineticModel]:
         """Initializer for all kinetic models. If an inhibitor is provided, inhibition models are initialized. If no inhibitor is specified,
         inhibitory models for substrate and product inhibition are inizialized additionally to the irreversible Michaelis Menten model.
         """
@@ -336,6 +340,9 @@ class ParameterEstimator():
             model=irreversible_model,
             enzyme_inactivation=self.enzyme_inactivation
         )
+
+        if only_irrev_MM:
+            return {irreversible_Michaelis_Menten.name: irreversible_Michaelis_Menten}
 
         if np.all(self.inhibitor == 0):
 
@@ -384,10 +391,9 @@ class ParameterEstimator():
             if not self.deactivate_product_inhibition:
                 model_dict[competitive_product_inhibition.name] = competitive_product_inhibition
                 model_dict[uncompetitive_product_inhibition.name] = uncompetitive_product_inhibition
-                #model_dict[noncompetitive_product_inhibition.name] = noncompetitive_product_inhibition
+                model_dict[noncompetitive_product_inhibition.name] = noncompetitive_product_inhibition
             if not self.deactivate_substrate_inhibition:
-                #model_dict[substrate_inhibition.name] = substrate_inhibition
-                pass
+                model_dict[substrate_inhibition.name] = substrate_inhibition
 
             return model_dict
                
