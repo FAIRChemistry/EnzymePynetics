@@ -48,7 +48,7 @@ class Measurement(sdRDM.DataModel):
     )
 
     __commit__: Optional[str] = PrivateAttr(
-        default="b4523c78c0ede2c7786e27de81c8f2f8ea441e18"
+        default="d799f9496bc91adc7950e54d6b6ddbdbb67ac6d3"
     )
 
     def add_to_data(self, values: List[float], id: Optional[str] = None) -> None:

@@ -10,6 +10,9 @@ classDiagram
     class EnzymeKineticsExperiment {
         +string title
         +string reactant_name
+        +float temperature
+        +string temperature_unit
+        +float pH
         +Measurement[0..*] measurements*
         +StoichiometryTypes stoichiometry
         +ConcentrationTypes data_conc_unit*

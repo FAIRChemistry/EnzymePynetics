@@ -12,6 +12,15 @@ Base class, dealing with measurement data of an enzyme kinetics assay.
 - __reactant_name__
   - Type: string
   - Description: Name of the measured reactant.
+- __temperature__
+  - Type: float
+  - Description: Temperature of the reaction.
+- __temperature_unit__
+  - Type: string
+  - Description: Temperature unit.
+- __pH__
+  - Type: float
+  - Description: pH of the reaction
 - __measurements*__
   - Type: Measurement
   - Description: Measurement data for a given initial substrate concentration.
