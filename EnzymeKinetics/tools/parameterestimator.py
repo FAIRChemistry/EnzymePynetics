@@ -578,6 +578,10 @@ class ParameterEstimator():
         protein_id: str = "p0"
         ):
 
+        pH = enzmldoc.getReaction("r0").ph
+        temperature = enzmldoc.getReaction("r0").temperature
+        temperature_unit = enzmldoc.getReaction("r0").temperature_unit
+
         measurements = []
         for measurement in enzmldoc.measurement_dict.values():
             substrate = measurement.getReactant(substrate_id)
@@ -606,6 +610,9 @@ class ParameterEstimator():
             data_conc_unit=reactant.replicates[0].data_unit,
             time_unit=reactant.replicates[0].time_unit,
             title=enzmldoc.name,
+            temperature=temperature,
+            temperature_unit=temperature_unit,
+            pH=pH,
             reactant_name=enzmldoc.getReactant(reactant_id).name,
             measurements=measurements,
             stoichiometry=measured_species,
