@@ -83,6 +83,7 @@ class ParameterEstimator():
         title: Optional[str] = None,
         visualize_species: Optional[str] = None,
         plot_means: bool = True,
+        ax: plt.Axes = None,
         **plt_kwargs) -> None:
         """Visualizes the measurement data as well as the fitted model. By default the fest fitting model is choosen for visualization 
         (based on Akaice criterion)
@@ -94,6 +95,12 @@ class ParameterEstimator():
             visualize_species (Optional[str], optional): Choose whether 'substrate' or 'product' should be visualized. By default the measured species is visualized. Defaults to None.
             plot_means (bool, optional): Decide whether all measured data should be plotted or mean values with their respective standard deviation. Defaults to True.
         """
+        if ax is None:
+            ax_provided = False
+            ax = plt.gca()
+        else:
+            ax_provided = True
+
 
         # Select which model to visualize
         best_model = self.result_dict.index[0]
@@ -149,45 +156,50 @@ class ParameterEstimator():
 
             # Plot data
             if plot_means:
-                ax = plt.errorbar(self.subset_time, data, stddev[i], label=np.unique(self.subset_initial_substrate)[i], fmt=marker_vector[i], color=color_vector[i], **plt_kwargs)
+                ax.errorbar(self.subset_time, data, stddev[i], label=np.unique(self.subset_initial_substrate)[i], fmt=marker_vector[i], color=color_vector[i], **plt_kwargs)
             else:
-                ax = plt.scatter(x=self.subset_time, y=data, label=self.subset_initial_substrate[i], marker=marker_vector[i], color=color_vector[i], **plt_kwargs)
+                ax.scatter(x=self.subset_time, y=data, label=self.subset_initial_substrate[i], marker=marker_vector[i], color=color_vector[i], **plt_kwargs)
 
             data_fitted = g(t=self.subset_time, w0=w0, params=model.result.params)
 
             # Plot model
-            ay = plt.plot(self.subset_time, data_fitted[:,reactant], color = color_vector[i])
+            ax.plot(self.subset_time, data_fitted[:,reactant], color = color_vector[i])
 
         if title is None:
-            plt.title(self.data.title)
+            ax.set_title(self.data.title)
         else:
-            plt.title(title)
+            ax.set_title(title)
 
-        plt.ylabel(f"{name} [{self.data.data_conc_unit}]")
-        plt.xlabel(f"time [{self.data.time_unit}]")
+
 
         # Legend
-        handles, labels = plt.gca().get_legend_handles_labels()
+        if ax_provided == False:
 
-        new_handles, new_labels = [[],[]]
-        for handle, label in zip(handles, labels):
-            if len(new_labels) == 0:
-                new_labels.append(label)
-                new_handles.append(handle)
-            else:
-                if label == new_labels[-1]:
-                    pass
-                else:
+            ax.set_ylabel(f"{name} [{self.data.data_conc_unit}]")
+            ax.set_xlabel(f"time [{self.data.time_unit}]")
+
+            handles, labels = ax.get_legend_handles_labels()
+
+            new_handles, new_labels = [[],[]]
+            for handle, label in zip(handles, labels):
+                if len(new_labels) == 0:
                     new_labels.append(label)
                     new_handles.append(handle)
-
-        plt.legend(title = f"initial substrate [{self.data.data_conc_unit}]", handles=new_handles, labels=new_labels, loc='center left', bbox_to_anchor=(1, 0.5))
+                else:
+                    if label == new_labels[-1]:
+                        pass
+                    else:
+                        new_labels.append(label)
+                        new_handles.append(handle)
+            ax.legend(title = f"initial substrate [{self.data.data_conc_unit}]", handles=new_handles, labels=new_labels, loc='center left', bbox_to_anchor=(1, 0.5))
+        
         if path != None:
-            plt.savefig(path, format="svg")
-        plt.show()
-        report_title = f"Fit report for {model.name} model"
-        print(f"{report_title}")
-        report_fit(model.result)
+            ax.savefig(path, format="svg")
+
+        if ax_provided == False:
+            report_title = f"Fit report for {model.name} model"
+            print(f"{report_title}")
+            report_fit(model.result)
 
     def _initialize_measurement_data(self):
         """
@@ -322,8 +334,8 @@ class ParameterEstimator():
 
         return (new_substrate, new_product, new_enzyme, new_initial_substrate, new_time, new_inhibitor)
 
-    def _result_kcat_Km(self):
-        self.kcat = self.models[next(iter(self.result_dict))].result["params"]["k_cat"]
+    def get_parameter_dict(self):
+        return self.models[self.result_dict.index[0]].result.params
 
     def _initialize_models(self, substrate, product, enzyme, inhibitor, only_irrev_MM: bool) -> Dict[str, KineticModel]:
         """Initializer for all kinetic models. If an inhibitor is provided, inhibition models are initialized. If no inhibitor is specified,

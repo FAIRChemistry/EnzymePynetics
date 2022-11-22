@@ -30,8 +30,8 @@ class KineticModel():
 
         parameters.add('k_cat', value=self.kcat_initial,
                         min=self.kcat_initial/100, max=self.kcat_initial*100)
-        parameters.add('Km', value=self.Km_initial, min=self.Km_initial/100,
-                        max=self.Km_initial*1000)
+        parameters.add('Km', value=self.Km_initial*100, min=self.Km_initial/100,
+                        max=self.Km_initial*10000)
         if "K_iu" in params:
             parameters.add("K_iu", value=0.1, min=0.0001, max=1000)
         if "K_ic" in params:
