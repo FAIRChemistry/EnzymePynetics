@@ -108,11 +108,6 @@ class ParameterEstimator():
             model_name = best_model
         model = self.models[model_name]
 
-        if plot_means:
-            cS, cE, cP, cI = [self._mean_w0(data, self.subset_initial_substrate) for data in model.w0.values()]
-        else:
-            cS, cE, cP, cI = model.w0.values()
-
         # Visualization modes
         plot_modes = {
             "substrate": [self.subset_substrate,0, self.data.reactant_name], # Substrate
@@ -124,9 +119,6 @@ class ParameterEstimator():
         else:
             experimental_data, reactant, name = plot_modes[visualize_species]
 
-        if plot_means:
-            experimental_data, stddev = self._calculate_mean_std(data=experimental_data)
-
         def g(t, w0, params):
 
             '''
@@ -136,34 +128,56 @@ class ParameterEstimator():
             w = odeint(model.model, w0, t, args=(params, self.enzyme_inactivation,))
             return w
 
-        unique_a = np.unique(self.inhibitor)
-        markers = ["o", "x", "D", "X", "d"]
-        marker_mapping = dict(zip(unique_a, markers[:len(unique_a)]))
-        marker_vector = [marker_mapping[item] for item in self.inhibitor[:,0]]
-
-        unique_concs = np.unique(self.subset_initial_substrate)
-        cmap = get_cmap("tab20").colors
-        color_mapping = dict(zip(unique_concs, cmap[:len(unique_concs)]))
         if plot_means:
-            color_vector = [color_mapping[item] for item in np.unique(self.subset_initial_substrate)]
+            unique_substrates = np.unique(self.initial_substrate)
+            unique_inhibitors = np.unique(self.inhibitor)
+
+            cS, cE, cP, cI = [self._mean_w0(data, self.subset_initial_substrate) for data in model.w0.values()]
+
+            # Markers
+            unique_inhibitors = np.unique(self.inhibitor)
+            markers = ["o", "x", "D", "X", "d"]
+            marker_mapping = dict(zip(unique_inhibitors, markers[:len(unique_inhibitors)]))
+            marker_vector = [marker_mapping[item] for item in self.inhibitor[:,0]]
+
+            unique_concs = np.unique(self.subset_initial_substrate)
+            colors = get_cmap("tab20").colors
+            color_mapping = dict(zip(unique_concs, colors[:len(unique_concs)]))
+
+            for inhibitor, marker in zip(unique_inhibitors, markers):
+                # get substrates
+                init_inhibitor = self.inhibitor[:,0]
+
+                inhibitor_mask = np.where(init_inhibitor == inhibitor)[0]
+                print(inhibitor_mask)
+
+                for substrate, color in zip(unique_substrates, colors):
+                    idx = inhibitor_mask[np.where(self.subset_initial_substrate[inhibitor_mask] == substrate)[0]]
+                    mean = np.mean(experimental_data[idx,:], axis=0)
+                    std = np.std(experimental_data[idx,:], axis=0)
+
+                    ax.errorbar(self.subset_time, mean, std, label=substrate, fmt=marker, color=color, **plt_kwargs)
+
+                    cS, cE, cP, cI = [np.mean(data[idx], axis=0) for data in model.w0.values()]
+                    w0 = (cS[0], cE[0], cP[0], cI[0])
+
+                    data_fitted = g(t=self.subset_time, w0=w0, params=model.result.params)
+                    ax.plot(self.subset_time, data_fitted[:,reactant], color = color)
+
         else:
+            cS, cE, cP, cI = model.w0.values()
             color_vector = [color_mapping[item] for item in self.subset_initial_substrate]
 
-        for i, data in enumerate(experimental_data):
+            for i, data in enumerate(experimental_data):
 
-            w0 = (cS[i,0], cE[i], cP[i,0], cI[i,0])
+                w0 = (cS[i,0], cE[i,0], cP[i,0], cI[i,0])
 
-
-            # Plot data
-            if plot_means:
-                ax.errorbar(self.subset_time, data, stddev[i], label=np.unique(self.subset_initial_substrate)[i], fmt=marker_vector[i], color=color_vector[i], **plt_kwargs)
-            else:
                 ax.scatter(x=self.subset_time, y=data, label=self.subset_initial_substrate[i], marker=marker_vector[i], color=color_vector[i], **plt_kwargs)
 
-            data_fitted = g(t=self.subset_time, w0=w0, params=model.result.params)
+                data_fitted = g(t=self.subset_time, w0=w0, params=model.result.params)
 
-            # Plot model
-            ax.plot(self.subset_time, data_fitted[:,reactant], color = color_vector[i])
+                # Plot model
+                ax.plot(self.subset_time, data_fitted[:,reactant], color = color_vector[i])
 
         if title is None:
             ax.set_title(self.data.title)
@@ -227,6 +241,7 @@ class ParameterEstimator():
         self.initial_substrate = np.array(initial_substrate)
         self.enzyme = np.array(enzyme)
         self.inhibitor = np.repeat(np.array(inhibitor),measurement_shape[1]).reshape(measurement_shape)
+        self.enzyme = np.repeat(np.array(enzyme),measurement_shape[1]).reshape(measurement_shape)
 
         if self.data.stoichiometry == StoichiometryTypes.SUBSTRATE.value:
             self.substrate = np.array(measurement_data)
@@ -270,8 +285,8 @@ class ParameterEstimator():
 
     def _calculate_kcat(self) -> float:
         rates = self._calculate_rates()
-        initial_enzyme_tile = np.repeat(self.enzyme, rates.shape[1]).reshape(rates.shape)
-        kcat = np.nanmax(rates / initial_enzyme_tile)
+        #initial_enzyme_tile = np.repeat(self.enzyme, rates.shape[1]).reshape(rates.shape)
+        kcat = np.nanmax(rates / self.enzyme[:,:-1])
         return kcat
 
     def _calculate_Km(self):
@@ -327,7 +342,7 @@ class ParameterEstimator():
 
         new_substrate = self.substrate[idx,start_time_index:stop_time_index]
         new_product = self.product[idx,start_time_index:stop_time_index]
-        new_enzyme = self.enzyme[idx]
+        new_enzyme = self.enzyme[idx,start_time_index:stop_time_index]
         new_initial_substrate = self.initial_substrate[idx]
         new_time = self.time[start_time_index:stop_time_index]
         new_inhibitor = self.inhibitor[idx]
@@ -486,7 +501,7 @@ class ParameterEstimator():
 
                 # Calculate residual for each measurement
                     cS, cE, cP, cI = kineticmodel.w0.values()
-                    w0 = (cS[i, 0], cE[i], cP[i, 0], cI[i, 0])
+                    w0 = (cS[i, 0], cE[i, 0], cP[i, 0], cI[i, 0])
 
                     model = g(time, w0, params)  # solve the ODE with sfb.
 
@@ -555,10 +570,13 @@ class ParameterEstimator():
         mean_data = np.array([])
         std_data = np.array([])
         unique_initial_substrates = np.unique(self.subset_initial_substrate)
+        if np.any(self.inhibitor > 0):
+            unique_inhibitors = np.unique(self.inhibitor)
         for concentration in unique_initial_substrates:
             idx = np.where(self.subset_initial_substrate == concentration)
             mean_data = np.append(mean_data, np.mean(data[idx], axis=0))
             std_data = np.append(std_data, np.std(data[idx], axis=0))
+            self.inhibitor
 
         mean_data = mean_data.reshape(len(unique_initial_substrates), int(len(mean_data)/len(unique_initial_substrates)))
         std_data = std_data.reshape(len(unique_initial_substrates), int(len(std_data)/len(unique_initial_substrates)))
@@ -685,11 +703,12 @@ if __name__ == "__main__":
 
     import pyenzyme as pe
 
-    enzmldoc = pe.EnzymeMLDocument.fromFile("/Users/maxhaussler/Dropbox/master_thesis/data/sdRDM_ABTS_oxidation/test_ABTS.omex")
+    enzmldoc = pe.EnzymeMLDocument.fromFile("/Users/maxhaussler/Dropbox/master_thesis/data/chantal/inhibitor_characterization/test_multiple_inhibitors.omex")
 
     est = ParameterEstimator.from_EnzymeML(
-        enzmldoc, "s0", "substrate"
+        enzmldoc, "s1", "product", inhibitor_id="s2"
     )
-    est.fit_models()
+    est.fit_models(stop_time_index=4)
     est.visualize()
+    plt.show()
 
