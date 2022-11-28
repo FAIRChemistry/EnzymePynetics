@@ -1,11 +1,11 @@
 from typing import List, Dict, Optional
 
 from pyenzyme import EnzymeMLDocument
-from EnzymePynetics.core.enzymekineticsexperiment import EnzymeKineticsExperiment
-from EnzymePynetics.core.stoichiometrytypes import StoichiometryTypes
-from EnzymePynetics.core.series import Series
-from EnzymePynetics.core.measurement import Measurement
-from EnzymePynetics.tools.kineticmodel import *
+from EnzymePyyynetics.core.enzymekineticsexperiment import EnzymeKineticsExperiment
+from EnzymePyyynetics.core.stoichiometrytypes import StoichiometryTypes
+from EnzymePyyynetics.core.series import Series
+from EnzymePyyynetics.core.measurement import Measurement
+from EnzymePyyynetics.tools.kineticmodel import *
 
 import numpy as np
 from pandas import DataFrame
