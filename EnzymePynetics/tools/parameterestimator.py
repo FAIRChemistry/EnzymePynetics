@@ -653,7 +653,7 @@ class ParameterEstimator():
 
 
 if __name__ == "__main__":
-    from pyyEnzymeKinetics.core.measurement import Measurement
+    from EnzymePynetics.core.measurement import Measurement
     import matplotlib.pyplot as plt
     import numpy as np
 
