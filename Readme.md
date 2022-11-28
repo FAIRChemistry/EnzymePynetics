@@ -1,3 +1,9 @@
 <h2 align="center">
-  Data model for measurement data for kinetics modeling of enzyme kinetics.
+  Enzyme kinetics parameter estimator for time-course measurements.
 </h2>
+
+# Installation
+
+```pyton
+pip install 
+```
