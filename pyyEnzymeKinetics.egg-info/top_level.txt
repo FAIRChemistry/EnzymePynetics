@@ -1,2 +1,0 @@
-EnzymeKinetics
-pyyEnzymeKinetics
