@@ -1,11 +1,11 @@
 from typing import List, Dict, Optional
 
 from pyenzyme import EnzymeMLDocument
-from EnzymeKinetics.core.enzymekineticsexperiment import EnzymeKineticsExperiment
-from EnzymeKinetics.core.stoichiometrytypes import StoichiometryTypes
-from EnzymeKinetics.core.series import Series
-from EnzymeKinetics.core.measurement import Measurement
-from EnzymeKinetics.tools.kineticmodel import *
+from EnzymePynetics.core.enzymekineticsexperiment import EnzymeKineticsExperiment
+from EnzymePynetics.core.stoichiometrytypes import StoichiometryTypes
+from EnzymePynetics.core.series import Series
+from EnzymePynetics.core.measurement import Measurement
+from EnzymePynetics.tools.kineticmodel import *
 
 import numpy as np
 from pandas import DataFrame
@@ -129,8 +129,8 @@ class ParameterEstimator():
             return w
 
         if plot_means:
-            unique_substrates = np.unique(self.initial_substrate)
-            unique_inhibitors = np.unique(self.inhibitor)
+            unique_substrates = np.unique(self.subset_initial_substrate)
+            unique_inhibitors = np.unique(self.subset_inhibitor)
 
             cS, cE, cP, cI = [self._mean_w0(data, self.subset_initial_substrate) for data in model.w0.values()]
 
@@ -146,10 +146,9 @@ class ParameterEstimator():
 
             for inhibitor, marker in zip(unique_inhibitors, markers):
                 # get substrates
-                init_inhibitor = self.inhibitor[:,0]
+                init_inhibitor = self.subset_inhibitor[:,0]
 
                 inhibitor_mask = np.where(init_inhibitor == inhibitor)[0]
-                print(inhibitor_mask)
 
                 for substrate, color in zip(unique_substrates, colors):
                     idx = inhibitor_mask[np.where(self.subset_initial_substrate[inhibitor_mask] == substrate)[0]]
@@ -304,7 +303,6 @@ class ParameterEstimator():
         try:
             assert np.any(self.substrate<0) == False
         except AssertionError:
-            print(np.where(self.substrate<0))
             print("Provided product concentration is higher than specified initial substrate concentration. Calculated substrate concentration results in negative values. Therefore, substrate inhibition models are excluded.")
             self.deactivate_substrate_inhibition = True
         try:
@@ -634,8 +632,6 @@ class ParameterEstimator():
                 inhibitor_conc_unit=inhibitor_conc_unit,
                 data=reps))
 
-        print(reactant.replicates[0].data_unit)
-
         experimental_data = EnzymeKineticsExperiment(
             data_conc_unit=reactant.replicates[0].data_unit,
             time_unit=reactant.replicates[0].time_unit,
@@ -708,7 +704,7 @@ if __name__ == "__main__":
     est = ParameterEstimator.from_EnzymeML(
         enzmldoc, "s1", "product", inhibitor_id="s2"
     )
-    est.fit_models(stop_time_index=4)
+    est.fit_models(stop_time_index=4, initial_substrate_concs=[2.5])
     est.visualize()
     plt.show()
 
