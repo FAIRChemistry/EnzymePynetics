@@ -1,17 +1,15 @@
 import sdRDM
 
 from typing import Optional, Union
+from typing import List
 from pydantic import PrivateAttr
+from pydantic import Field
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
-
-from pydantic import Field
-from typing import List
 
 
 @forge_signature
 class Series(sdRDM.DataModel):
-
     """Time-course data of an individual reaction."""
 
     id: str = Field(
@@ -19,6 +17,7 @@ class Series(sdRDM.DataModel):
         default_factory=IDGenerator("seriesINDEX"),
         xml="@id",
     )
+
     values: List[float] = Field(
         description="Time-course data of an individual reaction.",
         default_factory=ListPlus,
@@ -27,6 +26,7 @@ class Series(sdRDM.DataModel):
     __repo__: Optional[str] = PrivateAttr(
         default="git://github.com/haeussma/EnzymePynetics.git"
     )
+
     __commit__: Optional[str] = PrivateAttr(
-        default="d105401b0bbe880cae712e8ef6ba330a2001e03d"
+        default="583939fbfc038d9eb1a2efec6709c969b0b939ec"
     )
