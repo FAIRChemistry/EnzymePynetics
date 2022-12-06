@@ -34,6 +34,7 @@ class ParameterEstimator():
         stop_time_index: int = None,
         enzyme_inactivation: bool = False,
         only_irrev_MM: bool = False,
+        display_output: bool = True
         ) -> None:
         """Fits the measurement data to a set of kinetic models.
 
@@ -71,10 +72,11 @@ class ParameterEstimator():
             inhibitor=self.subset_inhibitor,
             only_irrev_MM=only_irrev_MM)
 
-        self._run_minimization()
+        self._run_minimization(display_output)
 
         self.result_dict = self._result_overview()
-        display(self.result_dict)
+        if display_output:
+            display(self.result_dict)
 
     def visualize(
         self,
@@ -303,12 +305,12 @@ class ParameterEstimator():
         try:
             assert np.any(self.substrate<0) == False
         except AssertionError:
-            print("Provided product concentration is higher than specified initial substrate concentration. Calculated substrate concentration results in negative values. Therefore, substrate inhibition models are excluded.")
+            #print("Provided product concentration is higher than specified initial substrate concentration. Calculated substrate concentration results in negative values. Therefore, substrate inhibition models are excluded.")
             self.deactivate_substrate_inhibition = True
         try:
             assert np.any(self.product<0) == False
         except AssertionError:
-            print("Provided substrate concentration is higher than specified initial substrate concentration. Calculated product concentration results in negative values. Therefore, product inhibition models are excluded.")
+            #print("Provided substrate concentration is higher than specified initial substrate concentration. Calculated product concentration results in negative values. Therefore, product inhibition models are excluded.")
             self.deactivate_product_inhibition = True
 
     def _subset_data(self, initial_substrates: list = None, start_time_index: int = None, stop_time_index: int = None) -> tuple:
@@ -471,7 +473,7 @@ class ParameterEstimator():
                 partially_competitive_inhibition.name: partially_competitive_inhibition,
             }
 
-    def _run_minimization(self) -> DataFrame:
+    def _run_minimization(self, display_output: bool) -> DataFrame:
         """Performs non-linear least-squared minimization to fit the data to the kinetic 
         models by adjusting the kinetic parameters of the models.
 
@@ -479,9 +481,11 @@ class ParameterEstimator():
             DataFrame: Overfiew of the kinetic parameters of all kinetic models.
         """
 
-        print("Fitting data to:")
+        if display_output:
+            print("Fitting data to:")
         for kineticmodel in self.models.values():
-            print(f" - {kineticmodel.name} model")
+            if display_output:
+                print(f" - {kineticmodel.name} model")
 
             def g(time: np.ndarray, w0: tuple, params):
                 '''
@@ -531,6 +535,7 @@ class ParameterEstimator():
             "K_ic": f"Ki competitive [{inhibitor_unit}]",
             "K_iu": f"Ki uncompetitive [{inhibitor_unit}]",
             "K_ie": f"ki time-dep enzyme-inactiv. [1/{self.data.time_unit}]",
+
         }
 
         result_dict = {}
@@ -552,7 +557,25 @@ class ParameterEstimator():
                 if name.startswith("Ki time-dep"):
                     parameter_dict[name] = f"{value:.5f} +/- {percentual_stderr:.2f}%"
                 else:
-                    parameter_dict[name] = f"{value:.5f} +/- {percentual_stderr:.2f}%"
+                    parameter_dict[name] = f"{value:.3f} +/- {percentual_stderr:.2f}%"
+
+                if parameter.name == "k_cat":
+                    kcat = parameter.value
+                    kcat_stderr = parameter.stderr
+                if parameter.name == "Km":
+                    Km = parameter.value
+                    Km_stderr = parameter.stderr
+
+            if Km_stderr is None or kcat_stderr is None:
+                kcat_Km_stderr = float("nan")
+                kcat_Km = float("nan")
+                percentual_kcat_Km_stderr = float("nan")
+            else:
+                kcat_Km = kcat / Km
+                kcat_Km_stderr =((kcat_stderr / kcat)**2+(Km_stderr / Km)**2)**0.5 * kcat_Km
+                percentual_kcat_Km_stderr = kcat_Km_stderr / kcat_Km * 100
+
+            parameter_dict[f"kcat / Km [1/{self.data.time_unit} * 1/{self.data.data_conc_unit}]"] = f"{kcat_Km:.3f} +/- {percentual_kcat_Km_stderr:.2f}%"
 
 
             result_dict[model.name] = {"AIC": aic, **parameter_dict}
@@ -656,6 +679,8 @@ if __name__ == "__main__":
     from EnzymePynetics.core.measurement import Measurement
     import matplotlib.pyplot as plt
     import numpy as np
+
+    from CaliPytion.tools.standardcurve import StandardCurve
 
     # Create measurement data
 
