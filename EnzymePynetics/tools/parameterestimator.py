@@ -143,7 +143,7 @@ class ParameterEstimator():
             marker_vector = [marker_mapping[item] for item in self.inhibitor[:,0]]
 
             unique_concs = np.unique(self.subset_initial_substrate)
-            colors = get_cmap("tab20").colors
+            colors = get_cmap("tab10").colors
             color_mapping = dict(zip(unique_concs, colors[:len(unique_concs)]))
 
             for inhibitor, marker in zip(unique_inhibitors, markers):
@@ -575,7 +575,7 @@ class ParameterEstimator():
                 kcat_Km_stderr =((kcat_stderr / kcat)**2+(Km_stderr / Km)**2)**0.5 * kcat_Km
                 percentual_kcat_Km_stderr = kcat_Km_stderr / kcat_Km * 100
 
-            parameter_dict[f"kcat / Km [1/{self.data.time_unit} * 1/{self.data.data_conc_unit}]"] = f"{kcat_Km:.3f} +/- {percentual_kcat_Km_stderr:.2f}%"
+            parameter_dict[f"$k_{cat}$kcat / Km [1/{self.data.time_unit} * 1/{self.data.data_conc_unit}]"] = f"{kcat_Km:.3f} +/- {percentual_kcat_Km_stderr:.2f}%"
 
 
             result_dict[model.name] = {"AIC": aic, **parameter_dict}
