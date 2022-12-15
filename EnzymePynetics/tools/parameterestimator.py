@@ -216,6 +216,12 @@ class ParameterEstimator():
             print(f"{report_title}")
             report_fit(model.result)
 
+    def get_model_results(self, model: str = None):
+        if model == None:
+            model = self.result_dict.index[0]
+
+        return self.models[model].result.params
+
     def _initialize_measurement_data(self):
         """
         Extracts data from data objects and reshapes it for fitting.
@@ -575,7 +581,7 @@ class ParameterEstimator():
                 kcat_Km_stderr =((kcat_stderr / kcat)**2+(Km_stderr / Km)**2)**0.5 * kcat_Km
                 percentual_kcat_Km_stderr = kcat_Km_stderr / kcat_Km * 100
 
-            parameter_dict[f"$k_{cat}$kcat / Km [1/{self.data.time_unit} * 1/{self.data.data_conc_unit}]"] = f"{kcat_Km:.3f} +/- {percentual_kcat_Km_stderr:.2f}%"
+            parameter_dict[f"kcat / Km [1/{self.data.time_unit} * 1/{self.data.data_conc_unit}]"] = f"{kcat_Km:.3f} +/- {percentual_kcat_Km_stderr:.2f}%"
 
 
             result_dict[model.name] = {"AIC": aic, **parameter_dict}
@@ -669,67 +675,3 @@ class ParameterEstimator():
         )
 
         return cls(experimental_data)
-
-
-
-
-
-
-if __name__ == "__main__":
-    from EnzymePynetics.core.measurement import Measurement
-    import matplotlib.pyplot as plt
-    import numpy as np
-
-    from CaliPytion.tools.standardcurve import StandardCurve
-
-    # Create measurement data
-
-    m1 = Measurement(
-        initial_substrate_conc=100,
-        enzyme_conc=0.05,
-    )
-    m1.add_to_data([0.0,1,2,3,4,5])
-    m1.add_to_data([0.3,1.3,2.3,3.3,4.3,5.3])
-    m1.add_to_data([0.6,1.6,2.6,3.6,4.6,5.6])
-
-    m2 = Measurement(
-    initial_substrate_conc=200,
-    enzyme_conc=0.05,
-    inhibitor_conc=2.7
-    )
-    m2.add_to_data([5,6,7,8,9,10])
-    m2.add_to_data([5.3,6.3,7.3,8.3,9.3,10.3])
-    m2.add_to_data([8.6,9.6,10.6,11.6,12.6,13.6])
-
-    m3 = Measurement(
-    initial_substrate_conc=300,
-    enzyme_conc=0.11,
-    )
-    m3.add_to_data([10,11,15,20,25,30])
-    m3.add_to_data([10.3,11.3,21.3,31.3,41.3,51.3])
-    m3.add_to_data([10.6,11.6,15,31.6,41.6,71.6])
-
-    testdata = EnzymeKineticsExperiment(
-        data_conc_unit="mmole / l",
-        stoichiometry="product",
-        data_conc="mmole / l",
-        time_unit="min",
-        title="test data",
-        reactant_name="test product",
-        measurements=[m1,m2,m3],
-        time=[0,2,4,6,8,9]
-    )
-
-    # Run parameter estimator
-
-    import pyenzyme as pe
-
-    enzmldoc = pe.EnzymeMLDocument.fromFile("/Users/maxhaussler/Dropbox/master_thesis/data/chantal/inhibitor_characterization/test_multiple_inhibitors.omex")
-
-    est = ParameterEstimator.from_EnzymeML(
-        enzmldoc, "s1", "product", inhibitor_id="s2"
-    )
-    est.fit_models(stop_time_index=4, initial_substrate_concs=[2.5])
-    est.visualize()
-    plt.show()
-
