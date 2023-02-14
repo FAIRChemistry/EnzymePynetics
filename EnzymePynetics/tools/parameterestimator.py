@@ -70,6 +70,7 @@ class ParameterEstimator():
             product=self.subset_product,
             enzyme=self.subset_enzyme,
             inhibitor=self.subset_inhibitor,
+            initial_substrate=self.subset_initial_substrate,
             only_irrev_MM=only_irrev_MM)
 
         self._run_minimization(display_output)
@@ -113,7 +114,7 @@ class ParameterEstimator():
         # Visualization modes
         plot_modes = {
             "substrate": [self.subset_substrate,0, self.data.reactant_name], # Substrate
-            "product": [self.subset_product, 2, self.data.reactant_name], # TODO Product
+            "product": [self.subset_product, 2, self.data.reactant_name],
         }
 
         if visualize_species is None:
@@ -160,7 +161,7 @@ class ParameterEstimator():
                     ax.errorbar(self.subset_time, mean, std, label=substrate, fmt=marker, color=color, **plt_kwargs)
 
                     cS, cE, cP, cI = [np.mean(data[idx], axis=0) for data in model.w0.values()]
-                    w0 = (cS[0], cE[0], cP[0], cI[0])
+                    w0 = (cS, cE[0], cP[0], cI[0])
 
                     data_fitted = g(t=self.subset_time, w0=w0, params=model.result.params)
                     ax.plot(self.subset_time, data_fitted[:,reactant], color = color)
@@ -358,16 +359,20 @@ class ParameterEstimator():
     def get_parameter_dict(self):
         return self.models[self.result_dict.index[0]].result.params
 
-    def _initialize_models(self, substrate, product, enzyme, inhibitor, only_irrev_MM: bool) -> Dict[str, KineticModel]:
+    def _initialize_models(self, substrate, product, enzyme, inhibitor, initial_substrate, only_irrev_MM: bool) -> Dict[str, KineticModel]:
         """Initializer for all kinetic models. If an inhibitor is provided, inhibition models are initialized. If no inhibitor is specified,
-        inhibitory models for substrate and product inhibition are inizialized additionally to the irreversible Michaelis Menten model.
+        inhibitory models for substrate and product inhibition are initialized additionally to the irreversible Michaelis Menten model.
         """
 
+        w0={"cS": initial_substrate,
+            "cE": enzyme,
+            "cP": product,
+            "cI": product,}
+        
         irreversible_Michaelis_Menten = KineticModel(
             name="irreversible Michaelis Menten",
             params=[],
-            w0={"cS": substrate, "cE": enzyme,
-                "cP": product, "cI": inhibitor},            
+            w0=w0,
             kcat_initial=self.initial_kcat,
             Km_initial=self.initial_Km,
             model=irreversible_model,
@@ -382,8 +387,7 @@ class ParameterEstimator():
             competitive_product_inhibition = KineticModel(
                 name="competitive product inhibition",
                 params=["K_ic"],
-                w0={"cS": substrate, "cE": enzyme,
-                    "cP": product, "cI": product},            
+                w0=w0,            
                 kcat_initial=self.initial_kcat,
                 Km_initial=self.initial_Km,
                 model=competitive_product_inhibition_model,
@@ -392,8 +396,7 @@ class ParameterEstimator():
             uncompetitive_product_inhibition = KineticModel(
                 name="uncompetitive product inhibition",
                 params=["K_iu"],
-                w0={"cS": substrate, "cE": enzyme,
-                    "cP": product, "cI": product},            
+                w0=w0,            
                 kcat_initial=self.initial_kcat,
                 Km_initial=self.initial_Km,
                 model=uncompetitive_product_inhibition_model,
@@ -402,8 +405,7 @@ class ParameterEstimator():
             noncompetitive_product_inhibition = KineticModel(
                 name="non-competitive product inhibition",
                 params=["K_iu", "K_ic"],
-                w0={"cS": substrate, "cE": enzyme,
-                    "cP": product, "cI": product},            
+                w0=w0,            
                 kcat_initial=self.initial_kcat,
                 Km_initial=self.initial_Km,
                 model=noncompetitive_product_inhibition_model,
@@ -412,8 +414,7 @@ class ParameterEstimator():
             substrate_inhibition = KineticModel(
                 name="substrate inhibition",
                 params=["K_iu"],
-                w0={"cS": substrate, "cE": enzyme,
-                    "cP": product, "cI": substrate},            
+                w0=w0,
                 kcat_initial=self.initial_kcat,
                 Km_initial=self.initial_Km,
                 model=substrate_inhibition_model,
@@ -431,11 +432,11 @@ class ParameterEstimator():
             return model_dict
                
         else:
+
             competitive_inhibition = KineticModel(
                 name="competitive inhibition",
                 params=["K_ic"],
-                w0={"cS": substrate, "cE": enzyme,
-                    "cP": product, "cI": inhibitor},            
+                w0=w0,            
                 kcat_initial=self.initial_kcat,
                 Km_initial=self.initial_Km,
                 model=competitive_inhibition_model,
@@ -444,8 +445,7 @@ class ParameterEstimator():
             uncompetitive_inhibition = KineticModel(
                 name="uncompetitive inhibition",
                 params=["K_iu"],
-                w0={"cS": substrate, "cE": enzyme,
-                    "cP": product, "cI": inhibitor},            
+                w0=w0,            
                 kcat_initial=self.initial_kcat,
                 Km_initial=self.initial_Km,
                 model=uncompetitive_inhibition_model,
@@ -454,8 +454,7 @@ class ParameterEstimator():
             noncompetitive_inhibition = KineticModel(
                 name="non-competitive inhibition",
                 params=["K_iu", "K_ic"],
-                w0={"cS": substrate, "cE": enzyme,
-                    "cP": product, "cI": inhibitor},
+                w0=w0,
                 kcat_initial=self.initial_kcat,
                 Km_initial=self.initial_Km,
                 model=noncompetitive_inhibition_model,
@@ -464,8 +463,7 @@ class ParameterEstimator():
             partially_competitive_inhibition = KineticModel(
                 name="partially competitive inhibition",
                 params=["K_ic", "K_iu"],
-                w0={"cS": substrate, "cE": enzyme,
-                    "cP": product, "cI": inhibitor},            
+                w0=w0,            
                 kcat_initial=self.initial_kcat,
                 Km_initial=self.initial_Km,
                 model=partially_competitive_inhibition_model,
@@ -484,8 +482,10 @@ class ParameterEstimator():
         models by adjusting the kinetic parameters of the models.
 
         Returns:
-            DataFrame: Overfiew of the kinetic parameters of all kinetic models.
+            DataFrame: Overview of the kinetic parameters of all kinetic models.
         """
+
+
 
         if display_output:
             print("Fitting data to:")
@@ -508,8 +508,8 @@ class ParameterEstimator():
                 for i, measurement in enumerate(substrate):
 
                 # Calculate residual for each measurement
-                    cS, cE, cP, cI = kineticmodel.w0.values()
-                    w0 = (cS[i, 0], cE[i, 0], cP[i, 0], cI[i, 0])
+                    cS, cE, cP, cI, = kineticmodel.w0.values()
+                    w0 = (cS[i], cE[i, 0], cP[i, 0], cI[i, 0])
 
                     model = g(time, w0, params)  # solve the ODE with sfb.
 
@@ -675,3 +675,16 @@ class ParameterEstimator():
         )
 
         return cls(experimental_data)
+    
+
+if __name__ ==  "__main__":
+    import pyenzyme as pe
+
+    enzmldoc = pe.EnzymeMLDocument.fromFile(
+        "/Users/maxhaussler/Documents/code/papers/MTP_inhibition/data/SLAC/ABTS_oxidation_pH_3.0_and_25.0°C.omex")
+
+    slac_parameters = ParameterEstimator.from_EnzymeML(enzmldoc=enzmldoc, 
+                                                          reactant_id="s0",
+                                                          measured_species="substrate")
+    slac_parameters.fit_models(enzyme_inactivation=True)
+    slac_parameters.visualize()
