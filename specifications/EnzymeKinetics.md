@@ -71,7 +71,7 @@ Time-course data of an individual reaction.
 
 #### StoichiometryTypes
 
-Measurement data can eighter be substrate or product.
+Measurement data can eighter be substrate or product
 
 ```python
 SUBSTRATE = "substrate"
