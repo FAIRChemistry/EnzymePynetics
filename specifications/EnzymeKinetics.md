@@ -98,7 +98,7 @@ All models, which were fitted against the experimental data. Results contains ki
 
 ### Series
 
-Time-course data of an individual reaction.
+Time-course data of an individual reaction
 
 - __values__
   - Type: float
