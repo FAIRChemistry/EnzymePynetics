@@ -2,6 +2,8 @@
 
 The following data model describes (meta-)data from an enzyme kinetics experiment in a structured way. It constists out of multiple ```measurements```, describing one or multiple measurements at different initial substrate and/or enzyme concentrations. If and inhibitor was applied to the reaction, its concentration can be speciefied as well.
 
+## Kinetics
+
 ### EnzymeKineticsExperiment
 
 Base class, dealing with measurement data of an enzyme kinetics assay.
@@ -80,14 +82,14 @@ All models, which were fitted against the experimental data. Results contains ki
   - Description: Akaike infromation criterion of model fit.
 - __RMSD__
   - Type: float
-  - Description: Root mean square deciation between all measurement points and the fitted model.
+  - Description: Root mean square deviation between all measurement points and the fitted model.
 
 ### Parameter
 - __name__
   - Type: string
   - Description: Name of the kinetic parameter.
 - __value__
-  - Type: string
+  - Type: float
   - Description: Name of the kinetic model.
 - __standard_deviation__
   - Type: float
@@ -98,7 +100,7 @@ All models, which were fitted against the experimental data. Results contains ki
 
 ### Series
 
-Time-course data of an individual reaction
+Time-course data of an individual reaction.
 
 - __values__
   - Type: float
