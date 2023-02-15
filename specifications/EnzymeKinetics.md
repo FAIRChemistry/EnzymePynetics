@@ -38,6 +38,10 @@ Base class, dealing with measurement data of an enzyme kinetics assay.
 - __time_unit*__
   - Type: TimeTypes
   - Description: Time data unit.
+- __results__
+  - Type: Results
+  - Description: Kinetic parameters and statitical results of the fit.
+  - Multiple: True
 
 ### Measurement
 
@@ -59,6 +63,38 @@ A Measurement object contains information about the applied enzyme concentration
 - __inhibitor_conc_unit__
   - Type: ConcentrationTypes
   - Description: Inhibitor concentration in the reaction, if applied.
+
+### Results
+
+All models, which were fitted against the experimental data. Results contains kinetic parameters, AIC and RMSD of the model.
+
+- __model_name__
+  - Type: string
+  - Description: Name of the kinetic model.
+- __parameters__
+  - Type: Parameter
+  - Description: Name of the kinetic model.
+  - Multiple: True
+- __AIC__
+  - Type: float
+  - Description: Akaike infromation criterion of model fit.
+- __RMSD__
+  - Type: float
+  - Description: Root mean square deciation between all measurement points and the fitted model.
+
+### Parameter
+- __name__
+  - Type: string
+  - Description: Name of the kinetic parameter.
+- __value__
+  - Type: string
+  - Description: Name of the kinetic model.
+- __standard_deviation__
+  - Type: float
+  - Description: Standard deviation of the
+- __unit__
+  - Type: string
+  - Description: Unit of the kinetic parameter.
 
 ### Series
 
