@@ -74,6 +74,7 @@ class ParameterEstimator():
             only_irrev_MM=only_irrev_MM)
 
         self._run_minimization(display_output)
+        self._calcualte_RMSD()
 
         self.result_dict = self._result_overview()
         if display_output:
@@ -88,8 +89,8 @@ class ParameterEstimator():
         plot_means: bool = True,
         ax: plt.Axes = None,
         **plt_kwargs) -> None:
-        """Visualizes the measurement data as well as the fitted model. By default the fest fitting model is choosen for visualization 
-        (based on Akaice criterion)
+        """Visualizes the measurement data as well as the fitted model. By default the best fitting model is chosen for visualization 
+        (based on Akaike criterion)
 
         Args:
             model_name (Optional[str], optional): Specify the name of the model which should be visualized. Defaults to None.
@@ -161,7 +162,7 @@ class ParameterEstimator():
                     ax.errorbar(self.subset_time, mean, std, label=substrate, fmt=marker, color=color, **plt_kwargs)
 
                     cS, cE, cP, cI = [np.mean(data[idx], axis=0) for data in model.w0.values()]
-                    w0 = (cS, cE[0], cP[0], cI[0])
+                    w0 = (cS, cE[0], 0, cI[0])
 
                     data_fitted = g(t=self.subset_time, w0=w0, params=model.result.params)
                     ax.plot(self.subset_time, data_fitted[:,reactant], color = color)
@@ -485,6 +486,8 @@ class ParameterEstimator():
             DataFrame: Overview of the kinetic parameters of all kinetic models.
         """
 
+        # TODO outsource minimizer in own class 
+
 
 
         if display_output:
@@ -509,7 +512,8 @@ class ParameterEstimator():
 
                 # Calculate residual for each measurement
                     cS, cE, cP, cI, = kineticmodel.w0.values()
-                    w0 = (cS[i], cE[i, 0], cP[i, 0], cI[i, 0])
+                    w0 = (cS[i], cE[i, 0], 0, cI[i, 0]) #cP[i, 0]
+                    # TODO check data in model and measurement 
 
                     model = g(time, w0, params)  # solve the ODE with sfb.
 
@@ -519,10 +523,17 @@ class ParameterEstimator():
                     # compute distance to measured data
                     residuals[i] = measurement-model
 
+                self.residuals=residuals
                 return residuals.flatten()
 
             kineticmodel.result = minimize(residual, kineticmodel.parameters, args=(
                 self.subset_time, self.subset_substrate), method='leastsq', nan_policy='omit')
+            
+    def _calcualte_RMSD(self):
+        n_measurements = self.residuals.size
+        self.rmsd = np.sqrt(1/n_measurements * np.sum(self.residuals**2))
+        
+
             
 
     def _result_overview(self) -> DataFrame:
@@ -686,5 +697,6 @@ if __name__ ==  "__main__":
     slac_parameters = ParameterEstimator.from_EnzymeML(enzmldoc=enzmldoc, 
                                                           reactant_id="s0",
                                                           measured_species="substrate")
-    slac_parameters.fit_models(enzyme_inactivation=True)
+    slac_parameters.fit_models(enzyme_inactivation=True, only_irrev_MM=False)
     slac_parameters.visualize()
+    plt.show()

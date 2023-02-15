@@ -32,6 +32,7 @@ class KineticModel():
                         min=self.kcat_initial/100, max=self.kcat_initial*100)
         parameters.add('Km', value=self.Km_initial*100, min=self.Km_initial/100,
                         max=self.Km_initial*10000)
+
         if "K_iu" in params:
             parameters.add("K_iu", value=0.1, min=0.0001, max=1000)
         if "K_ic" in params:
@@ -86,6 +87,7 @@ def uncompetitive_product_inhibition_model(w0: tuple, t, params, flag_enzyme_ina
     k_cat = params['k_cat'].value
     Km = params['Km'].value
     K_iu = params["K_iu"].value
+
     if flag_enzyme_inactivation:
         K_ie = params["K_ie"].value
         dc_E = -K_ie * cE
@@ -105,6 +107,7 @@ def noncompetitive_product_inhibition_model(w0: tuple, t, params, flag_enzyme_in
     Km = params['Km'].value
     K_iu = params["K_iu"].value
     K_ic = params["K_ic"].value
+
     if flag_enzyme_inactivation:
         K_ie = params["K_ie"].value
         dc_E = -K_ie * cE
@@ -125,6 +128,7 @@ def substrate_inhibition_model(w0: tuple, t, params, flag_enzyme_inactivation: b
     k_cat = params['k_cat'].value
     Km = params['Km'].value
     K_iu = params["K_iu"].value
+
     if flag_enzyme_inactivation:
         K_ie = params["K_ie"].value
         dc_E = -K_ie * cE
