@@ -13,8 +13,7 @@ from .series import Series
 
 @forge_signature
 class Measurement(sdRDM.DataModel):
-    """A Measurement object contains information about the applied enzyme concentration and one or multiple time-course concentration measurements. Additionally, the initial substrate concentration should be specified. This is neccessary to derive the substrate concentration for the modeling process. If an inhibitor was applied to the measurement, its concentration and the respective conetration unit can be specified to account for inhibition in kinetic modeling.
-    """
+    """A Measurement object contains information about the applied enzyme concentration and one or multiple time-course concentration measurements. Additionally, the initial substrate concentration should be specified. This is neccessary to derive the substrate concentration for the modeling process. If an inhibitor was applied to the measurement, its concentration and the respective conetration unit can be specified to account for inhibition in kinetic modeling."""
 
     id: str = Field(
         description="Unique identifier of the given object.",
@@ -48,10 +47,12 @@ class Measurement(sdRDM.DataModel):
     )
 
     __commit__: Optional[str] = PrivateAttr(
-        default="b5748d4583be7ad866e3caab3f867c6f8608bb10"
+        default="f4c5da217941f52e56f6d27cf78dd9f0ea05fa7d"
     )
 
-    def add_to_data(self, values: List[float], id: Optional[str] = None) -> None:
+    def add_to_data(
+        self, values: List[float], test: Optional[str] = None, id: Optional[str] = None
+    ) -> None:
         """
         Adds an instance of 'Series' to the attribute 'data'.
 
@@ -62,9 +63,12 @@ class Measurement(sdRDM.DataModel):
 
 
             values (List[float]): Time-course data of an individual reaction.
+
+
+            test (Optional[str]): Test field. Defaults to None
         """
 
-        params = {"values": values}
+        params = {"values": values, "test": test}
         if id is not None:
             params["id"] = id
         data = [Series(**params)]

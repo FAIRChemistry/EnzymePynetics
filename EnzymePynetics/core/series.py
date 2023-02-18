@@ -2,6 +2,7 @@ import sdRDM
 
 from typing import Optional, Union
 from typing import List
+from typing import Optional
 from pydantic import PrivateAttr
 from pydantic import Field
 from sdRDM.base.listplus import ListPlus
@@ -23,10 +24,12 @@ class Series(sdRDM.DataModel):
         default_factory=ListPlus,
     )
 
+    test: Optional[str] = Field(description="Test field", default=None)
+
     __repo__: Optional[str] = PrivateAttr(
         default="git://github.com/haeussma/EnzymePynetics.git"
     )
 
     __commit__: Optional[str] = PrivateAttr(
-        default="b5748d4583be7ad866e3caab3f867c6f8608bb10"
+        default="f4c5da217941f52e56f6d27cf78dd9f0ea05fa7d"
     )
