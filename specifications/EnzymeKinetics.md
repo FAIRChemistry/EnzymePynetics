@@ -2,7 +2,7 @@
 
 The following data model describes (meta-)data from an enzyme kinetics experiment in a structured way. It constists out of multiple ```measurements```, describing one or multiple measurements at different initial substrate and/or enzyme concentrations. If and inhibitor was applied to the reaction, its concentration can be speciefied as well.
 
-### EnzymeKineticsExperiment
+### EnzymeKinetics
 
 Base class, dealing with measurement data of an enzyme kinetics assay.
 
@@ -25,8 +25,8 @@ Base class, dealing with measurement data of an enzyme kinetics assay.
   - Type: Measurement
   - Description: Measurement data for a given initial substrate concentration.
   - Multiple: True
-- __stoichiometry__
-  - Type: StoichiometryTypes
+- __reactant_type__
+  - Type: ReactantTypes
   - Description: Define whether "substrate" or "product" concentration was measured.
 - __data_conc_unit*__
   - Type: ConcentrationTypes
@@ -60,6 +60,44 @@ A Measurement object contains information about the applied enzyme concentration
   - Type: ConcentrationTypes
   - Description: Inhibitor concentration in the reaction, if applied.
 
+### KineticModel
+
+Description of a kinetic model
+
+- __name__
+  - Type: string
+  - Description: Name of the kinetic model
+- __parameters__
+  - Type: Parameter
+  - Descrition: Kinetic parameters of the model.
+  - Multiple: True
+- __AIC__
+  - Type: float
+  - Descrition: Akaike information criterion.
+  - Multiple: True
+- __BIC__
+  - Type: float
+  - Descrition: Bayesian information criterion.
+  - Multiple: True
+- __RMSD__
+  - Type: float
+  - Descrition: Root mean square deviation between model and measurement data.
+  - Multiple: True
+
+### Parameter
+
+Defines a kinetic parameter
+
+- __name__
+  - Type: string
+  - Description: Name of the kinetic parameter
+- __value__
+  - Type: float
+  - Description: Value of the kinetic parameter.
+- __standard_deviation__
+  - Type: float
+  - Description: Standard deviation of the kinetic parameter.
+
 ### Series
 
 Time-course data of an individual reaction.
@@ -69,9 +107,9 @@ Time-course data of an individual reaction.
   - Description: Time-course data of an individual reaction.
   - Multiple: True
 
-#### StoichiometryTypes
+#### ReactantTypes
 
-Measurement data can eighter be substrate or product
+Measurement data can eighter be substrate or product.
 
 ```python
 SUBSTRATE = "substrate"
