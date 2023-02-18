@@ -68,6 +68,9 @@ Time-course data of an individual reaction.
   - Type: float
   - Description: Time-course data of an individual reaction.
   - Multiple: True
+- __test__
+  - Type: string
+  - Description: Test field
 
 #### StoichiometryTypes
 
