@@ -1,0 +1,78 @@
+{
+  "docstring": "The following data model describes (meta-)data from an enzyme kinetics experiment in a structured way. It constists out of multiple ```measurements```, describing one or multiple measurements at different initial substrate and/or enzyme concentrations. If and inhibitor was applied to the reaction, its concentration can be speciefied as well.",
+  "enums": [
+    "StoichiometryTypes",
+    "StoichiometryTypes",
+    "ConcentrationTypes",
+    "ConcentrationTypes",
+    "TimeTypes"
+  ],
+  "external": {},
+  "EnzymeKineticsExperiment": {
+    "attributes": {
+      "title": {
+        "description": "Title of the kinetic experiment"
+      },
+      "reactant_name": {
+        "description": "Name of the measured reactant."
+      },
+      "temperature": {
+        "description": "Temperature of the reaction."
+      },
+      "temperature_unit": {
+        "description": "Temperature unit."
+      },
+      "pH": {
+        "description": "pH of the reaction"
+      },
+      "measurements": {
+        "description": "Measurement data for a given initial substrate concentration.",
+        "multiple": "True"
+      },
+      "stoichiometry": {
+        "description": "Define whether \"substrate\" or \"product\" concentration was measured."
+      },
+      "data_conc_unit": {
+        "description": "Molar concentration unit of the measured data."
+      },
+      "time": {
+        "description": "Time array corresponding to time-course data.",
+        "multiple": "True"
+      },
+      "time_unit": {
+        "description": "Time data unit."
+      }
+    },
+    "docstring": "Base class, dealing with measurement data of an enzyme kinetics assay.\n"
+  },
+  "Measurement": {
+    "attributes": {
+      "initial_substrate_conc": {
+        "description": "Initial substrate concentration of the measurement."
+      },
+      "enzyme_conc": {
+        "description": "Enzyme concentration in the reaction."
+      },
+      "data": {
+        "description": "One or multiple time-course concentration data arrays.",
+        "multiple": "True"
+      },
+      "inhibitor_conc": {
+        "description": "Inhibitor concentration, if applied to the reaction."
+      },
+      "inhibitor_conc_unit": {
+        "description": "Inhibitor concentration in the reaction, if applied."
+      }
+    },
+    "docstring": "A Measurement object contains information about the applied enzyme concentration and one or multiple time-course concentration measurements. Additionally, the initial substrate concentration should be specified. This is neccessary to derive the substrate concentration for the modeling process. If an inhibitor was applied to the measurement, its concentration and the respective conetration unit can be specified to account for inhibition in kinetic modeling.\n"
+  },
+  "Series": {
+    "attributes": {
+      "values": {
+        "description": "Time-course data of an individual reaction.",
+        "multiple": "True"
+      }
+    },
+    "docstring": "Time-course data of an individual reaction."
+  }
+}

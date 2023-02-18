@@ -13,8 +13,7 @@ from .series import Series
 
 @forge_signature
 class Measurement(sdRDM.DataModel):
-    """A Measurement object contains information about the applied enzyme concentration and one or multiple time-course concentration measurements. Additionally, the initial substrate concentration should be specified. This is neccessary to derive the substrate concentration for the modeling process. If an inhibitor was applied to the measurement, its concentration and the respective conetration unit can be specified to account for inhibition in kinetic modeling.
-    """
+    """A Measurement object contains information about the applied enzyme concentration and one or multiple time-course concentration measurements. Additionally, the initial substrate concentration should be specified. This is neccessary to derive the substrate concentration for the modeling process. If an inhibitor was applied to the measurement, its concentration and the respective conetration unit can be specified to account for inhibition in kinetic modeling."""
 
     id: str = Field(
         description="Unique identifier of the given object.",
@@ -48,7 +47,7 @@ class Measurement(sdRDM.DataModel):
     )
 
     __commit__: Optional[str] = PrivateAttr(
-        default="b5748d4583be7ad866e3caab3f867c6f8608bb10"
+        default="7307ac852d6f6170b2bdc0535d4247e788635b30"
     )
 
     def add_to_data(self, values: List[float], id: Optional[str] = None) -> None:
