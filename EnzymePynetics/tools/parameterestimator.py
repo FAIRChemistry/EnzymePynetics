@@ -14,6 +14,7 @@ from lmfit import minimize, report_fit
 from IPython.display import display
 from matplotlib.cm import get_cmap
 import matplotlib.pyplot as plt
+from scipy.stats import linregress
 
 
 class ParameterEstimator():
@@ -36,6 +37,7 @@ class ParameterEstimator():
         only_irrev_MM: bool = False,
         display_output: bool = True
         ) -> None:
+
         """Fits the measurement data to a set of kinetic models.
 
         Args:
@@ -259,7 +261,7 @@ class ParameterEstimator():
             self.product = np.array(measurement_data)
             self.substrate = np.array(self._calculate_missing_species(self.product))
         else:
-            raise AttributeError("Please define whether measured data is substrate or product data.")
+            raise AttributeError("Please define whether measured data is substrate or product.")
 
     def _calculate_missing_species(self, existing_species: np.ndarray) -> List[list]:
         """
@@ -304,7 +306,7 @@ class ParameterEstimator():
     def _check_negative_concentrations(self):
         """
         Checks if negative concentrations are entered or calculated by the "_calculate_missing_species" function.
-        If negatice concentrations are calculated, the data might not be blanced correctly, or the 'initial_substrate_concentration'
+        If negative concentrations are calculated, the data might not be blanked correctly, or the 'initial_substrate_concentration'
         is lower than the measurement data.
         """
         self.deactivate_substrate_inhibition = False
@@ -488,6 +490,36 @@ class ParameterEstimator():
 
         # TODO outsource minimizer in own class 
 
+        def g(time: np.ndarray, w0: tuple, params):
+            '''
+            Solution to the ODE w'(t)=f(t,w,p) with initial condition w(0)= w0 (= [S0])
+            '''
+            w = odeint(kineticmodel.model, w0, time, args=(params, self.enzyme_inactivation,))
+            return w
+
+        def residual(params, time: np.ndarray, substrate: np.ndarray):
+            """
+            Calculated the distance between measured and modeled data.
+            """
+            residuals = 0.0 * substrate
+            for i, measurement in enumerate(substrate):
+
+            # Calculate residual for each measurement
+                cS, cE, cP, cI, = kineticmodel.w0.values()
+                w0 = (cS[i], cE[i, 0], 0, cI[i, 0]) #cP[i, 0]
+                # TODO check data in model and measurement 
+
+                model = g(time, w0, params)  # solve the ODE with sfb.
+
+                # get modeled substrate
+                model = model[:, 0]
+
+                # compute distance to measured data
+                residuals[i] = measurement-model
+
+            self.residuals=residuals
+            return residuals.flatten()
+
 
 
         if display_output:
@@ -495,36 +527,6 @@ class ParameterEstimator():
         for kineticmodel in self.models.values():
             if display_output:
                 print(f" - {kineticmodel.name} model")
-
-            def g(time: np.ndarray, w0: tuple, params):
-                '''
-                Solution to the ODE w'(t)=f(t,w,p) with initial condition w(0)= w0 (= [S0])
-                '''
-                w = odeint(kineticmodel.model, w0, time, args=(params, self.enzyme_inactivation,))
-                return w
-
-            def residual(params, time: np.ndarray, substrate: np.ndarray):
-                """
-                Calculated the distance between measured and modeled data.
-                """
-                residuals = 0.0 * substrate
-                for i, measurement in enumerate(substrate):
-
-                # Calculate residual for each measurement
-                    cS, cE, cP, cI, = kineticmodel.w0.values()
-                    w0 = (cS[i], cE[i, 0], 0, cI[i, 0]) #cP[i, 0]
-                    # TODO check data in model and measurement 
-
-                    model = g(time, w0, params)  # solve the ODE with sfb.
-
-                    # get modeled substrate
-                    model = model[:, 0]
-
-                    # compute distance to measured data
-                    residuals[i] = measurement-model
-
-                self.residuals=residuals
-                return residuals.flatten()
 
             kineticmodel.result = minimize(residual, kineticmodel.parameters, args=(
                 self.subset_time, self.subset_substrate), method='leastsq', nan_policy='omit')
@@ -686,6 +688,11 @@ class ParameterEstimator():
         )
 
         return cls(experimental_data)
+
+    def correct_time_offset(self):
+        if self.data.stoichiometry == StoichiometryTypes.SUBSTRATE:
+            linregress(self.subset_substrate)
+
     
 
 if __name__ ==  "__main__":
@@ -693,10 +700,13 @@ if __name__ ==  "__main__":
 
     enzmldoc = pe.EnzymeMLDocument.fromFile(
         "/Users/maxhaussler/Documents/code/papers/MTP_inhibition/data/SLAC/ABTS_oxidation_pH_3.0_and_25.0°C.omex")
+    
 
     slac_parameters = ParameterEstimator.from_EnzymeML(enzmldoc=enzmldoc, 
                                                           reactant_id="s0",
                                                           measured_species="substrate")
-    slac_parameters.fit_models(enzyme_inactivation=True, only_irrev_MM=False)
-    slac_parameters.visualize()
-    plt.show()
+    print("noob")
+    
+    #slac_parameters.fit_models(enzyme_inactivation=True, only_irrev_MM=False)
+    #slac_parameters.visualize()
+    #plt.show()
