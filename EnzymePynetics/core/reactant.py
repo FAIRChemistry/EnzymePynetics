@@ -1,14 +1,15 @@
 import sdRDM
 
 from typing import Optional, Union
+from typing import Optional
+from typing import List
 from pydantic import PrivateAttr
+from pydantic import Field
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
-
-from pydantic import Field
-from typing import Optional
-
 from .reactanttypes import ReactantTypes
+from .abstractspecies import AbstractSpecies
+from .series import Series
 
 
 @forge_signature
@@ -18,10 +19,6 @@ class Reactant(sdRDM.DataModel):
         default_factory=IDGenerator("reactantINDEX"),
         xml="@id",
     )
-    name: Optional[str] = Field(
-        description="name of the reactant.",
-        default=None,
-    )
 
     reactant_type: Optional[ReactantTypes] = Field(
         description=(
@@ -30,9 +27,34 @@ class Reactant(sdRDM.DataModel):
         default=None,
     )
 
+    data: List[Series] = Field(
+        description="One or multiple time-course measurement data arrays.",
+        default_factory=ListPlus,
+    )
+
     __repo__: Optional[str] = PrivateAttr(
         default="git://github.com/haeussma/EnzymePynetics.git"
     )
+
     __commit__: Optional[str] = PrivateAttr(
-        default="3de8cc7f43153d5cbb0cbfd736e91aca3ea2eab1"
+        default="65530220022f81dc42567f7a1e75530dfdf77be4"
     )
+
+    def add_to_data(self, values: List[float], id: Optional[str] = None) -> None:
+        """
+        Adds an instance of 'Series' to the attribute 'data'.
+
+        Args:
+
+
+            id (str): Unique identifier of the 'Series' object. Defaults to 'None'.
+
+
+            values (List[float]): Time-course data of an individual reaction.
+        """
+
+        params = {"values": values}
+        if id is not None:
+            params["id"] = id
+        data = [Series(**params)]
+        self.data = self.data + data

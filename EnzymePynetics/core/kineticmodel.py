@@ -48,7 +48,7 @@ class KineticModel(sdRDM.DataModel):
     )
 
     __commit__: Optional[str] = PrivateAttr(
-        default="3de8cc7f43153d5cbb0cbfd736e91aca3ea2eab1"
+        default="65530220022f81dc42567f7a1e75530dfdf77be4"
     )
 
     def add_to_parameters(

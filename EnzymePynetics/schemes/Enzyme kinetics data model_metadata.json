@@ -24,34 +24,51 @@
     },
     "docstring": "Base class, dealing with measurement data of an enzyme kinetics assay.\n"
   },
-  "Reactant": {
+  "AbstractSpecies": {
     "attributes": {
       "name": {
         "description": "name of the reactant."
       },
+      "conc_unit": {
+        "description": "Concentration unit of the measurement data."
+      },
+      "initial_conc": {
+        "description": "Initial concentration of the reactant."
+      }
+    },
+    "docstring": null
+  },
+  "Reactant": {
+    "attributes": {
       "reactant_type": {
         "description": "Define whether \"substrate\" or \"product\" concentration was measured."
+      },
+      "data": {
+        "description": "One or multiple time-course measurement data arrays.",
+        "multiple": "True"
+      }
+    },
+    "docstring": null
+  },
+  "Inhibitor": {
+    "attributes": {
+      "ergerg": {
+        "description": "ergerge"
       }
     },
     "docstring": null
   },
   "Measurement": {
     "attributes": {
-      "initial_substrate_conc": {
-        "description": "Initial substrate concentration of the measurement."
+      "reactants": {
+        "description": "Reactants of the reaction.",
+        "multiple": "True"
+      },
+      "inhibitor": {
+        "description": "Inhibitor applied to the reaction."
       },
       "enzyme_conc": {
         "description": "Enzyme concentration in the reaction."
-      },
-      "data": {
-        "description": "One or multiple time-course concentration data arrays.",
-        "multiple": "True"
-      },
-      "inhibitor_conc": {
-        "description": "Inhibitor concentration, if applied to the reaction."
-      },
-      "inhibitor_conc_unit": {
-        "description": "Inhibitor concentration in the reaction, if applied."
       },
       "temperature": {
         "description": "Temperature of the reaction."
@@ -61,9 +78,6 @@
       },
       "pH": {
         "description": "pH of the reaction"
-      },
-      "data_conc_unit": {
-        "description": "Molar concentration unit of the measured data."
       },
       "time": {
         "description": "Time array corresponding to time-course data.",

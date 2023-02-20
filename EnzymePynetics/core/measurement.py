@@ -10,6 +10,9 @@ from sdRDM.base.utils import forge_signature, IDGenerator
 from .concentrationtypes import ConcentrationTypes
 from .series import Series
 from .timetypes import TimeTypes
+from .inhibitor import Inhibitor
+from .reactant import Reactant
+from .reactanttypes import ReactantTypes
 
 
 @forge_signature
@@ -22,29 +25,8 @@ class Measurement(sdRDM.DataModel):
         xml="@id",
     )
 
-    initial_substrate_conc: float = Field(
-        ..., description="Initial substrate concentration of the measurement."
-    )
-
     enzyme_conc: Optional[float] = Field(
         description="Enzyme concentration in the reaction.", default=None
-    )
-
-    data: List[Series] = Field(
-        description="One or multiple time-course concentration data arrays.",
-        default_factory=ListPlus,
-    )
-
-    inhibitor_conc: Optional[float] = Field(
-        description="Inhibitor concentration, if applied to the reaction.", default=None
-    )
-
-    inhibitor_conc_unit: Optional[ConcentrationTypes] = Field(
-        description="Inhibitor concentration in the reaction, if applied.", default=None
-    )
-
-    data_conc_unit: ConcentrationTypes = Field(
-        ..., description="Molar concentration unit of the measured data."
     )
 
     time_unit: TimeTypes = Field(..., description="Time data unit.")
@@ -64,29 +46,63 @@ class Measurement(sdRDM.DataModel):
         default_factory=ListPlus,
     )
 
+    reactants: List[Reactant] = Field(
+        description="Reactants of the reaction.", default_factory=ListPlus
+    )
+
+    inhibitor: Optional[Inhibitor] = Field(
+        description="Inhibitor applied to the reaction.", default=None
+    )
+
     __repo__: Optional[str] = PrivateAttr(
         default="git://github.com/haeussma/EnzymePynetics.git"
     )
 
     __commit__: Optional[str] = PrivateAttr(
-        default="3de8cc7f43153d5cbb0cbfd736e91aca3ea2eab1"
+        default="65530220022f81dc42567f7a1e75530dfdf77be4"
     )
 
-    def add_to_data(self, values: List[float], id: Optional[str] = None) -> None:
+    def add_to_reactants(
+        self,
+        name: str,
+        conc_unit: ConcentrationTypes,
+        initial_conc: float,
+        data: List[Series],
+        reactant_type: Optional[ReactantTypes] = None,
+        id: Optional[str] = None,
+    ) -> None:
         """
-        Adds an instance of 'Series' to the attribute 'data'.
+        Adds an instance of 'Reactant' to the attribute 'reactants'.
 
         Args:
 
 
-            id (str): Unique identifier of the 'Series' object. Defaults to 'None'.
+            id (str): Unique identifier of the 'Reactant' object. Defaults to 'None'.
 
 
-            values (List[float]): Time-course data of an individual reaction.
+            name (str): name of the reactant.
+
+
+            conc_unit (ConcentrationTypes): Concentration unit of the measurement data.
+
+
+            initial_conc (float): Initial concentration of the reactant.
+
+
+            data (List[Series]): One or multiple time-course measurement data arrays.
+
+
+            reactant_type (Optional[ReactantTypes]): Define whether "substrate" or "product" concentration was measured. Defaults to None
         """
 
-        params = {"values": values}
+        params = {
+            "name": name,
+            "conc_unit": conc_unit,
+            "initial_conc": initial_conc,
+            "data": data,
+            "reactant_type": reactant_type,
+        }
         if id is not None:
             params["id"] = id
-        data = [Series(**params)]
-        self.data = self.data + data
+        reactants = [Reactant(**params)]
+        self.reactants = self.reactants + reactants
