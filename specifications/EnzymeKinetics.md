@@ -18,37 +18,45 @@ Base class, dealing with measurement data of an enzyme kinetics assay.
   - Description: Measurement data for a given initial substrate concentration.
   - Multiple: True
 
+### AbstractSpecies
 
-
-### Reactant
-
-- __name__
+- __name*__
   - Type: string
   - Description: name of the reactant. 
+- __conc_unit*__
+  - Type: ConcentrationTypes
+  - Description: Concentration unit of the measurement data.
+- __initial_conc*__
+  - Type: float
+  - Description: Initial concentration of the reactant.
+
+
+### Reactant(AbstractSpecies)
+
 - __reactant_type__
   - Type: ReactantTypes
   - Description: Define whether "substrate" or "product" concentration was measured.
+- __data__
+  - Type: Series
+  - Description: One or multiple time-course measurement data arrays.
+  - Multiple: True
+
+### Inhibitor(AbstractSpecies)
 
 ### Measurement
 
 A Measurement object contains information about the applied enzyme concentration and one or multiple time-course concentration measurements. Additionally, the initial substrate concentration should be specified. This is neccessary to derive the substrate concentration for the modeling process. If an inhibitor was applied to the measurement, its concentration and the respective conetration unit can be specified to account for inhibition in kinetic modeling.
 
-- __initial_substrate_conc*__
-  - Type: float
-  - Description: Initial substrate concentration of the measurement.
+- __reactants__
+  - Type: Reactant
+  - Description: Reactants of the reaction.
+  - Multiple: True
+- __inhibitior__
+  - Type: Inhibitior
+  - Description: Inhibitor applied to the reaction.
 - __enzyme_conc__
   - Type: float
   - Description: Enzyme concentration in the reaction.
-- __data*__
-  - Type: Series
-  - Description: One or multiple time-course concentration data arrays.
-  - Multiple: True
-- __inhibitor_conc__
-  - Type: float
-  - Description: Inhibitor concentration, if applied to the reaction.
-- __inhibitor_conc_unit__
-  - Type: ConcentrationTypes
-  - Description: Inhibitor concentration in the reaction, if applied.
 - __temperature__
   - Type: float
   - Description: Temperature of the reaction.
@@ -58,9 +66,6 @@ A Measurement object contains information about the applied enzyme concentration
 - __pH__
   - Type: float
   - Description: pH of the reaction
-- __data_conc_unit*__
-  - Type: ConcentrationTypes
-  - Description: Molar concentration unit of the measured data.
 - __time*__
   - Type: float
   - Description: Time array corresponding to time-course data.
@@ -139,8 +144,6 @@ NANGRAMLITER = "ng / l"
 ```
 
 #### TimeTypes
-
-Allowed time types.
 
 ```python
 S = "s"
