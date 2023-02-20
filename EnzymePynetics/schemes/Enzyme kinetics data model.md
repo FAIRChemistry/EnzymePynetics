@@ -1,20 +1,21 @@
 ```mermaid
 classDiagram
-    EnzymeKineticsExperiment *-- Measurement
-    EnzymeKineticsExperiment *-- StoichiometryTypes
-    EnzymeKineticsExperiment *-- ConcentrationTypes
-    EnzymeKineticsExperiment *-- TimeTypes
+    EnzymeKinetics *-- Measurement
+    EnzymeKinetics *-- ReactantTypes
+    EnzymeKinetics *-- ConcentrationTypes
+    EnzymeKinetics *-- TimeTypes
     Measurement *-- Series
     Measurement *-- ConcentrationTypes
+    KineticModel *-- Parameter
     
-    class EnzymeKineticsExperiment {
+    class EnzymeKinetics {
         +string title
         +string reactant_name
         +float temperature
         +string temperature_unit
         +float pH
         +Measurement[0..*] measurements*
-        +StoichiometryTypes stoichiometry
+        +ReactantTypes reactant_type
         +ConcentrationTypes data_conc_unit*
         +float[0..*] time*
         +TimeTypes time_unit*
@@ -28,17 +29,32 @@ classDiagram
         +ConcentrationTypes inhibitor_conc_unit
     }
     
+    class KineticModel {
+        +string name
+        +string equation
+        +Parameter[0..*] parameters
+        +float AIC
+        +float BIC
+        +float RMSD
+    }
+    
+    class Parameter {
+        +string name
+        +float value
+        +float standard_deviation
+    }
+    
     class Series {
         +float[0..*] values
     }
     
-    class StoichiometryTypes {
+    class ReactantTypes {
         << Enumeration >>
         +SUBSTRATE = "substrate"
         +PRODUCT = "product"
     }
     
-    class StoichiometryTypes {
+    class ReactantTypes {
         << Enumeration >>
         +SUBSTRATE = "substrate"
         +PRODUCT = "product"

@@ -1,14 +1,14 @@
 {
   "docstring": "The following data model describes (meta-)data from an enzyme kinetics experiment in a structured way. It constists out of multiple ```measurements```, describing one or multiple measurements at different initial substrate and/or enzyme concentrations. If and inhibitor was applied to the reaction, its concentration can be speciefied as well.",
   "enums": [
-    "StoichiometryTypes",
-    "StoichiometryTypes",
+    "ReactantTypes",
+    "ReactantTypes",
     "ConcentrationTypes",
     "ConcentrationTypes",
     "TimeTypes"
   ],
   "external": {},
-  "EnzymeKineticsExperiment": {
+  "EnzymeKinetics": {
     "attributes": {
       "title": {
         "description": "Title of the kinetic experiment"
@@ -29,7 +29,7 @@
         "description": "Measurement data for a given initial substrate concentration.",
         "multiple": "True"
       },
-      "stoichiometry": {
+      "reactant_type": {
         "description": "Define whether \"substrate\" or \"product\" concentration was measured."
       },
       "data_conc_unit": {
@@ -65,6 +65,44 @@
       }
     },
     "docstring": "A Measurement object contains information about the applied enzyme concentration and one or multiple time-course concentration measurements. Additionally, the initial substrate concentration should be specified. This is neccessary to derive the substrate concentration for the modeling process. If an inhibitor was applied to the measurement, its concentration and the respective conetration unit can be specified to account for inhibition in kinetic modeling.\n"
+  },
+  "KineticModel": {
+    "attributes": {
+      "name": {
+        "description": "Name of the kinetic model."
+      },
+      "equation": {
+        "description": "Equation of the kinetic model."
+      },
+      "parameters": {
+        "description": "Kinetic parameters of the model.",
+        "multiple": "True"
+      },
+      "AIC": {
+        "description": "Akaike information criterion."
+      },
+      "BIC": {
+        "description": "Bayesian information criterion."
+      },
+      "RMSD": {
+        "description": "Root mean square deviation between model and measurement data."
+      }
+    },
+    "docstring": "Description of a kinetic model\n"
+  },
+  "Parameter": {
+    "attributes": {
+      "name": {
+        "description": "Name of the kinetic parameter"
+      },
+      "value": {
+        "description": "Value of the kinetic parameter."
+      },
+      "standard_deviation": {
+        "description": "Standard deviation of the kinetic parameter."
+      }
+    },
+    "docstring": "Defines a kinetic parameter\n"
   },
   "Series": {
     "attributes": {
