@@ -41,7 +41,11 @@ Base class, dealing with measurement data of an enzyme kinetics assay.
   - Description: One or multiple time-course measurement data arrays.
   - Multiple: True
 
-### Inhibitor(AbstractSpecies)
+### Inhibitor [_AbstractSpecies_]
+
+- __ergerg__
+  - Type: string
+  - Description: ergerge
 
 ### Measurement
 
