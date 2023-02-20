@@ -1,4 +1,4 @@
-# EnzymePanetics data model
+# EnzymePynetics data model
 
 The following data model describes (meta-)data from an enzyme kinetics experiment in a structured way. It constists out of multiple ```measurements```, describing one or multiple measurements at different initial substrate and/or enzyme concentrations. If and inhibitor was applied to the reaction, its concentration can be speciefied as well.
 
