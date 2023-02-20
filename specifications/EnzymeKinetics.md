@@ -31,7 +31,7 @@ Base class, dealing with measurement data of an enzyme kinetics assay.
   - Description: Initial concentration of the reactant.
 
 
-### Reactant(AbstractSpecies)
+### Reactant [_AbstractSpecies_]
 
 - __reactant_type__
   - Type: ReactantTypes
