@@ -1,24 +1,23 @@
 ```mermaid
 classDiagram
+    EnzymeKinetics *-- KineticModel
     EnzymeKinetics *-- Measurement
-    EnzymeKinetics *-- ReactantTypes
-    EnzymeKinetics *-- ConcentrationTypes
-    EnzymeKinetics *-- TimeTypes
+    Reactant *-- ReactantTypes
     Measurement *-- Series
     Measurement *-- ConcentrationTypes
+    Measurement *-- ConcentrationTypes
+    Measurement *-- TimeTypes
     KineticModel *-- Parameter
     
     class EnzymeKinetics {
         +string title
-        +string reactant_name
-        +float temperature
-        +string temperature_unit
-        +float pH
+        +KineticModel[0..*] kinetic_models
         +Measurement[0..*] measurements*
+    }
+    
+    class Reactant {
+        +string name
         +ReactantTypes reactant_type
-        +ConcentrationTypes data_conc_unit*
-        +float[0..*] time*
-        +TimeTypes time_unit*
     }
     
     class Measurement {
@@ -27,6 +26,12 @@ classDiagram
         +Series[0..*] data*
         +float inhibitor_conc
         +ConcentrationTypes inhibitor_conc_unit
+        +float temperature
+        +string temperature_unit
+        +float pH
+        +ConcentrationTypes data_conc_unit*
+        +float[0..*] time*
+        +TimeTypes time_unit*
     }
     
     class KineticModel {

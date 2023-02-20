@@ -1,20 +1,17 @@
 import sdRDM
 
 from typing import Optional, Union
-from pydantic import PrivateAttr
-from sdRDM.base.listplus import ListPlus
-from sdRDM.base.utils import forge_signature, IDGenerator
-
-from pydantic import Field
 from typing import List
 from typing import Optional
-
+from pydantic import PrivateAttr
+from pydantic import Field
+from sdRDM.base.listplus import ListPlus
+from sdRDM.base.utils import forge_signature, IDGenerator
 from .parameter import Parameter
 
 
 @forge_signature
 class KineticModel(sdRDM.DataModel):
-
     """Description of a kinetic model"""
 
     id: str = Field(
@@ -22,29 +19,23 @@ class KineticModel(sdRDM.DataModel):
         default_factory=IDGenerator("kineticmodelINDEX"),
         xml="@id",
     )
-    name: Optional[str] = Field(
-        description="Name of the kinetic model.",
-        default=None,
-    )
+
+    name: Optional[str] = Field(description="Name of the kinetic model.", default=None)
 
     equation: Optional[str] = Field(
-        description="Equation of the kinetic model.",
-        default=None,
+        description="Equation of the kinetic model.", default=None
     )
 
     parameters: List[Parameter] = Field(
-        description="Kinetic parameters of the model.",
-        default_factory=ListPlus,
+        description="Kinetic parameters of the model.", default_factory=ListPlus
     )
 
     AIC: Optional[float] = Field(
-        description="Akaike information criterion.",
-        default=None,
+        description="Akaike information criterion.", default=None
     )
 
     BIC: Optional[float] = Field(
-        description="Bayesian information criterion.",
-        default=None,
+        description="Bayesian information criterion.", default=None
     )
 
     RMSD: Optional[float] = Field(
@@ -55,8 +46,9 @@ class KineticModel(sdRDM.DataModel):
     __repo__: Optional[str] = PrivateAttr(
         default="git://github.com/haeussma/EnzymePynetics.git"
     )
+
     __commit__: Optional[str] = PrivateAttr(
-        default="2b7b3c1442ad1308b68828cb4d86f5ac48a9a098"
+        default="3de8cc7f43153d5cbb0cbfd736e91aca3ea2eab1"
     )
 
     def add_to_parameters(
@@ -70,9 +62,17 @@ class KineticModel(sdRDM.DataModel):
         Adds an instance of 'Parameter' to the attribute 'parameters'.
 
         Args:
+
+
             id (str): Unique identifier of the 'Parameter' object. Defaults to 'None'.
+
+
             name (Optional[str]): Name of the kinetic parameter. Defaults to None
+
+
             value (Optional[float]): Value of the kinetic parameter. Defaults to None
+
+
             standard_deviation (Optional[float]): Standard deviation of the kinetic parameter. Defaults to None
         """
 
@@ -81,10 +81,7 @@ class KineticModel(sdRDM.DataModel):
             "value": value,
             "standard_deviation": standard_deviation,
         }
-
         if id is not None:
             params["id"] = id
-
         parameters = [Parameter(**params)]
-
         self.parameters = self.parameters + parameters

@@ -3,6 +3,7 @@ from .enzymekinetics import EnzymeKinetics
 from .kineticmodel import KineticModel
 from .measurement import Measurement
 from .parameter import Parameter
+from .reactant import Reactant
 from .reactanttypes import ReactantTypes
 from .series import Series
 from .timetypes import TimeTypes
@@ -15,6 +16,7 @@ __all__ = [
     "KineticModel",
     "Measurement",
     "Parameter",
+    "Reactant",
     "ReactantTypes",
     "Series",
     "TimeTypes",

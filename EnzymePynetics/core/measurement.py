@@ -9,6 +9,7 @@ from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
 from .concentrationtypes import ConcentrationTypes
 from .series import Series
+from .timetypes import TimeTypes
 
 
 @forge_signature
@@ -42,12 +43,33 @@ class Measurement(sdRDM.DataModel):
         description="Inhibitor concentration in the reaction, if applied.", default=None
     )
 
+    data_conc_unit: ConcentrationTypes = Field(
+        ..., description="Molar concentration unit of the measured data."
+    )
+
+    time_unit: TimeTypes = Field(..., description="Time data unit.")
+
+    temperature: Optional[float] = Field(
+        description="Temperature of the reaction.", default=None
+    )
+
+    temperature_unit: Optional[str] = Field(
+        description="Temperature unit.", default=None
+    )
+
+    pH: Optional[float] = Field(description="pH of the reaction", default=None)
+
+    time: List[float] = Field(
+        description="Time array corresponding to time-course data.",
+        default_factory=ListPlus,
+    )
+
     __repo__: Optional[str] = PrivateAttr(
         default="git://github.com/haeussma/EnzymePynetics.git"
     )
 
     __commit__: Optional[str] = PrivateAttr(
-        default="2b7b3c1442ad1308b68828cb4d86f5ac48a9a098"
+        default="3de8cc7f43153d5cbb0cbfd736e91aca3ea2eab1"
     )
 
     def add_to_data(self, values: List[float], id: Optional[str] = None) -> None:
