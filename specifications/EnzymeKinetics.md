@@ -66,23 +66,23 @@ Description of a kinetic model
 
 - __name__
   - Type: string
-  - Description: Name of the kinetic model
+  - Description: Name of the kinetic model.
+- __equation__
+  - Type: string
+  - Description: Equation of the kinetic model.
 - __parameters__
   - Type: Parameter
-  - Descrition: Kinetic parameters of the model.
+  - Description: Kinetic parameters of the model.
   - Multiple: True
 - __AIC__
   - Type: float
-  - Descrition: Akaike information criterion.
-  - Multiple: True
+  - Description: Akaike information criterion.
 - __BIC__
   - Type: float
-  - Descrition: Bayesian information criterion.
-  - Multiple: True
+  - Description: Bayesian information criterion.
 - __RMSD__
   - Type: float
-  - Descrition: Root mean square deviation between model and measurement data.
-  - Multiple: True
+  - Description: Root mean square deviation between model and measurement data.
 
 ### Parameter
 
