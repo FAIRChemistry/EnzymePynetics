@@ -55,8 +55,8 @@ A Measurement object contains information about the applied enzyme concentration
   - Type: Reactant
   - Description: Reactants of the reaction.
   - Multiple: True
-- __inhibitior__
-  - Type: Inhibitior
+- __inhibitor__
+  - Type: Inhibitor
   - Description: Inhibitor applied to the reaction.
 - __enzyme_conc__
   - Type: float
