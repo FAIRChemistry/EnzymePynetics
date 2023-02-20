@@ -49,7 +49,7 @@ A Measurement object contains information about the applied enzyme concentration
 - __inhibitor_conc_unit__
   - Type: ConcentrationTypes
   - Description: Inhibitor concentration in the reaction, if applied.
-- - __temperature__
+- __temperature__
   - Type: float
   - Description: Temperature of the reaction.
 - __temperature_unit__
