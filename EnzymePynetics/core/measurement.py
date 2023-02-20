@@ -10,9 +10,8 @@ from sdRDM.base.utils import forge_signature, IDGenerator
 from .concentrationtypes import ConcentrationTypes
 from .series import Series
 from .timetypes import TimeTypes
-from .inhibitor import Inhibitor
-from .reactant import Reactant
 from .reactanttypes import ReactantTypes
+from .species import Species
 
 
 @forge_signature
@@ -46,12 +45,8 @@ class Measurement(sdRDM.DataModel):
         default_factory=ListPlus,
     )
 
-    reactants: List[Reactant] = Field(
+    species: List[Species] = Field(
         description="Reactants of the reaction.", default_factory=ListPlus
-    )
-
-    inhibitor: Optional[Inhibitor] = Field(
-        description="Inhibitor applied to the reaction.", default=None
     )
 
     __repo__: Optional[str] = PrivateAttr(
@@ -59,10 +54,10 @@ class Measurement(sdRDM.DataModel):
     )
 
     __commit__: Optional[str] = PrivateAttr(
-        default="65530220022f81dc42567f7a1e75530dfdf77be4"
+        default="34e1acf0ccca3c98af3ab5c537fd5e61a56d76d2"
     )
 
-    def add_to_reactants(
+    def add_to_species(
         self,
         name: str,
         conc_unit: ConcentrationTypes,
@@ -72,12 +67,12 @@ class Measurement(sdRDM.DataModel):
         id: Optional[str] = None,
     ) -> None:
         """
-        Adds an instance of 'Reactant' to the attribute 'reactants'.
+        Adds an instance of 'Species' to the attribute 'species'.
 
         Args:
 
 
-            id (str): Unique identifier of the 'Reactant' object. Defaults to 'None'.
+            id (str): Unique identifier of the 'Species' object. Defaults to 'None'.
 
 
             name (str): name of the reactant.
@@ -104,5 +99,5 @@ class Measurement(sdRDM.DataModel):
         }
         if id is not None:
             params["id"] = id
-        reactants = [Reactant(**params)]
-        self.reactants = self.reactants + reactants
+        species = [Species(**params)]
+        self.species = self.species + species

@@ -11,8 +11,7 @@ from .measurement import Measurement
 from .timetypes import TimeTypes
 from .kineticmodel import KineticModel
 from .parameter import Parameter
-from .inhibitor import Inhibitor
-from .reactant import Reactant
+from .species import Species
 
 
 @forge_signature
@@ -44,7 +43,7 @@ class EnzymeKinetics(sdRDM.DataModel):
     )
 
     __commit__: Optional[str] = PrivateAttr(
-        default="65530220022f81dc42567f7a1e75530dfdf77be4"
+        default="34e1acf0ccca3c98af3ab5c537fd5e61a56d76d2"
     )
 
     def add_to_kinetic_models(
@@ -99,10 +98,9 @@ class EnzymeKinetics(sdRDM.DataModel):
 
     def add_to_measurements(
         self,
-        reactants: List[Reactant],
+        species: List[Species],
         time: List[float],
         time_unit: TimeTypes,
-        inhibitor: Optional[Inhibitor] = None,
         enzyme_conc: Optional[float] = None,
         temperature: Optional[float] = None,
         temperature_unit: Optional[str] = None,
@@ -118,16 +116,13 @@ class EnzymeKinetics(sdRDM.DataModel):
             id (str): Unique identifier of the 'Measurement' object. Defaults to 'None'.
 
 
-            reactants (List[Reactant]): Reactants of the reaction.
+            species (List[Species]): Reactants of the reaction.
 
 
             time (List[float]): Time array corresponding to time-course data.
 
 
             time_unit (TimeTypes): Time data unit.
-
-
-            inhibitor (Optional[Inhibitor]): Inhibitor applied to the reaction. Defaults to None
 
 
             enzyme_conc (Optional[float]): Enzyme concentration in the reaction. Defaults to None
@@ -143,10 +138,9 @@ class EnzymeKinetics(sdRDM.DataModel):
         """
 
         params = {
-            "reactants": reactants,
+            "species": species,
             "time": time,
             "time_unit": time_unit,
-            "inhibitor": inhibitor,
             "enzyme_conc": enzyme_conc,
             "temperature": temperature,
             "temperature_unit": temperature_unit,

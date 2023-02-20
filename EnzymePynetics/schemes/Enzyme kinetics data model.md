@@ -1,14 +1,11 @@
 ```mermaid
 classDiagram
-    AbstractSpecies <-- Reactant
-    AbstractSpecies <-- Inhibitor
     EnzymeKinetics *-- KineticModel
     EnzymeKinetics *-- Measurement
-    AbstractSpecies *-- ConcentrationTypes
-    Reactant *-- ReactantTypes
-    Reactant *-- Series
-    Measurement *-- Reactant
-    Measurement *-- Inhibitor
+    Species *-- ConcentrationTypes
+    Species *-- ReactantTypes
+    Species *-- Series
+    Measurement *-- Species
     Measurement *-- TimeTypes
     KineticModel *-- Parameter
     
@@ -18,24 +15,16 @@ classDiagram
         +Measurement[0..*] measurements*
     }
     
-    class AbstractSpecies {
+    class Species {
         +string name*
         +ConcentrationTypes conc_unit*
         +float initial_conc*
-    }
-    
-    class Reactant {
         +ReactantTypes reactant_type
         +Series[0..*] data
     }
     
-    class Inhibitor {
-        +string ergerg
-    }
-    
     class Measurement {
-        +Reactant[0..*] reactants
-        +Inhibitor inhibitor
+        +Species[0..*] species
         +float enzyme_conc
         +float temperature
         +string temperature_unit

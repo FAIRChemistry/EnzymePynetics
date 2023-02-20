@@ -24,7 +24,7 @@
     },
     "docstring": "Base class, dealing with measurement data of an enzyme kinetics assay.\n"
   },
-  "AbstractSpecies": {
+  "Species": {
     "attributes": {
       "name": {
         "description": "name of the reactant."
@@ -34,12 +34,7 @@
       },
       "initial_conc": {
         "description": "Initial concentration of the reactant."
-      }
-    },
-    "docstring": null
-  },
-  "Reactant": {
-    "attributes": {
+      },
       "reactant_type": {
         "description": "Define whether \"substrate\" or \"product\" concentration was measured."
       },
@@ -50,22 +45,11 @@
     },
     "docstring": null
   },
-  "Inhibitor": {
-    "attributes": {
-      "ergerg": {
-        "description": "ergerge"
-      }
-    },
-    "docstring": null
-  },
   "Measurement": {
     "attributes": {
-      "reactants": {
+      "species": {
         "description": "Reactants of the reaction.",
         "multiple": "True"
-      },
-      "inhibitor": {
-        "description": "Inhibitor applied to the reaction."
       },
       "enzyme_conc": {
         "description": "Enzyme concentration in the reaction."
