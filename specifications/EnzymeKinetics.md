@@ -18,7 +18,7 @@ Base class, dealing with measurement data of an enzyme kinetics assay.
   - Description: Measurement data for a given initial substrate concentration.
   - Multiple: True
 
-### AbstractSpecies
+### Species
 
 - __name*__
   - Type: string
@@ -29,10 +29,6 @@ Base class, dealing with measurement data of an enzyme kinetics assay.
 - __initial_conc*__
   - Type: float
   - Description: Initial concentration of the reactant.
-
-
-### Reactant [_AbstractSpecies_]
-
 - __reactant_type__
   - Type: ReactantTypes
   - Description: Define whether "substrate" or "product" concentration was measured.
@@ -41,23 +37,14 @@ Base class, dealing with measurement data of an enzyme kinetics assay.
   - Description: One or multiple time-course measurement data arrays.
   - Multiple: True
 
-### Inhibitor [_AbstractSpecies_]
-
-- __ergerg__
-  - Type: string
-  - Description: ergerge
-
 ### Measurement
 
 A Measurement object contains information about the applied enzyme concentration and one or multiple time-course concentration measurements. Additionally, the initial substrate concentration should be specified. This is neccessary to derive the substrate concentration for the modeling process. If an inhibitor was applied to the measurement, its concentration and the respective conetration unit can be specified to account for inhibition in kinetic modeling.
 
-- __reactants__
-  - Type: Reactant
+- __species__
+  - Type: Species
   - Description: Reactants of the reaction.
   - Multiple: True
-- __inhibitor__
-  - Type: Inhibitor
-  - Description: Inhibitor applied to the reaction.
 - __enzyme_conc__
   - Type: float
   - Description: Enzyme concentration in the reaction.
