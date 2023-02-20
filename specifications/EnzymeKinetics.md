@@ -8,36 +8,26 @@ Base class, dealing with measurement data of an enzyme kinetics assay.
 
 - __title__
   - Type: string
-  - Description: Title of the kinetic experiment
-- __reactant_name__
-  - Type: string
-  - Description: Name of the measured reactant.
-- __temperature__
-  - Type: float
-  - Description: Temperature of the reaction.
-- __temperature_unit__
-  - Type: string
-  - Description: Temperature unit.
-- __pH__
-  - Type: float
-  - Description: pH of the reaction
+  - Description: Title of the kinetic experiment.
+- __kinetic_models__
+  - Type: KineticModel
+  - Description: Kinetic moodels which were used for parameter estimation.
+  - Multiple: True
 - __measurements*__
   - Type: Measurement
   - Description: Measurement data for a given initial substrate concentration.
   - Multiple: True
+
+
+
+### Reactant
+
+- __name__
+  - Type: string
+  - Description: name of the reactant. 
 - __reactant_type__
   - Type: ReactantTypes
   - Description: Define whether "substrate" or "product" concentration was measured.
-- __data_conc_unit*__
-  - Type: ConcentrationTypes
-  - Description: Molar concentration unit of the measured data.
-- __time*__
-  - Type: float
-  - Description: Time array corresponding to time-course data.
-  - Multiple: True
-- __time_unit*__
-  - Type: TimeTypes
-  - Description: Time data unit.
 
 ### Measurement
 
@@ -59,6 +49,25 @@ A Measurement object contains information about the applied enzyme concentration
 - __inhibitor_conc_unit__
   - Type: ConcentrationTypes
   - Description: Inhibitor concentration in the reaction, if applied.
+- - __temperature__
+  - Type: float
+  - Description: Temperature of the reaction.
+- __temperature_unit__
+  - Type: string
+  - Description: Temperature unit.
+- __pH__
+  - Type: float
+  - Description: pH of the reaction
+- __data_conc_unit*__
+  - Type: ConcentrationTypes
+  - Description: Molar concentration unit of the measured data.
+- __time*__
+  - Type: float
+  - Description: Time array corresponding to time-course data.
+  - Multiple: True
+- __time_unit*__
+  - Type: TimeTypes
+  - Description: Time data unit.
 
 ### KineticModel
 
@@ -86,7 +95,7 @@ Description of a kinetic model
 
 ### Parameter
 
-Defines a kinetic parameter
+Defines a kinetic parameter.
 
 - __name__
   - Type: string
