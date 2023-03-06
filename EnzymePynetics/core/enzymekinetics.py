@@ -43,7 +43,7 @@ class EnzymeKinetics(sdRDM.DataModel):
     )
 
     __commit__: Optional[str] = PrivateAttr(
-        default="1dd76af4903eec1bb9b572619dbcc9bd84332ee6"
+        default="577e0e8515c62e37c47732400090bb756ba93616"
     )
 
     def add_to_kinetic_models(
@@ -98,8 +98,8 @@ class EnzymeKinetics(sdRDM.DataModel):
 
     def add_to_measurements(
         self,
-        species: List[Species],
         time: List[float],
+        species: Optional[Species] = None,
         enzyme_conc: Optional[float] = None,
         temperature: Optional[float] = None,
         temperature_unit: Optional[str] = None,
@@ -116,10 +116,10 @@ class EnzymeKinetics(sdRDM.DataModel):
             id (str): Unique identifier of the 'Measurement' object. Defaults to 'None'.
 
 
-            species (List[Species]): Reactants of the reaction.
-
-
             time (List[float]): Time array corresponding to time-course data.
+
+
+            species (Optional[Species]): Reactants of the reaction. Defaults to None
 
 
             enzyme_conc (Optional[float]): Enzyme concentration in the reaction. Defaults to None
@@ -138,8 +138,8 @@ class EnzymeKinetics(sdRDM.DataModel):
         """
 
         params = {
-            "species": species,
             "time": time,
+            "species": species,
             "enzyme_conc": enzyme_conc,
             "temperature": temperature,
             "temperature_unit": temperature_unit,

@@ -7,10 +7,7 @@ from pydantic import PrivateAttr
 from pydantic import Field
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
-from .concentrationtypes import ConcentrationTypes
-from .series import Series
 from .timetypes import TimeTypes
-from .reactanttypes import ReactantTypes
 from .species import Species
 
 
@@ -43,61 +40,16 @@ class Measurement(sdRDM.DataModel):
         default_factory=ListPlus,
     )
 
-    species: List[Species] = Field(
-        description="Reactants of the reaction.", default_factory=ListPlus
-    )
-
     time_unit: Optional[TimeTypes] = Field(description="Time data unit.", default=None)
+
+    species: Optional[Species] = Field(
+        description="Reactants of the reaction.", default=None
+    )
 
     __repo__: Optional[str] = PrivateAttr(
         default="git://github.com/haeussma/EnzymePynetics.git"
     )
 
     __commit__: Optional[str] = PrivateAttr(
-        default="1dd76af4903eec1bb9b572619dbcc9bd84332ee6"
+        default="577e0e8515c62e37c47732400090bb756ba93616"
     )
-
-    def add_to_species(
-        self,
-        name: str,
-        conc_unit: ConcentrationTypes,
-        initial_conc: float,
-        data: List[Series],
-        reactant_type: Optional[ReactantTypes] = None,
-        id: Optional[str] = None,
-    ) -> None:
-        """
-        Adds an instance of 'Species' to the attribute 'species'.
-
-        Args:
-
-
-            id (str): Unique identifier of the 'Species' object. Defaults to 'None'.
-
-
-            name (str): name of the reactant.
-
-
-            conc_unit (ConcentrationTypes): Concentration unit of the measurement data.
-
-
-            initial_conc (float): Initial concentration of the reactant.
-
-
-            data (List[Series]): One or multiple time-course measurement data arrays.
-
-
-            reactant_type (Optional[ReactantTypes]): Define whether "substrate" or "product" concentration was measured. Defaults to None
-        """
-
-        params = {
-            "name": name,
-            "conc_unit": conc_unit,
-            "initial_conc": initial_conc,
-            "data": data,
-            "reactant_type": reactant_type,
-        }
-        if id is not None:
-            params["id"] = id
-        species = [Species(**params)]
-        self.species = self.species + species

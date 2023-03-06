@@ -48,8 +48,7 @@
   "Measurement": {
     "attributes": {
       "species": {
-        "description": "Reactants of the reaction.",
-        "multiple": "True"
+        "description": "Reactants of the reaction."
       },
       "enzyme_conc": {
         "description": "Enzyme concentration in the reaction."
