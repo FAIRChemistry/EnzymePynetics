@@ -8,22 +8,22 @@ import numpy as np
 from EnzymePynetics.tools.parameterestimator import ParameterEstimator
 from EnzymePynetics.tools.kineticmodel import KineticModel
 
-class Solver(ABC):
+class Fitter(ABC):
 
     @abstractmethod
     def residuals():
         "Defines how model equations are initialized."
 
-class RateEquations(Solver):
+class RateMM(Fitter):
 
-    def __init__(self):
-        pass
+    def __init__(self, kinetic_model: List[KineticModel], **kwargs):
+        self.kinetic_model = kinetic_model
 
     def residuals(self):
         pass
 
 
-class IntegratedRateEquations(Solver):
+class IntegratedMM(Fitter):
 
     def __init__(self, kinetic_model: List[KineticModel]):
         self.kinetic_model = kinetic_model
@@ -74,6 +74,11 @@ if __name__ == "__main__":
 
     time = [irrev_mm(x) for x in concentration]
     time = np.random.normal(0,0.3, size=concentration.size) +time
+
+
+
+
+
 
 
 
