@@ -43,7 +43,7 @@ class EnzymeKinetics(sdRDM.DataModel):
     )
 
     __commit__: Optional[str] = PrivateAttr(
-        default="cef1db62e537ca419ab5d2ea2337f5e0d678630f"
+        default="577e0e8515c62e37c47732400090bb756ba93616"
     )
 
     def add_to_kinetic_models(
@@ -98,13 +98,13 @@ class EnzymeKinetics(sdRDM.DataModel):
 
     def add_to_measurements(
         self,
-        species: List[Species],
         time: List[float],
-        time_unit: TimeTypes,
+        species: Optional[Species] = None,
         enzyme_conc: Optional[float] = None,
         temperature: Optional[float] = None,
         temperature_unit: Optional[str] = None,
         pH: Optional[float] = None,
+        time_unit: Optional[TimeTypes] = None,
         id: Optional[str] = None,
     ) -> None:
         """
@@ -116,13 +116,10 @@ class EnzymeKinetics(sdRDM.DataModel):
             id (str): Unique identifier of the 'Measurement' object. Defaults to 'None'.
 
 
-            species (List[Species]): Reactants of the reaction.
-
-
             time (List[float]): Time array corresponding to time-course data.
 
 
-            time_unit (TimeTypes): Time data unit.
+            species (Optional[Species]): Reactants of the reaction. Defaults to None
 
 
             enzyme_conc (Optional[float]): Enzyme concentration in the reaction. Defaults to None
@@ -135,16 +132,19 @@ class EnzymeKinetics(sdRDM.DataModel):
 
 
             pH (Optional[float]): pH of the reaction. Defaults to None
+
+
+            time_unit (Optional[TimeTypes]): Time data unit. Defaults to None
         """
 
         params = {
-            "species": species,
             "time": time,
-            "time_unit": time_unit,
+            "species": species,
             "enzyme_conc": enzyme_conc,
             "temperature": temperature,
             "temperature_unit": temperature_unit,
             "pH": pH,
+            "time_unit": time_unit,
         }
         if id is not None:
             params["id"] = id

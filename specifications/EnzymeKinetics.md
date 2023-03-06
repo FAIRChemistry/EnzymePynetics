@@ -44,7 +44,6 @@ A Measurement object contains information about the applied enzyme concentration
 - __species__
   - Type: Species
   - Description: Reactants of the reaction.
-  - Multiple: True
 - __enzyme_conc__
   - Type: float
   - Description: Enzyme concentration in the reaction.
@@ -57,11 +56,11 @@ A Measurement object contains information about the applied enzyme concentration
 - __pH__
   - Type: float
   - Description: pH of the reaction
-- __time*__
+- __time__
   - Type: float
   - Description: Time array corresponding to time-course data.
   - Multiple: True
-- __time_unit*__
+- __time_unit__
   - Type: TimeTypes
   - Description: Time data unit.
 
