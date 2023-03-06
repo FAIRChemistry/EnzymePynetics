@@ -9,6 +9,9 @@ from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
 from .timetypes import TimeTypes
 from .species import Species
+from .concentrationtypes import ConcentrationTypes
+from .reactanttypes import ReactantTypes
+from .series import Series
 
 
 @forge_signature
@@ -42,8 +45,8 @@ class Measurement(sdRDM.DataModel):
 
     time_unit: Optional[TimeTypes] = Field(description="Time data unit.", default=None)
 
-    species: Optional[Species] = Field(
-        description="Reactants of the reaction.", default=None
+    species: List[Species] = Field(
+        description="Reactants of the reaction.", default_factory=ListPlus
     )
 
     __repo__: Optional[str] = PrivateAttr(
@@ -51,5 +54,50 @@ class Measurement(sdRDM.DataModel):
     )
 
     __commit__: Optional[str] = PrivateAttr(
-        default="bca6eea58c1a4f42a5908162b2a2e5fd8ca8931b"
+        default="f8440c4fbdc7c22ae6271ae9d554d1779f238938"
     )
+
+    def add_to_species(
+        self,
+        name: str,
+        conc_unit: ConcentrationTypes,
+        initial_conc: float,
+        data: List[Series],
+        reactant_type: Optional[ReactantTypes] = None,
+        id: Optional[str] = None,
+    ) -> None:
+        """
+        Adds an instance of 'Species' to the attribute 'species'.
+
+        Args:
+
+
+            id (str): Unique identifier of the 'Species' object. Defaults to 'None'.
+
+
+            name (str): name of the reactant.
+
+
+            conc_unit (ConcentrationTypes): Concentration unit of the measurement data.
+
+
+            initial_conc (float): Initial concentration of the reactant.
+
+
+            data (List[Series]): One or multiple time-course measurement data arrays.
+
+
+            reactant_type (Optional[ReactantTypes]): Define whether "substrate" or "product" concentration was measured. Defaults to None
+        """
+
+        params = {
+            "name": name,
+            "conc_unit": conc_unit,
+            "initial_conc": initial_conc,
+            "data": data,
+            "reactant_type": reactant_type,
+        }
+        if id is not None:
+            params["id"] = id
+        species = [Species(**params)]
+        self.species = self.species + species

@@ -24,7 +24,7 @@ classDiagram
     }
     
     class Measurement {
-        +Species species
+        +Species[0..*] species
         +float enzyme_conc
         +float temperature
         +string temperature_unit
