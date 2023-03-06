@@ -697,16 +697,7 @@ class ParameterEstimator():
 
 if __name__ ==  "__main__":
     import pyenzyme as pe
+    from EnzymePynetics.core.measurement import Measurement
 
-    enzmldoc = pe.EnzymeMLDocument.fromFile(
-        "/Users/maxhaussler/Documents/code/papers/MTP_inhibition/data/SLAC/ABTS_oxidation_pH_3.0_and_25.0°C.omex")
-    
-
-    slac_parameters = ParameterEstimator.from_EnzymeML(enzmldoc=enzmldoc, 
-                                                          reactant_id="s0",
-                                                          measured_species="substrate")
-    print("noob")
-    
-    #slac_parameters.fit_models(enzyme_inactivation=True, only_irrev_MM=False)
-    #slac_parameters.visualize()
-    #plt.show()
+    meas = Measurement(time_unit="min")
+    print(meas.__dict__)
