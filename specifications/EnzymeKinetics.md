@@ -44,6 +44,7 @@ A Measurement object contains information about the applied enzyme concentration
 - __species__
   - Type: Species
   - Description: Reactants of the reaction.
+  - Multiple: True
 - __enzyme_conc__
   - Type: float
   - Description: Enzyme concentration in the reaction.
