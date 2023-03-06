@@ -28,8 +28,6 @@ class Measurement(sdRDM.DataModel):
         description="Enzyme concentration in the reaction.", default=None
     )
 
-    time_unit: TimeTypes = Field(..., description="Time data unit.")
-
     temperature: Optional[float] = Field(
         description="Temperature of the reaction.", default=None
     )
@@ -49,12 +47,14 @@ class Measurement(sdRDM.DataModel):
         description="Reactants of the reaction.", default_factory=ListPlus
     )
 
+    time_unit: Optional[TimeTypes] = Field(description="Time data unit.", default=None)
+
     __repo__: Optional[str] = PrivateAttr(
         default="git://github.com/haeussma/EnzymePynetics.git"
     )
 
     __commit__: Optional[str] = PrivateAttr(
-        default="cef1db62e537ca419ab5d2ea2337f5e0d678630f"
+        default="1dd76af4903eec1bb9b572619dbcc9bd84332ee6"
     )
 
     def add_to_species(

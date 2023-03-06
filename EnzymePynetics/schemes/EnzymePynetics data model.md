@@ -29,8 +29,8 @@ classDiagram
         +float temperature
         +string temperature_unit
         +float pH
-        +float[0..*] time*
-        +TimeTypes time_unit*
+        +float[0..*] time
+        +TimeTypes time_unit
     }
     
     class KineticModel {
