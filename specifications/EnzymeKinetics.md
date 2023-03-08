@@ -22,7 +22,7 @@ Base class, dealing with measurement data of an enzyme kinetics assay.
 
 - __name*__
   - Type: string
-  - Description: name of the reactant. 
+  - Description: name of the reactant.
 - __conc_unit*__
   - Type: ConcentrationTypes
   - Description: Concentration unit of the measurement data.
@@ -119,6 +119,7 @@ Measurement data can eighter be substrate or product.
 ```python
 SUBSTRATE = "substrate"
 PRODUCT = "product"
+INHIBITOR = "inhibitor"
 ```
 
 #### ConcentrationTypes
