@@ -54,7 +54,7 @@ class Measurement(sdRDM.DataModel):
     )
 
     __commit__: Optional[str] = PrivateAttr(
-        default="f8440c4fbdc7c22ae6271ae9d554d1779f238938"
+        default="aeef6068d7875e75bfc81dacd796d9320df104e3"
     )
 
     def add_to_species(

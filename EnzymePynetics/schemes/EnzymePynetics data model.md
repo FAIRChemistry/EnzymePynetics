@@ -56,12 +56,14 @@ classDiagram
         << Enumeration >>
         +SUBSTRATE = "substrate"
         +PRODUCT = "product"
+        +INHIBITOR = "inhibitor"
     }
     
     class ReactantTypes {
         << Enumeration >>
         +SUBSTRATE = "substrate"
         +PRODUCT = "product"
+        +INHIBITOR = "inhibitor"
     }
     
     class ConcentrationTypes {
