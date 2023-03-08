@@ -16,10 +16,10 @@ class Fitter(ABC):
 
 class RateMM(Fitter):
 
-    def __init__(self, kinetic_model: List[KineticModel], **kwargs):
+    def __init__(self, kinetic_model: List[KineticModel]):
         self.kinetic_model = kinetic_model
 
-    def residuals(self):
+    def residuals(self, params: Parameters, time, substrate, s0, enzyme):
         pass
 
 
@@ -30,9 +30,11 @@ class IntegratedMM(Fitter):
 
 
 class Fitter():
-    def __init__(self, solver: Solver, measurements) -> None:
+    def __init__(self, solver, measurements) -> None:
         self.solver = solver
         self.measurements = measurements
+
+    def residuals()
 
     def fit_models(self):
         pass
@@ -51,7 +53,7 @@ def irrev_MM(k_cat: float,
              ) -> float:
     
     if enzyme_inactivation:
-        e = np.exp(-k_inactivation * e)
+        enzyme = np.exp(-k_inactivation * enzyme)
     
     return -1/(k_cat*enzyme)*(K_m* np.log(substrate/init_substrate) + (substrate-init_substrate)) + t_0
 
@@ -59,21 +61,6 @@ def irrev_MM(k_cat: float,
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
-
-
-    concentration = np.linspace(10,1)
-    s0 = 10
-    km = 5
-    kcat = 34
-    t0 = 55
-    e = 0.04
-
-    def irrev_mm(st: float):
-        return -1/(kcat*e)*(km* np.log(st/s0) + (st-s0)) + t0
-
-
-    time = [irrev_mm(x) for x in concentration]
-    time = np.random.normal(0,0.3, size=concentration.size) +time
 
 
 
