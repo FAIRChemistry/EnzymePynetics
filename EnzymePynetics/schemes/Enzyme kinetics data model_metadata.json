@@ -23,7 +23,7 @@
         "description": "Temperature unit."
       },
       "pH": {
-        "description": "pH of the reaction"
+        "description": "pH of the reaction."
       },
       "measurements": {
         "description": "Measurement data for a given initial substrate concentration.",
