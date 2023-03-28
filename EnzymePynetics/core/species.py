@@ -47,7 +47,7 @@ class Species(sdRDM.DataModel):
     )
 
     __commit__: Optional[str] = PrivateAttr(
-        default="aeef6068d7875e75bfc81dacd796d9320df104e3"
+        default="926834b0c7bcef4bdc7ad100cf17e891ee9d1543"
     )
 
     def add_to_data(self, values: List[float], id: Optional[str] = None) -> None:
