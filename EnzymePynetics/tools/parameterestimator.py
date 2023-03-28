@@ -6,6 +6,7 @@ from EnzymePynetics.core.stoichiometrytypes import StoichiometryTypes
 from EnzymePynetics.core.series import Series
 from EnzymePynetics.core.measurement import Measurement
 from EnzymePynetics.tools.kineticmodel import *
+from EnzymePynetics.tools.fitter import *
 
 import numpy as np
 from pandas import DataFrame
@@ -48,6 +49,8 @@ class ParameterEstimator():
 
         Prints DataFrame of all kinetic parameters of all fitted models sorted by Akaike information criterion.
         """
+
+        fitter = RateMM()
 
         self.enzyme_inactivation = enzyme_inactivation
 
@@ -367,10 +370,11 @@ class ParameterEstimator():
         inhibitory models for substrate and product inhibition are initialized additionally to the irreversible Michaelis Menten model.
         """
 
-        w0={"cS": initial_substrate,
+        w0={"cS": substrate,
             "cE": enzyme,
             "cP": product,
-            "cI": product,}
+            "cI": product,
+            "cS0": initial_substrate}
         
         irreversible_Michaelis_Menten = KineticModel(
             name="irreversible Michaelis Menten",
@@ -472,6 +476,7 @@ class ParameterEstimator():
                 model=partially_competitive_inhibition_model,
                 enzyme_inactivation=self.enzyme_inactivation
             )
+            
             return {
                 irreversible_Michaelis_Menten.name: irreversible_Michaelis_Menten,
                 competitive_inhibition.name: competitive_inhibition,
@@ -519,8 +524,6 @@ class ParameterEstimator():
 
             self.residuals=residuals
             return residuals.flatten()
-
-
 
         if display_output:
             print("Fitting data to:")

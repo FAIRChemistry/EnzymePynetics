@@ -1,9 +1,10 @@
 from lmfit import Parameters
 from lmfit.minimizer import MinimizerResult
 from typing import Dict, Callable, Tuple
-from numpy import ndarray
+from numpy import ndarray, log, exp
 
 class KineticModel():
+
     def __init__(self,
                  name: str,
                  model: Callable,
@@ -39,11 +40,15 @@ class KineticModel():
             parameters.add("K_ic", value=0.1, min=0.0001, max=1000)
         if self.enzyme_inactivation:
             parameters.add("K_ie", value=0.01, min=0.0001, max=0.9999)
+        if "t_0" in params:
+            parameters.add("t_0", value=-1, min=-1000, max=1000)
+        if "k_inact" in params:
+            parameters.add("k_inact", value=0.01, min=0.0001, max=0.9999)
 
         return parameters
 
-def irreversible_model(w0: tuple, t, params, flag_enzyme_inactivation: bool) -> tuple:
-    cS, cE, cP, cI = w0
+def irreversible_model(w0: tuple, t, params: Parameters, flag_enzyme_inactivation: bool) -> tuple:
+    cS, cE, cP, cI, cS0 = w0
 
     k_cat = params['k_cat'].value
     Km = params['Km'].value
@@ -57,8 +62,9 @@ def irreversible_model(w0: tuple, t, params, flag_enzyme_inactivation: bool) -> 
     dc_S = -k_cat * cE * cS / (Km+cS)
     dc_P = -dc_S
     dc_I = 0
+    dc_S0 = 0
 
-    return (dc_S, dc_E, dc_P, dc_I)
+    return (dc_S, dc_E, dc_P, dc_I, dc_S0)
 
 ### Product inhibition ###
 
@@ -218,3 +224,24 @@ def partially_competitive_inhibition_model(w0: tuple, t, params, flag_enzyme_ina
     dc_I = 0
 
     return (dc_S, dc_E, dc_P, dc_I)
+
+## Integrated Models ##
+
+def integrated_MM_model(cS,
+                  cE,
+                  cS0,
+                  params: Parameters,
+                  k_inactivation: float = None,
+                  enzyme_inactivation: bool = False,
+                  ) -> list:
+    
+    params = params.valuesdict()
+    K_m = params["K_m"]
+    k_cat = params["k_cat"]
+    t_0 = params["t_0"]
+
+
+    if enzyme_inactivation:
+        enzyme = exp(-k_inactivation * enzyme)
+    
+    return -1/(k_cat*cE)*(K_m* log(cS/cS0) + (cS-cS0)) + t_0
