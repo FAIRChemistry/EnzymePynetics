@@ -5,7 +5,7 @@ from .series import Series
 from .stoichiometrytypes import StoichiometryTypes
 from .timetypes import TimeTypes
 
-__doc__ = "The following data model describes (meta-)data from an enzyme kinetics experiment in a structured way. I constists out of multiple ```measurements```, describing one or multple measurements at diffrent initial substrate andor enzyme concentrations. If and inhibitor was applied to the reaction, its concentration can be speciefied as well."
+__doc__ = "The following data model describes (meta-)data from an enzyme kinetics experiment in a structured way. It constists out of multiple ```measurements```, describing one or multiple measurements at different initial substrate andor enzyme concentrations. If and inhibitor was applied to the reaction, its concentration can be speciefied as well."
 
 __all__ = [
     "ConcentrationTypes",
