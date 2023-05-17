@@ -66,11 +66,11 @@ class EnzymeKineticsExperiment(sdRDM.DataModel):
     )
 
     __repo__: Optional[str] = PrivateAttr(
-        default="git://github.com/haeussma/EnzymePynetics.git"
+        default="https://github.com/haeussma/EnzymePynetics.git"
     )
 
     __commit__: Optional[str] = PrivateAttr(
-        default="b5748d4583be7ad866e3caab3f867c6f8608bb10"
+        default="bc9021f3deca4945ad07d6e331ee26510a76f7ca"
     )
 
     def add_to_measurements(
