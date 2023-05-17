@@ -18,7 +18,7 @@ Base class, dealing with measurement data of an enzyme kinetics assay.
   - Description: Measurement data for a given initial substrate concentration.
   - Multiple: True
 
-### Species
+### Reactant
 
 - __name*__
   - Type: string
