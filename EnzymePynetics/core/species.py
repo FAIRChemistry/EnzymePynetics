@@ -1,81 +1,62 @@
 import sdRDM
 
-from typing import Optional, Union, List
-from pydantic import PrivateAttr, Field, validator
+from typing import List, Optional
+from pydantic import Field, PrivateAttr
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
 
 
-from .speciestypes import SpeciesTypes
 from .series import Series
+from .speciestypes import SpeciesTypes
 from .concentrationtypes import ConcentrationTypes
+
 
 @forge_signature
 class Species(sdRDM.DataModel):
 
-                
     """"""
-    
+
     id: str = Field(
-            description="Unique identifier of the given object.",
-            default_factory=IDGenerator("speciesINDEX"),
-            xml="@id"
+        description="Unique identifier of the given object.",
+        default_factory=IDGenerator("speciesINDEX"),
+        xml="@id",
     )
-    
+
     name: Optional[str] = Field(
-    
-    
-    default=None,
-    
-    description="name of the reactant.",
-    
+        default=None,
+        description="name of the reactant.",
     )
 
     conc_unit: Optional[ConcentrationTypes] = Field(
-    
-    
-    default=None,
-    
-    description="Concentration unit of the measurement data.",
-    
+        default=None,
+        description="Concentration unit of the measurement data.",
     )
 
     initial_conc: Optional[float] = Field(
-    
-    
-    default=None,
-    
-    description="Initial concentration of the reactant.",
-    
+        default=None,
+        description="Initial concentration of the reactant.",
     )
 
     species_type: Optional[SpeciesTypes] = Field(
-    
-    
-    default=None,
-    
-    description="Define whether "substrate" or "product" concentration was measured.",
-    
+        default=None,
+        description="Define the role of the species in the reaction.",
     )
 
     data: List[Series] = Field(
-    
-    
-    description="One or multiple time-course measurement data arrays.",
-    
-    default_factory=ListPlus,
-    
-    multiple=True,
-    
+        description="One or multiple time-course measurement data arrays.",
+        default_factory=ListPlus,
+        multiple=True,
     )
 
-    __repo__: Optional[str] = PrivateAttr(default="https://github.com/haeussma/EnzymePynetics.git")
-    __commit__: Optional[str] = PrivateAttr(default="f66e935295a31c4548d8340fdfc93d48e7d760a6")
-    
+    __repo__: Optional[str] = PrivateAttr(
+        default="https://github.com/haeussma/EnzymePynetics.git"
+    )
+    __commit__: Optional[str] = PrivateAttr(
+        default="6e4474bacea8c42d0c9eda5633d2ed0bf67c76c9"
+    )
+
     def add_to_data(
-        self,
-        values: List[float] = ListPlus() ,
-        id: Optional[str] = None
+        self, values: List[float] = ListPlus(), id: Optional[str] = None
     ) -> None:
         """
         This method adds an object of type 'Series' to attribute data
