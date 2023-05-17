@@ -7,9 +7,8 @@ setup(
     description="Parameter estimation for enzyme kinetics.",
     url="https://github.com/haeussma/EnzymePynetics",
     author="Haeussler, Max",
-    author_email="st171427@stud.uni-stuttgart.de",
+    author_email="max.haeussler@ibtb.uni-stuttgart.de",
     packages=setuptools.find_packages(),
-    
     install_requires=[
         "lmfit",
         "matplotlib",
@@ -18,4 +17,4 @@ setup(
         "pydantic",
         "scipy",
         "setuptools"]
-    )
+)
