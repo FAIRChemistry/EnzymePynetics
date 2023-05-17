@@ -47,9 +47,6 @@ A Measurement object contains information about the applied enzyme concentration
   - Type: Species
   - Description: Reactants of the reaction.
   - Multiple: True
-- enzyme_conc
-  - Type: float
-  - Description: Enzyme concentration in the reaction.
 - temperature
   - Type: float
   - Description: Temperature of the reaction.
