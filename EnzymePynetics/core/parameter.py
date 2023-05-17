@@ -35,5 +35,5 @@ class Parameter(sdRDM.DataModel):
         default="https://github.com/haeussma/EnzymePynetics.git"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="f66e935295a31c4548d8340fdfc93d48e7d760a6"
+        default="6e4474bacea8c42d0c9eda5633d2ed0bf67c76c9"
     )
