@@ -33,7 +33,7 @@ Base class, dealing with measurement data of an enzyme kinetics assay.
   - Description: Initial concentration of the reactant.
 - species_type
   - Type: SpeciesTypes
-  - Description: Define whether "substrate" or "product" concentration was measured.
+  - Description: Define the role of the species in the reaction.
 - data
   - Type: Series
   - Description: One or multiple time-course measurement data arrays.
