@@ -1,21 +1,21 @@
 import sdRDM
 
-from typing import Optional, Union
-from typing import List
-from typing import Optional
-from pydantic import PrivateAttr
-from pydantic import Field
+from typing import List, Optional
+from pydantic import Field, PrivateAttr
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
-from .measurement import Measurement
+
+
 from .timetypes import TimeTypes
 from .kineticmodel import KineticModel
-from .parameter import Parameter
+from .measurement import Measurement
 from .species import Species
+from .parameter import Parameter
 
 
 @forge_signature
 class EnzymeKinetics(sdRDM.DataModel):
+
     """Base class, dealing with measurement data of an enzyme kinetics assay."""
 
     id: str = Field(
@@ -24,129 +24,103 @@ class EnzymeKinetics(sdRDM.DataModel):
         xml="@id",
     )
 
-    measurements: List[Measurement] = Field(
-        description="Measurement data for a given initial substrate concentration.",
-        default_factory=ListPlus,
-    )
-
     title: Optional[str] = Field(
-        description="Title of the kinetic experiment.", default=None
+        default=None,
+        description="Title of the kinetic experiment.",
     )
 
     kinetic_models: List[KineticModel] = Field(
         description="Kinetic moodels which were used for parameter estimation.",
         default_factory=ListPlus,
+        multiple=True,
+    )
+
+    measurements: List[Measurement] = Field(
+        description="Measurement data for a given initial substrate concentration.",
+        default_factory=ListPlus,
+        multiple=True,
     )
 
     __repo__: Optional[str] = PrivateAttr(
-        default="git://github.com/haeussma/EnzymePynetics.git"
+        default="https://github.com/haeussma/EnzymePynetics.git"
     )
-
     __commit__: Optional[str] = PrivateAttr(
-        default="926834b0c7bcef4bdc7ad100cf17e891ee9d1543"
+        default="e936e7a7fdc3aa1aee4f39894d2369bfc692c92c"
     )
 
     def add_to_kinetic_models(
         self,
-        parameters: List[Parameter],
         name: Optional[str] = None,
         equation: Optional[str] = None,
+        parameters: List[Parameter] = ListPlus(),
         AIC: Optional[float] = None,
         BIC: Optional[float] = None,
         RMSD: Optional[float] = None,
         id: Optional[str] = None,
     ) -> None:
         """
-        Adds an instance of 'KineticModel' to the attribute 'kinetic_models'.
+        This method adds an object of type 'KineticModel' to attribute kinetic_models
 
         Args:
-
-
             id (str): Unique identifier of the 'KineticModel' object. Defaults to 'None'.
-
-
-            parameters (List[Parameter]): Kinetic parameters of the model.
-
-
-            name (Optional[str]): Name of the kinetic model. Defaults to None
-
-
-            equation (Optional[str]): Equation of the kinetic model. Defaults to None
-
-
-            AIC (Optional[float]): Akaike information criterion. Defaults to None
-
-
-            BIC (Optional[float]): Bayesian information criterion. Defaults to None
-
-
-            RMSD (Optional[float]): Root mean square deviation between model and measurement data. Defaults to None
+            name (): Name of the kinetic model.. Defaults to None
+            equation (): Equation of the kinetic model.. Defaults to None
+            parameters (): Kinetic parameters of the model.. Defaults to ListPlus()
+            AIC (): Akaike information criterion.. Defaults to None
+            BIC (): Bayesian information criterion.. Defaults to None
+            RMSD (): Root mean square deviation between model and measurement data.. Defaults to None
         """
 
         params = {
-            "parameters": parameters,
             "name": name,
             "equation": equation,
+            "parameters": parameters,
             "AIC": AIC,
             "BIC": BIC,
             "RMSD": RMSD,
         }
+
         if id is not None:
             params["id"] = id
-        kinetic_models = [KineticModel(**params)]
-        self.kinetic_models = self.kinetic_models + kinetic_models
+
+        self.kinetic_models.append(KineticModel(**params))
 
     def add_to_measurements(
         self,
-        species: List[Species],
-        time: List[float],
+        species: List[Species] = ListPlus(),
         enzyme_conc: Optional[float] = None,
         temperature: Optional[float] = None,
         temperature_unit: Optional[str] = None,
         pH: Optional[float] = None,
+        time: List[float] = ListPlus(),
         time_unit: Optional[TimeTypes] = None,
         id: Optional[str] = None,
     ) -> None:
         """
-        Adds an instance of 'Measurement' to the attribute 'measurements'.
+        This method adds an object of type 'Measurement' to attribute measurements
 
         Args:
-
-
             id (str): Unique identifier of the 'Measurement' object. Defaults to 'None'.
-
-
-            species (List[Species]): Reactants of the reaction.
-
-
-            time (List[float]): Time array corresponding to time-course data.
-
-
-            enzyme_conc (Optional[float]): Enzyme concentration in the reaction. Defaults to None
-
-
-            temperature (Optional[float]): Temperature of the reaction. Defaults to None
-
-
-            temperature_unit (Optional[str]): Temperature unit. Defaults to None
-
-
-            pH (Optional[float]): pH of the reaction. Defaults to None
-
-
-            time_unit (Optional[TimeTypes]): Time data unit. Defaults to None
+            species (): Reactants of the reaction.. Defaults to ListPlus()
+            enzyme_conc (): Enzyme concentration in the reaction.. Defaults to None
+            temperature (): Temperature of the reaction.. Defaults to None
+            temperature_unit (): Temperature unit.. Defaults to None
+            pH (): pH of the reaction. Defaults to None
+            time (): Time array corresponding to time-course data.. Defaults to ListPlus()
+            time_unit (): Time data unit.. Defaults to None
         """
 
         params = {
             "species": species,
-            "time": time,
             "enzyme_conc": enzyme_conc,
             "temperature": temperature,
             "temperature_unit": temperature_unit,
             "pH": pH,
+            "time": time,
             "time_unit": time_unit,
         }
+
         if id is not None:
             params["id"] = id
-        measurements = [Measurement(**params)]
-        self.measurements = self.measurements + measurements
+
+        self.measurements.append(Measurement(**params))

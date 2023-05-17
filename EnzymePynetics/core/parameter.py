@@ -1,16 +1,14 @@
 import sdRDM
 
-from typing import Optional, Union
 from typing import Optional
-from pydantic import PrivateAttr
-from pydantic import Field
-from sdRDM.base.listplus import ListPlus
+from pydantic import Field, PrivateAttr
 from sdRDM.base.utils import forge_signature, IDGenerator
 
 
 @forge_signature
 class Parameter(sdRDM.DataModel):
-    """Defines a kinetic parameter"""
+
+    """Defines a kinetic parameter."""
 
     id: str = Field(
         description="Unique identifier of the given object.",
@@ -19,21 +17,23 @@ class Parameter(sdRDM.DataModel):
     )
 
     name: Optional[str] = Field(
-        description="Name of the kinetic parameter", default=None
+        default=None,
+        description="Name of the kinetic parameter.",
     )
 
     value: Optional[float] = Field(
-        description="Value of the kinetic parameter.", default=None
+        default=None,
+        description="Value of the kinetic parameter.",
     )
 
     standard_deviation: Optional[float] = Field(
-        description="Standard deviation of the kinetic parameter.", default=None
+        default=None,
+        description="Standard deviation of the kinetic parameter.",
     )
 
     __repo__: Optional[str] = PrivateAttr(
-        default="git://github.com/haeussma/EnzymePynetics.git"
+        default="https://github.com/haeussma/EnzymePynetics.git"
     )
-
     __commit__: Optional[str] = PrivateAttr(
-        default="926834b0c7bcef4bdc7ad100cf17e891ee9d1543"
+        default="e936e7a7fdc3aa1aee4f39894d2369bfc692c92c"
     )

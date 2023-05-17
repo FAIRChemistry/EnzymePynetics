@@ -1,4 +1,82 @@
 ```mermaid
 classDiagram
+    EnzymeKinetics *-- Measurement
+    EnzymeKinetics *-- KineticModel
+    Species *-- SpeciesTypes
+    Species *-- ConcentrationTypes
+    Species *-- Series
+    Measurement *-- TimeTypes
+    Measurement *-- Species
+    KineticModel *-- Parameter
+    
+    class EnzymeKinetics {
+        +string title
+        +KineticModel[0..*] kinetic_models
+        +Measurement[0..*] measurements
+    }
+    
+    class Species {
+        +string name
+        +ConcentrationTypes conc_unit
+        +float initial_conc
+        +SpeciesTypes species_type
+        +Series[0..*] data
+    }
+    
+    class Measurement {
+        +Species[0..*] species
+        +float enzyme_conc
+        +float temperature
+        +string temperature_unit
+        +float pH
+        +float[0..*] time
+        +TimeTypes time_unit
+    }
+    
+    class KineticModel {
+        +string name
+        +string equation
+        +Parameter[0..*] parameters
+        +float AIC
+        +float BIC
+        +float RMSD
+    }
+    
+    class Parameter {
+        +string name
+        +float value
+        +float standard_deviation
+    }
+    
+    class Series {
+        +float[0..*] values
+    }
+    
+    class SpeciesTypes {
+        << Enumeration >>
+        +SUBSTRATE
+        +PRODUCT
+        +INHIBITOR
+        +ENZYME
+    }
+    
+    class ConcentrationTypes {
+        << Enumeration >>
+        +MOLAR
+        +MILLIMOLAR
+        +MICROMOLAR
+        +NANAMOLAR
+        +GRAMLITER
+        +MILLIGRAMLITER
+        +MICROGRAMLITER
+        +NANOGRAMLITER
+    }
+    
+    class TimeTypes {
+        << Enumeration >>
+        +S
+        +MIN
+        +H
+    }
     
 ```

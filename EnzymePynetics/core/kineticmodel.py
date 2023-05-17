@@ -1,17 +1,17 @@
 import sdRDM
 
-from typing import Optional, Union
-from typing import List
-from typing import Optional
-from pydantic import PrivateAttr
-from pydantic import Field
+from typing import List, Optional
+from pydantic import Field, PrivateAttr
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
+
+
 from .parameter import Parameter
 
 
 @forge_signature
 class KineticModel(sdRDM.DataModel):
+
     """Description of a kinetic model"""
 
     id: str = Field(
@@ -20,35 +20,42 @@ class KineticModel(sdRDM.DataModel):
         xml="@id",
     )
 
-    name: Optional[str] = Field(description="Name of the kinetic model.", default=None)
+    name: Optional[str] = Field(
+        default=None,
+        description="Name of the kinetic model.",
+    )
 
     equation: Optional[str] = Field(
-        description="Equation of the kinetic model.", default=None
+        default=None,
+        description="Equation of the kinetic model.",
     )
 
     parameters: List[Parameter] = Field(
-        description="Kinetic parameters of the model.", default_factory=ListPlus
+        description="Kinetic parameters of the model.",
+        default_factory=ListPlus,
+        multiple=True,
     )
 
     AIC: Optional[float] = Field(
-        description="Akaike information criterion.", default=None
+        default=None,
+        description="Akaike information criterion.",
     )
 
     BIC: Optional[float] = Field(
-        description="Bayesian information criterion.", default=None
+        default=None,
+        description="Bayesian information criterion.",
     )
 
     RMSD: Optional[float] = Field(
-        description="Root mean square deviation between model and measurement data.",
         default=None,
+        description="Root mean square deviation between model and measurement data.",
     )
 
     __repo__: Optional[str] = PrivateAttr(
-        default="git://github.com/haeussma/EnzymePynetics.git"
+        default="https://github.com/haeussma/EnzymePynetics.git"
     )
-
     __commit__: Optional[str] = PrivateAttr(
-        default="926834b0c7bcef4bdc7ad100cf17e891ee9d1543"
+        default="e936e7a7fdc3aa1aee4f39894d2369bfc692c92c"
     )
 
     def add_to_parameters(
@@ -59,21 +66,13 @@ class KineticModel(sdRDM.DataModel):
         id: Optional[str] = None,
     ) -> None:
         """
-        Adds an instance of 'Parameter' to the attribute 'parameters'.
+        This method adds an object of type 'Parameter' to attribute parameters
 
         Args:
-
-
             id (str): Unique identifier of the 'Parameter' object. Defaults to 'None'.
-
-
-            name (Optional[str]): Name of the kinetic parameter. Defaults to None
-
-
-            value (Optional[float]): Value of the kinetic parameter. Defaults to None
-
-
-            standard_deviation (Optional[float]): Standard deviation of the kinetic parameter. Defaults to None
+            name (): Name of the kinetic parameter.. Defaults to None
+            value (): Value of the kinetic parameter.. Defaults to None
+            standard_deviation (): Standard deviation of the kinetic parameter.. Defaults to None
         """
 
         params = {
@@ -81,7 +80,8 @@ class KineticModel(sdRDM.DataModel):
             "value": value,
             "standard_deviation": standard_deviation,
         }
+
         if id is not None:
             params["id"] = id
-        parameters = [Parameter(**params)]
-        self.parameters = self.parameters + parameters
+
+        self.parameters.append(Parameter(**params))

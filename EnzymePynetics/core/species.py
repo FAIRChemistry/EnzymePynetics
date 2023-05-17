@@ -1,70 +1,95 @@
 import sdRDM
 
-from typing import Optional, Union
-from typing import List
-from typing import Optional
-from pydantic import PrivateAttr
-from pydantic import Field
+from typing import Optional, Union, List
+from pydantic import PrivateAttr, Field, validator
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
-from .concentrationtypes import ConcentrationTypes
-from .reactanttypes import ReactantTypes
-from .series import Series
 
+
+from .series import Series
+from .concentrationtypes import ConcentrationTypes
+from .speciestypes import SpeciesTypes
 
 @forge_signature
 class Species(sdRDM.DataModel):
+
+                
+    """"""
+    
     id: str = Field(
-        description="Unique identifier of the given object.",
-        default_factory=IDGenerator("speciesINDEX"),
-        xml="@id",
+            description="Unique identifier of the given object.",
+            default_factory=IDGenerator("speciesINDEX"),
+            xml="@id"
+    )
+    
+    name: Optional[str] = Field(
+    
+    
+    default=None,
+    
+    description="name of the reactant.",
+    
     )
 
-    name: str = Field(..., description="name of the reactant.")
-
-    conc_unit: ConcentrationTypes = Field(
-        ..., description="Concentration unit of the measurement data."
+    conc_unit: Optional[ConcentrationTypes] = Field(
+    
+    
+    default=None,
+    
+    description="Concentration unit of the measurement data.",
+    
     )
 
-    initial_conc: float = Field(
-        ..., description="Initial concentration of the reactant."
+    initial_conc: Optional[float] = Field(
+    
+    
+    default=None,
+    
+    description="Initial concentration of the reactant.",
+    
     )
 
-    reactant_type: Optional[ReactantTypes] = Field(
-        description=(
-            "Define whether 'substrate' or 'product' concentration was measured."
-        ),
-        default=None,
+    species_type: Optional[SpeciesTypes] = Field(
+    
+    
+    default=None,
+    
+    description="Define whether "substrate" or "product" concentration was measured.",
+    
     )
 
     data: List[Series] = Field(
-        description="One or multiple time-course measurement data arrays.",
-        default_factory=ListPlus,
+    
+    
+    description="One or multiple time-course measurement data arrays.",
+    
+    default_factory=ListPlus,
+    
+    multiple=True,
+    
     )
 
-    __repo__: Optional[str] = PrivateAttr(
-        default="git://github.com/haeussma/EnzymePynetics.git"
-    )
-
-    __commit__: Optional[str] = PrivateAttr(
-        default="926834b0c7bcef4bdc7ad100cf17e891ee9d1543"
-    )
-
-    def add_to_data(self, values: List[float], id: Optional[str] = None) -> None:
+    __repo__: Optional[str] = PrivateAttr(default="https://github.com/haeussma/EnzymePynetics.git")
+    __commit__: Optional[str] = PrivateAttr(default="e936e7a7fdc3aa1aee4f39894d2369bfc692c92c")
+    
+    def add_to_data(
+        self,
+        values: List[float] = ListPlus() ,
+        id: Optional[str] = None
+    ) -> None:
         """
-        Adds an instance of 'Series' to the attribute 'data'.
+        This method adds an object of type 'Series' to attribute data
 
         Args:
-
-
             id (str): Unique identifier of the 'Series' object. Defaults to 'None'.
-
-
-            values (List[float]): Time-course data of an individual reaction.
+            values (): Time-course data of an individual reaction.. Defaults to ListPlus()
         """
 
-        params = {"values": values}
+        params = {
+            "values": values,
+        }
+
         if id is not None:
             params["id"] = id
-        data = [Series(**params)]
-        self.data = self.data + data
+
+        self.data.append(Series(**params))
