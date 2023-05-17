@@ -7,10 +7,10 @@ from sdRDM.base.utils import forge_signature, IDGenerator
 
 
 from .series import Series
+from .timetypes import TimeTypes
 from .species import Species
 from .concentrationtypes import ConcentrationTypes
 from .speciestypes import SpeciesTypes
-from .timetypes import TimeTypes
 
 
 @forge_signature
@@ -28,11 +28,6 @@ class Measurement(sdRDM.DataModel):
         description="Reactants of the reaction.",
         default_factory=ListPlus,
         multiple=True,
-    )
-
-    enzyme_conc: Optional[float] = Field(
-        default=None,
-        description="Enzyme concentration in the reaction.",
     )
 
     temperature: Optional[float] = Field(
@@ -65,7 +60,7 @@ class Measurement(sdRDM.DataModel):
         default="https://github.com/haeussma/EnzymePynetics.git"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="8eaa7ed2df32907583fc344ed3f76cc6e1e0b5b9"
+        default="5dd38e6325dc3e396867b90d4d975126b5f12c6b"
     )
 
     def add_to_species(
