@@ -2,37 +2,39 @@
 
 The following data model describes (meta-)data from an enzyme kinetics experiment in a structured way. It constists out of multiple ```measurements```, describing one or multiple measurements at different initial substrate and/or enzyme concentrations. If and inhibitor was applied to the reaction, its concentration can be speciefied as well.
 
+## Objects
+
 ### EnzymeKinetics
 
 Base class, dealing with measurement data of an enzyme kinetics assay.
 
-- __title__
+- title
   - Type: string
   - Description: Title of the kinetic experiment.
-- __kinetic_models__
+- kinetic_models
   - Type: KineticModel
   - Description: Kinetic moodels which were used for parameter estimation.
   - Multiple: True
-- __measurements*__
+- measurements
   - Type: Measurement
   - Description: Measurement data for a given initial substrate concentration.
   - Multiple: True
 
-### Reactant
+### Species
 
-- __name*__
+- name
   - Type: string
   - Description: name of the reactant.
-- __conc_unit*__
+- conc_unit
   - Type: ConcentrationTypes
   - Description: Concentration unit of the measurement data.
-- __initial_conc*__
+- initial_conc
   - Type: float
   - Description: Initial concentration of the reactant.
-- __reactant_type__
-  - Type: ReactantTypes
+- species_type
+  - Type: SpeciesTypes
   - Description: Define whether "substrate" or "product" concentration was measured.
-- __data__
+- data
   - Type: Series
   - Description: One or multiple time-course measurement data arrays.
   - Multiple: True
@@ -41,27 +43,27 @@ Base class, dealing with measurement data of an enzyme kinetics assay.
 
 A Measurement object contains information about the applied enzyme concentration and one or multiple time-course concentration measurements. Additionally, the initial substrate concentration should be specified. This is neccessary to derive the substrate concentration for the modeling process. If an inhibitor was applied to the measurement, its concentration and the respective conetration unit can be specified to account for inhibition in kinetic modeling.
 
-- __species__
+- species
   - Type: Species
   - Description: Reactants of the reaction.
   - Multiple: True
-- __enzyme_conc__
+- enzyme_conc
   - Type: float
   - Description: Enzyme concentration in the reaction.
-- __temperature__
+- temperature
   - Type: float
   - Description: Temperature of the reaction.
-- __temperature_unit__
+- temperature_unit
   - Type: string
   - Description: Temperature unit.
-- __pH__
+- pH
   - Type: float
   - Description: pH of the reaction
-- __time__
+- time
   - Type: float
   - Description: Time array corresponding to time-course data.
   - Multiple: True
-- __time_unit__
+- time_unit
   - Type: TimeTypes
   - Description: Time data unit.
 
@@ -69,23 +71,23 @@ A Measurement object contains information about the applied enzyme concentration
 
 Description of a kinetic model
 
-- __name__
+- name
   - Type: string
   - Description: Name of the kinetic model.
-- __equation__
+- equation
   - Type: string
   - Description: Equation of the kinetic model.
-- __parameters__
+- parameters
   - Type: Parameter
   - Description: Kinetic parameters of the model.
   - Multiple: True
-- __AIC__
+- AIC
   - Type: float
   - Description: Akaike information criterion.
-- __BIC__
+- BIC
   - Type: float
   - Description: Bayesian information criterion.
-- __RMSD__
+- RMSD
   - Type: float
   - Description: Root mean square deviation between model and measurement data.
 
@@ -93,13 +95,13 @@ Description of a kinetic model
 
 Defines a kinetic parameter.
 
-- __name__
+- name
   - Type: string
-  - Description: Name of the kinetic parameter
-- __value__
+  - Description: Name of the kinetic parameter.
+- value
   - Type: float
   - Description: Value of the kinetic parameter.
-- __standard_deviation__
+- standard_deviation
   - Type: float
   - Description: Standard deviation of the kinetic parameter.
 
@@ -107,22 +109,25 @@ Defines a kinetic parameter.
 
 Time-course data of an individual reaction.
 
-- __values__
+- values
   - Type: float
   - Description: Time-course data of an individual reaction.
   - Multiple: True
 
-#### ReactantTypes
+## Enumerations
 
-Measurement data can eighter be substrate or product.
+### SpeciesTypes
+
+Possible roles of a species in a reaction.
 
 ```python
 SUBSTRATE = "substrate"
 PRODUCT = "product"
 INHIBITOR = "inhibitor"
+ENZYME = "enzyme"
 ```
 
-#### ConcentrationTypes
+### ConcentrationTypes
 
 ```python
 MOLAR = "mole / l"
@@ -135,7 +140,7 @@ MICROGRAMLITER = "ug / l"
 NANOGRAMLITER = "ng / l"
 ```
 
-#### TimeTypes
+### TimeTypes
 
 ```python
 S = "s"
