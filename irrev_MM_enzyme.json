@@ -1,18 +1,18 @@
 {
-  "id": "enzymekinetics2",
+  "id": "enzymekinetics3",
   "title": "test irreversible MM",
   "measurements": [
     {
-      "id": "measurement12",
+      "id": "measurement18",
       "species": [
         {
-          "id": "species13",
-          "name": "test substrate",
+          "id": "species25",
           "conc_unit": "mmol / l",
           "initial_conc": 0.5,
+          "species_type": "substrate",
           "data": [
             {
-              "id": "series13",
+              "id": "series24",
               "values": [
                 0.5,
                 0.3644854817261172,
@@ -38,13 +38,20 @@
               ]
             }
           ]
+        },
+        {
+          "id": "species26",
+          "conc_unit": "mmol / l",
+          "initial_conc": 0.01,
+          "species_type": "enzyme"
         }
       ],
-      "enzyme_conc": 0.01,
       "temperature": 37.0,
       "temperature_unit": "C",
       "pH": 7.0,
       "time": [
+        0.0,
+        1.0,
         2.0,
         3.0,
         4.0,
@@ -68,16 +75,16 @@
       "time_unit": "min"
     },
     {
-      "id": "measurement13",
+      "id": "measurement19",
       "species": [
         {
-          "id": "species14",
-          "name": "test substrate",
+          "id": "species27",
           "conc_unit": "mmol / l",
           "initial_conc": 2.0,
+          "species_type": "substrate",
           "data": [
             {
-              "id": "series14",
+              "id": "series25",
               "values": [
                 2.0,
                 1.569516923490442,
@@ -103,13 +110,20 @@
               ]
             }
           ]
+        },
+        {
+          "id": "species28",
+          "conc_unit": "mmol / l",
+          "initial_conc": 0.01,
+          "species_type": "enzyme"
         }
       ],
-      "enzyme_conc": 0.01,
       "temperature": 37.0,
       "temperature_unit": "C",
       "pH": 7.0,
       "time": [
+        0.0,
+        1.0,
         2.0,
         3.0,
         4.0,
@@ -133,16 +147,16 @@
       "time_unit": "min"
     },
     {
-      "id": "measurement14",
+      "id": "measurement20",
       "species": [
         {
-          "id": "species15",
-          "name": "test substrate",
+          "id": "species29",
           "conc_unit": "mmol / l",
           "initial_conc": 4.0,
+          "species_type": "substrate",
           "data": [
             {
-              "id": "series15",
+              "id": "series26",
               "values": [
                 4.0,
                 3.3314940265802093,
@@ -168,13 +182,20 @@
               ]
             }
           ]
+        },
+        {
+          "id": "species30",
+          "conc_unit": "mmol / l",
+          "initial_conc": 0.01,
+          "species_type": "enzyme"
         }
       ],
-      "enzyme_conc": 0.01,
       "temperature": 37.0,
       "temperature_unit": "C",
       "pH": 7.0,
       "time": [
+        0.0,
+        1.0,
         2.0,
         3.0,
         4.0,
@@ -198,16 +219,16 @@
       "time_unit": "min"
     },
     {
-      "id": "measurement15",
+      "id": "measurement21",
       "species": [
         {
-          "id": "species16",
-          "name": "test substrate",
+          "id": "species31",
           "conc_unit": "mmol / l",
           "initial_conc": 10.0,
+          "species_type": "substrate",
           "data": [
             {
-              "id": "series16",
+              "id": "series27",
               "values": [
                 10.0,
                 9.014848259300036,
@@ -233,13 +254,20 @@
               ]
             }
           ]
+        },
+        {
+          "id": "species32",
+          "conc_unit": "mmol / l",
+          "initial_conc": 0.01,
+          "species_type": "enzyme"
         }
       ],
-      "enzyme_conc": 0.01,
       "temperature": 37.0,
       "temperature_unit": "C",
       "pH": 7.0,
       "time": [
+        0.0,
+        1.0,
         2.0,
         3.0,
         4.0,
@@ -263,16 +291,16 @@
       "time_unit": "min"
     },
     {
-      "id": "measurement16",
+      "id": "measurement22",
       "species": [
         {
-          "id": "species17",
-          "name": "test substrate",
+          "id": "species33",
           "conc_unit": "mmol / l",
           "initial_conc": 15.0,
+          "species_type": "substrate",
           "data": [
             {
-              "id": "series17",
+              "id": "series28",
               "values": [
                 15.0,
                 13.90360745163819,
@@ -298,13 +326,20 @@
               ]
             }
           ]
+        },
+        {
+          "id": "species34",
+          "conc_unit": "mmol / l",
+          "initial_conc": 0.01,
+          "species_type": "enzyme"
         }
       ],
-      "enzyme_conc": 0.01,
       "temperature": 37.0,
       "temperature_unit": "C",
       "pH": 7.0,
       "time": [
+        0.0,
+        1.0,
         2.0,
         3.0,
         4.0,
@@ -328,16 +363,16 @@
       "time_unit": "min"
     },
     {
-      "id": "measurement17",
+      "id": "measurement23",
       "species": [
         {
-          "id": "species18",
-          "name": "test substrate",
+          "id": "species35",
           "conc_unit": "mmol / l",
           "initial_conc": 30.0,
+          "species_type": "substrate",
           "data": [
             {
-              "id": "series18",
+              "id": "series29",
               "values": [
                 30.0,
                 28.76776725048138,
@@ -363,13 +398,20 @@
               ]
             }
           ]
+        },
+        {
+          "id": "species36",
+          "conc_unit": "mmol / l",
+          "initial_conc": 0.01,
+          "species_type": "enzyme"
         }
       ],
-      "enzyme_conc": 0.01,
       "temperature": 37.0,
       "temperature_unit": "C",
       "pH": 7.0,
       "time": [
+        0.0,
+        1.0,
         2.0,
         3.0,
         4.0,
