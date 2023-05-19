@@ -1,8 +1,8 @@
 from typing import List, Dict, Optional
 
 from pyenzyme import EnzymeMLDocument
-from EnzymePynetics.core.enzymekineticsexperiment import EnzymeKineticsExperiment
-from EnzymePynetics.core.stoichiometrytypes import StoichiometryTypes
+from EnzymePynetics.core.enzymekinetics import EnzymeKinetics
+from EnzymePynetics.core.speciestypes import SpeciesTypes
 from EnzymePynetics.core.series import Series
 from EnzymePynetics.core.measurement import Measurement
 from EnzymePynetics.tools.kineticmodel import *
@@ -20,13 +20,15 @@ from scipy.stats import linregress
 
 class ParameterEstimator():
 
-    def __init__(self, data: EnzymeKineticsExperiment):
+    def __init__(self, data: EnzymeKinetics):
         self.data = data
         self.models: Dict[str, KineticModel] = None
+
+        self.substrate, self.product, self.enzyme, self.inhibitor = self._initialize_measurement_data()
         self._initialize_measurement_data()
-        self._check_negative_concentrations()
-        self.initial_kcat = self._calculate_kcat()
-        self.initial_Km = self._calculate_Km()
+        #self._check_negative_concentrations()
+        #self.initial_kcat = self._calculate_kcat()
+        #self.initial_Km = self._calculate_Km()
         # TODO shapcheck function to check for consistent array lengths
 
     def fit_models(
@@ -37,8 +39,7 @@ class ParameterEstimator():
         enzyme_inactivation: bool = False,
         only_irrev_MM: bool = False,
         display_output: bool = True
-        ) -> None:
-
+    ) -> None:
         """Fits the measurement data to a set of kinetic models.
 
         Args:
@@ -59,7 +60,7 @@ class ParameterEstimator():
             self.subset_substrate, self.subset_product, self.subset_enzyme, self.subset_initial_substrate, self.subset_time, self.subset_inhibitor = self._subset_data(
                 initial_substrates=initial_substrate_concs,
                 start_time_index=start_time_index,
-                stop_time_index=stop_time_index)            
+                stop_time_index=stop_time_index)
         else:
             self.subset_substrate = self.substrate
             self.subset_product = self.product
@@ -67,7 +68,6 @@ class ParameterEstimator():
             self.subset_initial_substrate = self.initial_substrate
             self.subset_time = self.time
             self.subset_inhibitor = self.inhibitor
-
 
         # Initialize kinetics models
         self.models = self._initialize_models(
@@ -86,14 +86,14 @@ class ParameterEstimator():
             display(self.result_dict)
 
     def visualize(
-        self,
-        model_name: Optional[str] = None,
-        path: Optional[str] = None,
-        title: Optional[str] = None,
-        visualize_species: Optional[str] = None,
-        plot_means: bool = True,
-        ax: plt.Axes = None,
-        **plt_kwargs) -> None:
+            self,
+            model_name: Optional[str] = None,
+            path: Optional[str] = None,
+            title: Optional[str] = None,
+            visualize_species: Optional[str] = None,
+            plot_means: bool = True,
+            ax: plt.Axes = None,
+            **plt_kwargs) -> None:
         """Visualizes the measurement data as well as the fitted model. By default the best fitting model is chosen for visualization 
         (based on Akaike criterion)
 
@@ -110,7 +110,6 @@ class ParameterEstimator():
         else:
             ax_provided = True
 
-
         # Select which model to visualize
         best_model = self.result_dict.index[0]
         if model_name is None:
@@ -119,7 +118,8 @@ class ParameterEstimator():
 
         # Visualization modes
         plot_modes = {
-            "substrate": [self.subset_substrate,0, self.data.reactant_name], # Substrate
+            # Substrate
+            "substrate": [self.subset_substrate, 0, self.data.reactant_name],
             "product": [self.subset_product, 2, self.data.reactant_name],
         }
 
@@ -129,25 +129,28 @@ class ParameterEstimator():
             experimental_data, reactant, name = plot_modes[visualize_species]
 
         def g(t, w0, params):
-
             '''
             Solution to the ODE w'(t)=f(t,w,p) with initial condition w(0)= w0 = cS
             '''
 
-            w = odeint(model.model, w0, t, args=(params, self.enzyme_inactivation,))
+            w = odeint(model.model, w0, t, args=(
+                params, self.enzyme_inactivation,))
             return w
 
         if plot_means:
             unique_substrates = np.unique(self.subset_initial_substrate)
             unique_inhibitors = np.unique(self.subset_inhibitor)
 
-            cS, cE, cP, cI = [self._mean_w0(data, self.subset_initial_substrate) for data in model.w0.values()]
+            cS, cE, cP, cI = [self._mean_w0(
+                data, self.subset_initial_substrate) for data in model.w0.values()]
 
             # Markers
             unique_inhibitors = np.unique(self.inhibitor)
             markers = ["o", "x", "D", "X", "d"]
-            marker_mapping = dict(zip(unique_inhibitors, markers[:len(unique_inhibitors)]))
-            marker_vector = [marker_mapping[item] for item in self.inhibitor[:,0]]
+            marker_mapping = dict(
+                zip(unique_inhibitors, markers[:len(unique_inhibitors)]))
+            marker_vector = [marker_mapping[item]
+                             for item in self.inhibitor[:, 0]]
 
             unique_concs = np.unique(self.subset_initial_substrate)
             colors = get_cmap("tab10").colors
@@ -155,44 +158,51 @@ class ParameterEstimator():
 
             for inhibitor, marker in zip(unique_inhibitors, markers):
                 # get substrates
-                init_inhibitor = self.subset_inhibitor[:,0]
+                init_inhibitor = self.subset_inhibitor[:, 0]
 
                 inhibitor_mask = np.where(init_inhibitor == inhibitor)[0]
 
                 for substrate, color in zip(unique_substrates, colors):
-                    idx = inhibitor_mask[np.where(self.subset_initial_substrate[inhibitor_mask] == substrate)[0]]
-                    mean = np.mean(experimental_data[idx,:], axis=0)
-                    std = np.std(experimental_data[idx,:], axis=0)
+                    idx = inhibitor_mask[np.where(
+                        self.subset_initial_substrate[inhibitor_mask] == substrate)[0]]
+                    mean = np.mean(experimental_data[idx, :], axis=0)
+                    std = np.std(experimental_data[idx, :], axis=0)
 
-                    ax.errorbar(self.subset_time, mean, std, label=substrate, fmt=marker, color=color, **plt_kwargs)
+                    ax.errorbar(self.subset_time, mean, std, label=substrate,
+                                fmt=marker, color=color, **plt_kwargs)
 
-                    cS, cE, cP, cI = [np.mean(data[idx], axis=0) for data in model.w0.values()]
+                    cS, cE, cP, cI = [np.mean(data[idx], axis=0)
+                                      for data in model.w0.values()]
                     w0 = (cS, cE[0], 0, cI[0])
 
-                    data_fitted = g(t=self.subset_time, w0=w0, params=model.result.params)
-                    ax.plot(self.subset_time, data_fitted[:,reactant], color = color)
+                    data_fitted = g(t=self.subset_time, w0=w0,
+                                    params=model.result.params)
+                    ax.plot(self.subset_time,
+                            data_fitted[:, reactant], color=color)
 
         else:
             cS, cE, cP, cI = model.w0.values()
-            color_vector = [color_mapping[item] for item in self.subset_initial_substrate]
+            color_vector = [color_mapping[item]
+                            for item in self.subset_initial_substrate]
 
             for i, data in enumerate(experimental_data):
 
-                w0 = (cS[i,0], cE[i,0], cP[i,0], cI[i,0])
+                w0 = (cS[i, 0], cE[i, 0], cP[i, 0], cI[i, 0])
 
-                ax.scatter(x=self.subset_time, y=data, label=self.subset_initial_substrate[i], marker=marker_vector[i], color=color_vector[i], **plt_kwargs)
+                ax.scatter(x=self.subset_time, y=data,
+                           label=self.subset_initial_substrate[i], marker=marker_vector[i], color=color_vector[i], **plt_kwargs)
 
-                data_fitted = g(t=self.subset_time, w0=w0, params=model.result.params)
+                data_fitted = g(t=self.subset_time, w0=w0,
+                                params=model.result.params)
 
                 # Plot model
-                ax.plot(self.subset_time, data_fitted[:,reactant], color = color_vector[i])
+                ax.plot(self.subset_time,
+                        data_fitted[:, reactant], color=color_vector[i])
 
         if title is None:
             ax.set_title(self.data.title)
         else:
             ax.set_title(title)
-
-
 
         # Legend
         if ax_provided == False:
@@ -202,7 +212,7 @@ class ParameterEstimator():
 
             handles, labels = ax.get_legend_handles_labels()
 
-            new_handles, new_labels = [[],[]]
+            new_handles, new_labels = [[], []]
             for handle, label in zip(handles, labels):
                 if len(new_labels) == 0:
                     new_labels.append(label)
@@ -213,8 +223,9 @@ class ParameterEstimator():
                     else:
                         new_labels.append(label)
                         new_handles.append(handle)
-            ax.legend(title = f"initial substrate [{self.data.data_conc_unit}]", handles=new_handles, labels=new_labels, loc='center left', bbox_to_anchor=(1, 0.5))
-        
+            ax.legend(title=f"initial substrate [{self.data.data_conc_unit}]",
+                      handles=new_handles, labels=new_labels, loc='center left', bbox_to_anchor=(1, 0.5))
+
         if path != None:
             ax.savefig(path, format="svg")
 
@@ -234,59 +245,101 @@ class ParameterEstimator():
         Extracts data from data objects and reshapes it for fitting.
         """
 
-        measurement_data = []
+        substrate_data = []
         initial_substrate = []
-        enzyme = []
-        inhibitor = []
+        product_data = []
+        enzyme_data = []
+        inhibitor_data = []
 
+        # extract data from each measurement and species
         for measurement in self.data.measurements:
-            for replica in measurement.data:
-                measurement_data.append(replica.values)
-                initial_substrate.append(measurement.initial_substrate_conc)
-                enzyme.append(measurement.enzyme_conc)
-                if measurement.inhibitor_conc != None:
-                    inhibitor.append(measurement.inhibitor_conc)
-                else:
-                    inhibitor.append(0)
+            for species in measurement.species:
 
-        measurement_shape = np.array(measurement_data).shape
+                if species.species_type == SpeciesTypes.SUBSTRATE.value:
+                    if len(species.data) != 0:
+                        for replicate in species.data:
+                            substrate_data.append(replicate.values)
+                    initial_substrate.append(species.initial_conc)
+
+                if species.species_type == SpeciesTypes.PRODUCT.value:
+                    if len(species.data) != 0:
+                        for replicate in species.data:
+                            product_data.append(replicate.values)
+
+                if species.species_type == SpeciesTypes.INHIBITOR.value:
+                    if len(species.data) != 0:
+                        for replicate in species.data:
+                            inhibitor_data.append(replicate.values)
+                    else:
+                        inhibitor_data.append(replicate.values)
+
+                if species.species_type == SpeciesTypes.ENZYME.value:
+                    if len(species.data) != 0:
+                        for replicate in species.data:
+                            inhibitor_data.append(replicate.values)
+                    else:
+                        enzyme_data.append(species.initial_conc)
+
+        # np arrays
+        substrate_array = np.array(substrate_data)
+        product_array = np.array(product_data)
+        enzyme_array = np.array(enzyme_data)
+        inhibitor_array = np.array(inhibitor_data)
+
+        # get shape information of data
+        n_measurements = len(self.data.measurements)
+        data_shape = substrate_array.shape if substrate_array.size > 0 else product_array.shape
+        n_replicates = int(data_shape[0] / n_measurements)
+
+        if len(product_data) == 0:
+            product_array = np.array(self._calculate_product(substrate_data, initial_substrate))
+        if len(substrate_data) == 0:
+            substrate_array = np.array(self._calculate_substrate(product_data, initial_substrate))
+
+        enzyme_array = np.repeat(enzyme_array, n_replicates)
+        if len(inhibitor_array) == 0:
+            inhibitor_array = None
+        else:
+            inhibitor_array = np.repeat(inhibitor_array, n_replicates)
+
+        return substrate_array, product_array, enzyme_array, inhibitor_array
+        
+
+    def stelse(self):
 
         self.time = np.array(self.data.time)
         self.initial_substrate = np.array(initial_substrate)
         self.enzyme = np.array(enzyme)
-        self.inhibitor = np.repeat(np.array(inhibitor),measurement_shape[1]).reshape(measurement_shape)
-        self.enzyme = np.repeat(np.array(enzyme),measurement_shape[1]).reshape(measurement_shape)
+        self.inhibitor = np.repeat(
+            np.array(inhibitor), measurement_shape[1]).reshape(measurement_shape)
+        self.enzyme = np.repeat(
+            np.array(enzyme), measurement_shape[1]).reshape(measurement_shape)
 
-        if self.data.stoichiometry == StoichiometryTypes.SUBSTRATE.value:
+        if self.data.stoichiometry == SpeciesTypes.SUBSTRATE.value:
             self.substrate = np.array(measurement_data)
-            self.product = np.array(self._calculate_missing_species(self.substrate))
-        elif self.data.stoichiometry == StoichiometryTypes.PRODUCT.value: 
+            self.product = np.array(
+                self._calculate_missing_species(self.substrate))
+        elif self.data.stoichiometry == SpeciesTypes.PRODUCT.value:
             self.product = np.array(measurement_data)
-            self.substrate = np.array(self._calculate_missing_species(self.product))
+            self.substrate = np.array(
+                self._calculate_missing_species(self.product))
         else:
-            raise AttributeError("Please define whether measured data is substrate or product.")
+            raise AttributeError(
+                "Please define whether measured data is substrate or product.")
+        
+    def _calculate_substrate(self, product_data: List[List], initial_substrates: List) -> List[List]:
+        substrate = []
+        for product_measurment, initial_substrate in zip(product_data, initial_substrates):
+            substrate.append([initial_substrate - value for value in product_measurment])
 
-    def _calculate_missing_species(self, existing_species: np.ndarray) -> List[list]:
-        """
-        Calcualtes data or the species that was not measured, based on the assumption of mass conservation.
-        E.g.: If the substrate depletion was measured, the corresponding product concentration for each 
-        measurement point is calculated by:
-        P(t) = S0 - S(t) with
-        P(t): product concentration at time-point 't'
-        S0: initial substrate concentration of the measurement
-        S(t): measured substrate concentration at time-point 't'
+        return substrate
 
-        Args:
-            existing_species (np.ndarray): Existing measurement data.
+    def _calculate_product(self, substrate_data: List[List], initial_substrates: List) -> List[List]:
+        product = []
+        for substrate_measurement, initial_substrate in zip(substrate_data, initial_substrates):
+            product.append([initial_substrate - value for value in substrate_measurement])
 
-        Returns:
-            List[list]: Calculated species
-        """
-        species = []
-        for measurement, initial_substrate in zip(existing_species, self.initial_substrate):
-            species.append(
-                [initial_substrate - value for value in measurement])
-        return species
+        return product
 
     def _calculate_rates(self):
         """
@@ -299,8 +352,8 @@ class ParameterEstimator():
 
     def _calculate_kcat(self) -> float:
         rates = self._calculate_rates()
-        #initial_enzyme_tile = np.repeat(self.enzyme, rates.shape[1]).reshape(rates.shape)
-        kcat = np.nanmax(rates / self.enzyme[:,:-1])
+        # initial_enzyme_tile = np.repeat(self.enzyme, rates.shape[1]).reshape(rates.shape)
+        kcat = np.nanmax(rates / self.enzyme[:, :-1])
         return kcat
 
     def _calculate_Km(self):
@@ -316,14 +369,14 @@ class ParameterEstimator():
         self.deactivate_product_inhibition = False
 
         try:
-            assert np.any(self.substrate<0) == False
+            assert np.any(self.substrate < 0) == False
         except AssertionError:
-            #print("Provided product concentration is higher than specified initial substrate concentration. Calculated substrate concentration results in negative values. Therefore, substrate inhibition models are excluded.")
+            # print("Provided product concentration is higher than specified initial substrate concentration. Calculated substrate concentration results in negative values. Therefore, substrate inhibition models are excluded.")
             self.deactivate_substrate_inhibition = True
         try:
-            assert np.any(self.product<0) == False
+            assert np.any(self.product < 0) == False
         except AssertionError:
-            #print("Provided substrate concentration is higher than specified initial substrate concentration. Calculated product concentration results in negative values. Therefore, product inhibition models are excluded.")
+            # print("Provided substrate concentration is higher than specified initial substrate concentration. Calculated product concentration results in negative values. Therefore, product inhibition models are excluded.")
             self.deactivate_product_inhibition = True
 
     def _subset_data(self, initial_substrates: list = None, start_time_index: int = None, stop_time_index: int = None) -> tuple:
@@ -350,12 +403,13 @@ class ParameterEstimator():
                     raise ValueError(
                         f"{concentration} not found in initial substrate concentrations. \nInitial substrate concentrations are {list(np.unique(self.initial_substrate))}")
                 else:
-                    idx = np.append(idx, np.where(self.initial_substrate == concentration)[0])
+                    idx = np.append(idx, np.where(
+                        self.initial_substrate == concentration)[0])
         idx = idx.astype(int)
 
-        new_substrate = self.substrate[idx,start_time_index:stop_time_index]
-        new_product = self.product[idx,start_time_index:stop_time_index]
-        new_enzyme = self.enzyme[idx,start_time_index:stop_time_index]
+        new_substrate = self.substrate[idx, start_time_index:stop_time_index]
+        new_product = self.product[idx, start_time_index:stop_time_index]
+        new_enzyme = self.enzyme[idx, start_time_index:stop_time_index]
         new_initial_substrate = self.initial_substrate[idx]
         new_time = self.time[start_time_index:stop_time_index]
         new_inhibitor = self.inhibitor[idx]
@@ -370,12 +424,12 @@ class ParameterEstimator():
         inhibitory models for substrate and product inhibition are initialized additionally to the irreversible Michaelis Menten model.
         """
 
-        w0={"cS": substrate,
-            "cE": enzyme,
-            "cP": product,
-            "cI": product,
-            "cS0": initial_substrate}
-        
+        w0 = {"cS": substrate,
+              "cE": enzyme,
+              "cP": product,
+              "cI": product,
+              "cS0": initial_substrate}
+
         irreversible_Michaelis_Menten = KineticModel(
             name="irreversible Michaelis Menten",
             params=[],
@@ -394,7 +448,7 @@ class ParameterEstimator():
             competitive_product_inhibition = KineticModel(
                 name="competitive product inhibition",
                 params=["K_ic"],
-                w0=w0,            
+                w0=w0,
                 kcat_initial=self.initial_kcat,
                 Km_initial=self.initial_Km,
                 model=competitive_product_inhibition_model,
@@ -403,7 +457,7 @@ class ParameterEstimator():
             uncompetitive_product_inhibition = KineticModel(
                 name="uncompetitive product inhibition",
                 params=["K_iu"],
-                w0=w0,            
+                w0=w0,
                 kcat_initial=self.initial_kcat,
                 Km_initial=self.initial_Km,
                 model=uncompetitive_product_inhibition_model,
@@ -412,7 +466,7 @@ class ParameterEstimator():
             noncompetitive_product_inhibition = KineticModel(
                 name="non-competitive product inhibition",
                 params=["K_iu", "K_ic"],
-                w0=w0,            
+                w0=w0,
                 kcat_initial=self.initial_kcat,
                 Km_initial=self.initial_Km,
                 model=noncompetitive_product_inhibition_model,
@@ -428,7 +482,8 @@ class ParameterEstimator():
                 enzyme_inactivation=self.enzyme_inactivation
             )
 
-            model_dict = {irreversible_Michaelis_Menten.name: irreversible_Michaelis_Menten}
+            model_dict = {
+                irreversible_Michaelis_Menten.name: irreversible_Michaelis_Menten}
             if not self.deactivate_product_inhibition:
                 model_dict[competitive_product_inhibition.name] = competitive_product_inhibition
                 model_dict[uncompetitive_product_inhibition.name] = uncompetitive_product_inhibition
@@ -437,13 +492,13 @@ class ParameterEstimator():
                 model_dict[substrate_inhibition.name] = substrate_inhibition
 
             return model_dict
-               
+
         else:
 
             competitive_inhibition = KineticModel(
                 name="competitive inhibition",
                 params=["K_ic"],
-                w0=w0,            
+                w0=w0,
                 kcat_initial=self.initial_kcat,
                 Km_initial=self.initial_Km,
                 model=competitive_inhibition_model,
@@ -452,7 +507,7 @@ class ParameterEstimator():
             uncompetitive_inhibition = KineticModel(
                 name="uncompetitive inhibition",
                 params=["K_iu"],
-                w0=w0,            
+                w0=w0,
                 kcat_initial=self.initial_kcat,
                 Km_initial=self.initial_Km,
                 model=uncompetitive_inhibition_model,
@@ -470,13 +525,13 @@ class ParameterEstimator():
             partially_competitive_inhibition = KineticModel(
                 name="partially competitive inhibition",
                 params=["K_ic", "K_iu"],
-                w0=w0,            
+                w0=w0,
                 kcat_initial=self.initial_kcat,
                 Km_initial=self.initial_Km,
                 model=partially_competitive_inhibition_model,
                 enzyme_inactivation=self.enzyme_inactivation
             )
-            
+
             return {
                 irreversible_Michaelis_Menten.name: irreversible_Michaelis_Menten,
                 competitive_inhibition.name: competitive_inhibition,
@@ -493,13 +548,14 @@ class ParameterEstimator():
             DataFrame: Overview of the kinetic parameters of all kinetic models.
         """
 
-        # TODO outsource minimizer in own class 
+        # TODO outsource minimizer in own class
 
         def g(time: np.ndarray, w0: tuple, params):
             '''
             Solution to the ODE w'(t)=f(t,w,p) with initial condition w(0)= w0 (= [S0])
             '''
-            w = odeint(kineticmodel.model, w0, time, args=(params, self.enzyme_inactivation,))
+            w = odeint(kineticmodel.model, w0, time, args=(
+                params, self.enzyme_inactivation,))
             return w
 
         def residual(params, time: np.ndarray, substrate: np.ndarray):
@@ -509,10 +565,10 @@ class ParameterEstimator():
             residuals = 0.0 * substrate
             for i, measurement in enumerate(substrate):
 
-            # Calculate residual for each measurement
+                # Calculate residual for each measurement
                 cS, cE, cP, cI, = kineticmodel.w0.values()
-                w0 = (cS[i], cE[i, 0], 0, cI[i, 0]) #cP[i, 0]
-                # TODO check data in model and measurement 
+                w0 = (cS[i], cE[i, 0], 0, cI[i, 0])  # cP[i, 0]
+                # TODO check data in model and measurement
 
                 model = g(time, w0, params)  # solve the ODE with sfb.
 
@@ -522,7 +578,7 @@ class ParameterEstimator():
                 # compute distance to measured data
                 residuals[i] = measurement-model
 
-            self.residuals=residuals
+            self.residuals = residuals
             return residuals.flatten()
 
         if display_output:
@@ -533,13 +589,10 @@ class ParameterEstimator():
 
             kineticmodel.result = minimize(residual, kineticmodel.parameters, args=(
                 self.subset_time, self.subset_substrate), method='leastsq', nan_policy='omit')
-            
+
     def _calcualte_RMSD(self):
         n_measurements = self.residuals.size
         self.rmsd = np.sqrt(1/n_measurements * np.sum(self.residuals**2))
-        
-
-            
 
     def _result_overview(self) -> DataFrame:
         """
@@ -594,15 +647,16 @@ class ParameterEstimator():
                 percentual_kcat_Km_stderr = float("nan")
             else:
                 kcat_Km = kcat / Km
-                kcat_Km_stderr =((kcat_stderr / kcat)**2+(Km_stderr / Km)**2)**0.5 * kcat_Km
+                kcat_Km_stderr = ((kcat_stderr / kcat)**2 +
+                                  (Km_stderr / Km)**2)**0.5 * kcat_Km
                 percentual_kcat_Km_stderr = kcat_Km_stderr / kcat_Km * 100
 
             parameter_dict[f"kcat / Km [1/{self.data.time_unit} * 1/{self.data.data_conc_unit}]"] = f"{kcat_Km:.3f} +/- {percentual_kcat_Km_stderr:.2f}%"
 
-
             result_dict[model.name] = {"AIC": aic, **parameter_dict}
 
-        df = DataFrame.from_dict(result_dict).T.sort_values("AIC", ascending=True)
+        df = DataFrame.from_dict(result_dict).T.sort_values(
+            "AIC", ascending=True)
         df.fillna('-', inplace=True)
 
         return df
@@ -621,9 +675,11 @@ class ParameterEstimator():
             std_data = np.append(std_data, np.std(data[idx], axis=0))
             self.inhibitor
 
-        mean_data = mean_data.reshape(len(unique_initial_substrates), int(len(mean_data)/len(unique_initial_substrates)))
-        std_data = std_data.reshape(len(unique_initial_substrates), int(len(std_data)/len(unique_initial_substrates)))
-        
+        mean_data = mean_data.reshape(len(unique_initial_substrates), int(
+            len(mean_data)/len(unique_initial_substrates)))
+        std_data = std_data.reshape(len(unique_initial_substrates), int(
+            len(std_data)/len(unique_initial_substrates)))
+
         return mean_data, std_data
 
     def _mean_w0(self, measurement_data: np.ndarray, init_substrate):
@@ -645,11 +701,11 @@ class ParameterEstimator():
         cls,
         enzmldoc: EnzymeMLDocument,
         reactant_id: str,
-        measured_species: StoichiometryTypes,
+        measured_species: SpeciesTypes,
         substrate_id: str = "s0",
         inhibitor_id: str = None,
         protein_id: str = "p0"
-        ):
+    ):
 
         pH = enzmldoc.getReaction("r0").ph
         temperature = enzmldoc.getReaction("r0").temperature
@@ -687,7 +743,7 @@ class ParameterEstimator():
             reactant_name=enzmldoc.getReactant(reactant_id).name,
             measurements=measurements,
             stoichiometry=measured_species,
-            time = reactant.replicates[0].time
+            time=reactant.replicates[0].time
         )
 
         return cls(experimental_data)
@@ -696,9 +752,8 @@ class ParameterEstimator():
         if self.data.stoichiometry == StoichiometryTypes.SUBSTRATE:
             linregress(self.subset_substrate)
 
-    
 
-if __name__ ==  "__main__":
+if __name__ == "__main__":
     import pyenzyme as pe
     from EnzymePynetics.core.measurement import Measurement
 
