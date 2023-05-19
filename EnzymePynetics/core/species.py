@@ -52,7 +52,7 @@ class Species(sdRDM.DataModel):
         default="https://github.com/haeussma/EnzymePynetics.git"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="5dd38e6325dc3e396867b90d4d975126b5f12c6b"
+        default="e6b0d4e43f04fb348415726dbcaa82e8ea0c63ad"
     )
 
     def add_to_data(
