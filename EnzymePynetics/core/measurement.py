@@ -6,10 +6,10 @@ from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
 
 
-from .series import Series
 from .timetypes import TimeTypes
-from .species import Species
+from .series import Series
 from .concentrationtypes import ConcentrationTypes
+from .species import Species
 from .speciestypes import SpeciesTypes
 
 
@@ -60,7 +60,7 @@ class Measurement(sdRDM.DataModel):
         default="https://github.com/haeussma/EnzymePynetics.git"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="5dd38e6325dc3e396867b90d4d975126b5f12c6b"
+        default="e6b0d4e43f04fb348415726dbcaa82e8ea0c63ad"
     )
 
     def add_to_species(
