@@ -31,7 +31,7 @@ class KineticModel():
 
         parameters.add('k_cat', value=self.kcat_initial,
                         min=self.kcat_initial/100, max=self.kcat_initial*100)
-        parameters.add('Km', value=self.Km_initial*100, min=self.Km_initial/100,
+        parameters.add('Km', value=self.Km_initial, min=self.Km_initial/100,
                         max=self.Km_initial*10000)
 
         if "K_iu" in params:
@@ -48,7 +48,7 @@ class KineticModel():
         return parameters
 
 def irreversible_model(w0: tuple, t, params: Parameters, flag_enzyme_inactivation: bool) -> tuple:
-    cS, cE, cP, cI, cS0 = w0
+    cS, cE, cP, cI = w0
 
     k_cat = params['k_cat'].value
     Km = params['Km'].value
@@ -62,9 +62,8 @@ def irreversible_model(w0: tuple, t, params: Parameters, flag_enzyme_inactivatio
     dc_S = -k_cat * cE * cS / (Km+cS)
     dc_P = -dc_S
     dc_I = 0
-    dc_S0 = 0
 
-    return (dc_S, dc_E, dc_P, dc_I, dc_S0)
+    return (dc_S, dc_E, dc_P, dc_I)
 
 ### Product inhibition ###
 
