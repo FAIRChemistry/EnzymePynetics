@@ -1,7 +1,7 @@
 from .enzymekinetics import EnzymeKinetics
 from .species import Species
 from .measurement import Measurement
-from .kineticmodel import KineticModel
+from .modelresult import ModelResult
 from .parameter import Parameter
 from .series import Series
 from .speciestypes import SpeciesTypes
@@ -14,7 +14,7 @@ __all__ = [
     "EnzymeKinetics",
     "Species",
     "Measurement",
-    "KineticModel",
+    "ModelResult",
     "Parameter",
     "Series",
     "SpeciesTypes",
