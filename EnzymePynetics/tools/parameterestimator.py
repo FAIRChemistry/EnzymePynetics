@@ -25,7 +25,7 @@ class ParameterEstimator():
         self.models: Dict[str, KineticModel] = None
 
         self.substrate, self.initial_substrate, self.product, self.enzyme, self.inhibitor, self.time = self._initialize_measurement_data()
-        self._initialize_measurement_data()
+
         self._check_negative_concentrations()
         self.initial_kcat = self._calculate_kcat()
         self.initial_Km = self._calculate_Km()
@@ -140,7 +140,7 @@ class ParameterEstimator():
             unique_inhibitors = np.unique(self.subset_inhibitor)
 
             cS, cE, cP, cI = [self._mean_w0(
-                data, self.subset_initial_substrate) for data in model.w0.values()]
+                data, self.subset_initial_substrate) for data in model.y0]
 
             # Markers
             unique_inhibitors = np.unique(self.inhibitor)
@@ -331,6 +331,15 @@ class ParameterEstimator():
             product.append([initial_substrate - value for value in substrate_measurement])
 
         return product
+    
+    @staticmethod
+    def _get_y0s(substrate, enzyme, product, inhibitor):
+        y0s = []
+        for s, e, p, i in zip(substrate, enzyme, product, inhibitor):
+            y0s.append((s[0], e[0], p[0], i[0]))
+
+        return np.array(y0s)
+
 
     def _calculate_rates(self):
         """
@@ -415,15 +424,12 @@ class ParameterEstimator():
         inhibitory models for substrate and product inhibition are initialized additionally to the irreversible Michaelis Menten model.
         """
 
-        w0 = {"cS": substrate,
-              "cE": enzyme,
-              "cP": product,
-              "cI": product}
+        y0 = self._get_y0s(self.substrate, self.enzyme, self.product, self.inhibitor)
 
         irreversible_Michaelis_Menten = KineticModel(
             name="irreversible Michaelis Menten",
             params=[],
-            w0=w0,
+            y0=y0,
             kcat_initial=self.initial_kcat,
             Km_initial=self.initial_Km,
             model=irreversible_model,
@@ -435,10 +441,15 @@ class ParameterEstimator():
 
         if np.all(self.inhibitor == 0):
 
+            y0 = self._get_y0s(substrate=self.substrate,
+                               enzyme=self.enzyme,
+                               product=self.product,
+                               inhibitor=self.product)
+
             competitive_product_inhibition = KineticModel(
                 name="competitive product inhibition",
                 params=["K_ic"],
-                w0=w0,
+                y0=y0,
                 kcat_initial=self.initial_kcat,
                 Km_initial=self.initial_Km,
                 model=competitive_product_inhibition_model,
@@ -447,7 +458,7 @@ class ParameterEstimator():
             uncompetitive_product_inhibition = KineticModel(
                 name="uncompetitive product inhibition",
                 params=["K_iu"],
-                w0=w0,
+                y0=y0,
                 kcat_initial=self.initial_kcat,
                 Km_initial=self.initial_Km,
                 model=uncompetitive_product_inhibition_model,
@@ -456,7 +467,7 @@ class ParameterEstimator():
             noncompetitive_product_inhibition = KineticModel(
                 name="non-competitive product inhibition",
                 params=["K_iu", "K_ic"],
-                w0=w0,
+                y0=y0,
                 kcat_initial=self.initial_kcat,
                 Km_initial=self.initial_Km,
                 model=noncompetitive_product_inhibition_model,
@@ -465,7 +476,7 @@ class ParameterEstimator():
             substrate_inhibition = KineticModel(
                 name="substrate inhibition",
                 params=["K_iu"],
-                w0=w0,
+                y0=y0,
                 kcat_initial=self.initial_kcat,
                 Km_initial=self.initial_Km,
                 model=substrate_inhibition_model,
@@ -484,12 +495,7 @@ class ParameterEstimator():
             return model_dict
 
         else:
-            w0 = {
-                "cS": substrate,
-                "cE": enzyme,
-                "cP": product,
-                "cI": inhibitor
-                }
+            y0 = self._get_y0s(self.substrate, self.enzyme, self.product, self.inhibitor)
 
             competitive_inhibition = KineticModel(
                 name="competitive inhibition",
@@ -561,11 +567,11 @@ class ParameterEstimator():
             for i, measurement in enumerate(substrate):
 
                 # Calculate residual for each measurement
-                cS, cE, cP, cI, = kineticmodel.w0.values()
-                w0 = (cS[i, 0], cE[i, 0], cP[i,0], cI[i, 0])  
+
+                y0 = kineticmodel.y0[i]
                 # TODO check data in model and measurement
 
-                model = g(time[i], w0, params)  # solve the ODE with sfb.
+                model = g(time[i], y0, params)  # solve the ODE with sfb.
 
                 # get modeled substrate
                 model = model[:, 0]
