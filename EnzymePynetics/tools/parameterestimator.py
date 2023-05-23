@@ -5,8 +5,8 @@ from EnzymePynetics.core.enzymekinetics import EnzymeKinetics
 from EnzymePynetics.core.speciestypes import SpeciesTypes
 from EnzymePynetics.core.series import Series
 from EnzymePynetics.core.measurement import Measurement
-from EnzymePynetics.tools.kineticmodel import *
-from EnzymePynetics.tools.fitter import *
+from EnzymePynetics.tools.kineticmodel import KineticModel
+from EnzymePynetics.tools.rate_equations import *
 
 import numpy as np
 from pandas import DataFrame
@@ -25,8 +25,6 @@ class ParameterEstimator():
         self.models: Dict[str, KineticModel] = None
 
         self.substrate, self.initial_substrate, self.product, self.enzyme, self.inhibitor, self.time = self._initialize_measurement_data()
-
-        self._check_negative_concentrations()
         self.initial_kcat = self._calculate_kcat()
         self.initial_Km = self._calculate_Km()
         # TODO shapcheck function to check for consistent array lengths
@@ -73,7 +71,6 @@ class ParameterEstimator():
             product=self.subset_product,
             enzyme=self.subset_enzyme,
             inhibitor=self.subset_inhibitor,
-            initial_substrate=self.subset_initial_substrate,
             only_irrev_MM=only_irrev_MM)
 
         self._run_minimization(display_output)
@@ -358,27 +355,6 @@ class ParameterEstimator():
     def _calculate_Km(self):
         return np.nanmax(self._calculate_rates()/2)
 
-
-    def _check_negative_concentrations(self):
-        """
-        Checks if negative concentrations are entered or calculated by the "_calculate_missing_species" function.
-        If negative concentrations are calculated, the data might not be blanked correctly, or the 'initial_substrate_concentration'
-        is lower than the measurement data.
-        """
-        self.deactivate_substrate_inhibition = False
-        self.deactivate_product_inhibition = False
-
-        try:
-            assert np.any(self.substrate < 0) == False
-        except AssertionError:
-            # print("Provided product concentration is higher than specified initial substrate concentration. Calculated substrate concentration results in negative values. Therefore, substrate inhibition models are excluded.")
-            self.deactivate_substrate_inhibition = True
-        try:
-            assert np.any(self.product < 0) == False
-        except AssertionError:
-            # print("Provided substrate concentration is higher than specified initial substrate concentration. Calculated product concentration results in negative values. Therefore, product inhibition models are excluded.")
-            self.deactivate_product_inhibition = True
-
     def _subset_data(self, initial_substrates: list = None, start_time_index: int = None, stop_time_index: int = None) -> tuple:
         """This function allows to subset the actual measurement data. Thereby, measurements of specific initial substrate concentrations
         can be specified. Additionally, the time-frame can be specified by defining the index of the first and last measurement time-point.
@@ -419,12 +395,12 @@ class ParameterEstimator():
     def get_parameter_dict(self):
         return self.models[self.result_dict.index[0]].result.params
 
-    def _initialize_models(self, substrate, product, enzyme, inhibitor, initial_substrate, only_irrev_MM: bool) -> Dict[str, KineticModel]:
+    def _initialize_models(self, substrate, product, enzyme, inhibitor, only_irrev_MM: bool) -> Dict[str, KineticModel]:
         """Initializer for all kinetic models. If an inhibitor is provided, inhibition models are initialized. If no inhibitor is specified,
         inhibitory models for substrate and product inhibition are initialized additionally to the irreversible Michaelis Menten model.
         """
 
-        y0 = self._get_y0s(self.substrate, self.enzyme, self.product, self.inhibitor)
+        y0 = self._get_y0s(substrate=substrate, product=product, enzyme=enzyme, inhibitor=inhibitor)
 
         irreversible_Michaelis_Menten = KineticModel(
             name="irreversible Michaelis Menten",
@@ -485,12 +461,10 @@ class ParameterEstimator():
 
             model_dict = {
                 irreversible_Michaelis_Menten.name: irreversible_Michaelis_Menten}
-            if not self.deactivate_product_inhibition:
-                model_dict[competitive_product_inhibition.name] = competitive_product_inhibition
-                model_dict[uncompetitive_product_inhibition.name] = uncompetitive_product_inhibition
-                model_dict[noncompetitive_product_inhibition.name] = noncompetitive_product_inhibition
-            if not self.deactivate_substrate_inhibition:
-                model_dict[substrate_inhibition.name] = substrate_inhibition
+            model_dict[competitive_product_inhibition.name] = competitive_product_inhibition
+            model_dict[uncompetitive_product_inhibition.name] = uncompetitive_product_inhibition
+            model_dict[noncompetitive_product_inhibition.name] = noncompetitive_product_inhibition
+            model_dict[substrate_inhibition.name] = substrate_inhibition
 
             return model_dict
 
@@ -590,10 +564,6 @@ class ParameterEstimator():
 
             kineticmodel.result = minimize(residual, kineticmodel.parameters, args=(
                 self.subset_time, self.subset_substrate), method='leastsq', nan_policy='omit')
-
-    def _calcualte_RMSD(self):
-        n_measurements = self.residuals.size
-        self.rmsd = np.sqrt(1/n_measurements * np.sum(self.residuals**2))
 
     def _result_overview(self) -> DataFrame:
         """

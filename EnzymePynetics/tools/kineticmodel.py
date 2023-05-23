@@ -4,8 +4,10 @@ from lmfit.minimizer import MinimizerResult
 from typing import Dict, Callable, Tuple
 from numpy import log, exp
 from scipy.integrate import odeint
-
 import numpy as np
+
+from EnzymePynetics.core.modelresult import ModelResult
+from EnzymePynetics.core.parameter import Parameter
 
 
 class KineticModel():
@@ -28,7 +30,7 @@ class KineticModel():
         self.kcat_initial = kcat_initial
         self.Km_initial = Km_initial
         self.parameters = self._set_parameters(params)
-        self._fit_result: MinimizerResult = None        
+        self._fit_result: MinimizerResult = None     
 
     def _set_parameters(self, params: list) -> Parameters:
         """Initializes lmfit parameters, based on provided initial parameter guesses.
@@ -101,8 +103,34 @@ class KineticModel():
         Returns:
             MinimizerResult: Lest-squares minimization result.
         """
-        result = minimize(self.residuals, self.parameters, args=(time, y0s, ydata))
+        result: MinimizerResult = minimize(self.residuals, self.parameters, args=(time, y0s, ydata))
         self._fit_result = result
 
         return result
+    
+    def _calcualte_RMSD(self):
+        residuals = self._fit_result.residual
+        return np.sqrt(1/residuals.size * np.sum(residuals**2))
+    
+    def _write_model_results(self) -> ModelResult:
+        model_result = ModelResult()
+        model_result.name = self.name
+        model_result.equation = "#TODO"
+        model_result.AIC = self._fit_result.aic
+        model_result.BIC = self._fit_result.bic
+        model_result.RMSD = self._calcualte_RMSD()
+
+
+        for key, value in self._fit_result.params.items():
+            parameter = Parameter(
+                name=key,
+                value=value.value,
+                standard_deviation=value.stderr,
+                upper_limit=value.max,
+                lower_limit=value.min
+            )
+            print(parameter)
+
+
+        return model_result
 
