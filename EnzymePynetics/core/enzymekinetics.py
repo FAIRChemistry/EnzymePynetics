@@ -7,8 +7,8 @@ from sdRDM.base.utils import forge_signature, IDGenerator
 
 
 from .measurement import Measurement
-from .parameter import Parameter
 from .timetypes import TimeTypes
+from .parameter import Parameter
 from .species import Species
 from .kineticmodel import KineticModel
 
@@ -45,7 +45,7 @@ class EnzymeKinetics(sdRDM.DataModel):
         default="https://github.com/haeussma/EnzymePynetics.git"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="79d2b83b564d7340db797adafb2864e9704f4615"
+        default="e0be266eadb6c38599318eeb7ff2dd692080eadd"
     )
 
     def add_to_kinetic_models(
