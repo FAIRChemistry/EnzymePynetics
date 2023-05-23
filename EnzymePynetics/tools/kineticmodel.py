@@ -8,6 +8,7 @@ import numpy as np
 
 from EnzymePynetics.core.modelresult import ModelResult
 from EnzymePynetics.core.parameter import Parameter
+from EnzymePynetics.core.correlation import Correlation
 
 
 class KineticModel():
@@ -30,7 +31,8 @@ class KineticModel():
         self.kcat_initial = kcat_initial
         self.Km_initial = Km_initial
         self.parameters = self._set_parameters(params)
-        self._fit_result: MinimizerResult = None     
+        self._fit_result: MinimizerResult = None
+        self.result: ModelResult = None
 
     def _set_parameters(self, params: list) -> Parameters:
         """Initializes lmfit parameters, based on provided initial parameter guesses.
@@ -103,34 +105,58 @@ class KineticModel():
         Returns:
             MinimizerResult: Lest-squares minimization result.
         """
-        result: MinimizerResult = minimize(self.residuals, self.parameters, args=(time, y0s, ydata))
-        self._fit_result = result
+        fit_result: MinimizerResult = minimize(self.residuals, self.parameters, args=(time, y0s, ydata))
+        self._fit_result = fit_result
+        self.result = self._get_model_results(fit_result)
 
-        return result
+        return fit_result
     
-    def _calcualte_RMSD(self):
-        residuals = self._fit_result.residual
+    def _calcualte_RMSD(self, lmfit_result: MinimizerResult) -> float:
+        """Calculates root mean square deviation (RMSD) between model and experimental data.
+
+        Args:
+            lmfit_result (MinimizerResult): lmfit fitting result
+
+        Returns:
+            float: RMSD
+        """
+        residuals = lmfit_result.residual
         return np.sqrt(1/residuals.size * np.sum(residuals**2))
     
-    def _write_model_results(self) -> ModelResult:
-        model_result = ModelResult()
-        model_result.name = self.name
-        model_result.equation = "#TODO"
-        model_result.AIC = self._fit_result.aic
-        model_result.BIC = self._fit_result.bic
-        model_result.RMSD = self._calcualte_RMSD()
+    def _get_model_results(self, lmfit_result: MinimizerResult) -> ModelResult:
+        """Extracts fitting parameters and statistics from the lmfit result.
 
+        Args:
+            lmfit_result (MinimizerResult): Result from lmfit minimization.
 
-        for key, value in self._fit_result.params.items():
-            parameter = Parameter(
+        Returns:
+            ModelResult: Result parameters and statistics.
+        """
+
+        # Get parameters and correlations between parameters
+        parameters = []
+        for key, value in lmfit_result.params.items():
+            correlations = []
+            for corr_key, corr_value in value.correl.items():
+                correlations.append(Correlation(parameter=corr_key, value=corr_value))
+
+            parameters.append(Parameter(
                 name=key,
                 value=value.value,
                 standard_deviation=value.stderr,
                 upper_limit=value.max,
-                lower_limit=value.min
-            )
-            print(parameter)
-
+                lower_limit=value.min,
+                correlations=correlations
+            ))
+        
+        # Write lmfit results to ModelResult
+        model_result = ModelResult()
+        model_result.name = self.name
+        model_result.equation = "#TODO"
+        model_result.AIC = lmfit_result.aic
+        model_result.BIC = lmfit_result.bic
+        model_result.RMSD = self._calcualte_RMSD(lmfit_result)
+        model_result.parameters = parameters
 
         return model_result
 
