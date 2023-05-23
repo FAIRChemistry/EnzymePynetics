@@ -1,17 +1,17 @@
 ```mermaid
 classDiagram
     EnzymeKinetics *-- Measurement
-    EnzymeKinetics *-- KineticModel
+    EnzymeKinetics *-- ModelResult
     Species *-- SpeciesTypes
     Species *-- ConcentrationTypes
     Species *-- Series
     Measurement *-- TimeTypes
     Measurement *-- Species
-    KineticModel *-- Parameter
+    ModelResult *-- Parameter
     
     class EnzymeKinetics {
         +string title
-        +KineticModel[0..*] kinetic_models
+        +ModelResult[0..*] model_results
         +Measurement[0..*] measurements
     }
     
@@ -32,7 +32,7 @@ classDiagram
         +TimeTypes time_unit
     }
     
-    class KineticModel {
+    class ModelResult {
         +string name
         +string equation
         +Parameter[0..*] parameters
@@ -45,6 +45,8 @@ classDiagram
         +string name
         +float value
         +float standard_deviation
+        +float upper_limit
+        +float lower_limit
     }
     
     class Series {

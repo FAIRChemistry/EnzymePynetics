@@ -6,11 +6,11 @@ from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
 
 
+from .modelresult import ModelResult
 from .measurement import Measurement
+from .species import Species
 from .timetypes import TimeTypes
 from .parameter import Parameter
-from .species import Species
-from .kineticmodel import KineticModel
 
 
 @forge_signature
@@ -29,8 +29,8 @@ class EnzymeKinetics(sdRDM.DataModel):
         description="Title of the kinetic experiment.",
     )
 
-    kinetic_models: List[KineticModel] = Field(
-        description="Kinetic moodels which were used for parameter estimation.",
+    model_results: List[ModelResult] = Field(
+        description="Fitted kinetic models which were used for parameter estimation.",
         default_factory=ListPlus,
         multiple=True,
     )
@@ -45,10 +45,10 @@ class EnzymeKinetics(sdRDM.DataModel):
         default="https://github.com/haeussma/EnzymePynetics.git"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="e0be266eadb6c38599318eeb7ff2dd692080eadd"
+        default="d5daf6f3f0aeef1866a8c6e759604dded4038194"
     )
 
-    def add_to_kinetic_models(
+    def add_to_model_results(
         self,
         name: Optional[str] = None,
         equation: Optional[str] = None,
@@ -59,10 +59,10 @@ class EnzymeKinetics(sdRDM.DataModel):
         id: Optional[str] = None,
     ) -> None:
         """
-        This method adds an object of type 'KineticModel' to attribute kinetic_models
+        This method adds an object of type 'ModelResult' to attribute model_results
 
         Args:
-            id (str): Unique identifier of the 'KineticModel' object. Defaults to 'None'.
+            id (str): Unique identifier of the 'ModelResult' object. Defaults to 'None'.
             name (): Name of the kinetic model.. Defaults to None
             equation (): Equation of the kinetic model.. Defaults to None
             parameters (): Kinetic parameters of the model.. Defaults to ListPlus()
@@ -83,7 +83,7 @@ class EnzymeKinetics(sdRDM.DataModel):
         if id is not None:
             params["id"] = id
 
-        self.kinetic_models.append(KineticModel(**params))
+        self.model_results.append(ModelResult(**params))
 
     def add_to_measurements(
         self,
