@@ -11,9 +11,9 @@ Base class, dealing with measurement data of an enzyme kinetics assay.
 - title
   - Type: string
   - Description: Title of the kinetic experiment.
-- kinetic_models
-  - Type: KineticModel
-  - Description: Kinetic moodels which were used for parameter estimation.
+- model_results
+  - Type: ModelResult
+  - Description: Fitted kinetic models which were used for parameter estimation.
   - Multiple: True
 - measurements
   - Type: Measurement
@@ -64,7 +64,7 @@ A Measurement object contains information about the applied enzyme concentration
   - Type: TimeTypes
   - Description: Time data unit.
 
-### KineticModel
+### ModelResult
 
 Description of a kinetic model
 
@@ -100,7 +100,13 @@ Defines a kinetic parameter.
   - Description: Value of the kinetic parameter.
 - standard_deviation
   - Type: float
-  - Description: Standard deviation of the kinetic parameter.
+  - Description: 1 sigma standard deviation of the kinetic parameter.
+- upper_limit
+  - Type: float
+  - Description: Upper limit for parameter value.
+- lower_limit
+  - Type: float
+  - Description: lower limit for parameter value.
 
 ### Series
 
