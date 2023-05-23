@@ -8,6 +8,7 @@ classDiagram
     Measurement *-- TimeTypes
     Measurement *-- Species
     ModelResult *-- Parameter
+    Parameter *-- Correlation
     
     class EnzymeKinetics {
         +string title
@@ -45,8 +46,14 @@ classDiagram
         +string name
         +float value
         +float standard_deviation
+        +Correlation[0..*] correlations
         +float upper_limit
         +float lower_limit
+    }
+    
+    class Correlation {
+        +string parameter
+        +float value
     }
     
     class Series {

@@ -6,6 +6,7 @@ from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
 
 
+from .correlation import Correlation
 from .parameter import Parameter
 
 
@@ -55,7 +56,7 @@ class ModelResult(sdRDM.DataModel):
         default="https://github.com/haeussma/EnzymePynetics.git"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="27257696b2eb57a59c4f86615479b4cf40300291"
+        default="2f26f45f86733bb4edd8ff768bd9718f92fdf58c"
     )
 
     def add_to_parameters(
@@ -63,6 +64,7 @@ class ModelResult(sdRDM.DataModel):
         name: Optional[str] = None,
         value: Optional[float] = None,
         standard_deviation: Optional[float] = None,
+        correlations: List[Correlation] = ListPlus(),
         upper_limit: Optional[float] = None,
         lower_limit: Optional[float] = None,
         id: Optional[str] = None,
@@ -75,6 +77,7 @@ class ModelResult(sdRDM.DataModel):
             name (): Name of the kinetic parameter.. Defaults to None
             value (): Value of the kinetic parameter.. Defaults to None
             standard_deviation (): 1 sigma standard deviation of the kinetic parameter.. Defaults to None
+            correlations (): . Defaults to ListPlus()
             upper_limit (): Upper limit for parameter value.. Defaults to None
             lower_limit (): lower limit for parameter value.. Defaults to None
         """
@@ -83,6 +86,7 @@ class ModelResult(sdRDM.DataModel):
             "name": name,
             "value": value,
             "standard_deviation": standard_deviation,
+            "correlations": correlations,
             "upper_limit": upper_limit,
             "lower_limit": lower_limit,
         }

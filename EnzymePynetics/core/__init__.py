@@ -3,6 +3,7 @@ from .species import Species
 from .measurement import Measurement
 from .modelresult import ModelResult
 from .parameter import Parameter
+from .correlation import Correlation
 from .series import Series
 from .speciestypes import SpeciesTypes
 from .concentrationtypes import ConcentrationTypes
@@ -16,6 +17,7 @@ __all__ = [
     "Measurement",
     "ModelResult",
     "Parameter",
+    "Correlation",
     "Series",
     "SpeciesTypes",
     "ConcentrationTypes",

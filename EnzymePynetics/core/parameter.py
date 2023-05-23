@@ -1,8 +1,12 @@
 import sdRDM
 
-from typing import Optional
+from typing import List, Optional
 from pydantic import Field, PrivateAttr
+from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
+
+
+from .correlation import Correlation
 
 
 @forge_signature
@@ -31,6 +35,12 @@ class Parameter(sdRDM.DataModel):
         description="1 sigma standard deviation of the kinetic parameter.",
     )
 
+    correlations: List[Correlation] = Field(
+        default_factory=ListPlus,
+        multiple=True,
+        descritpion="Correlation of parameter to other parameters of a model.",
+    )
+
     upper_limit: Optional[float] = Field(
         default=None,
         description="Upper limit for parameter value.",
@@ -45,5 +55,30 @@ class Parameter(sdRDM.DataModel):
         default="https://github.com/haeussma/EnzymePynetics.git"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="27257696b2eb57a59c4f86615479b4cf40300291"
+        default="2f26f45f86733bb4edd8ff768bd9718f92fdf58c"
     )
+
+    def add_to_correlations(
+        self,
+        parameter: Optional[str] = None,
+        value: Optional[float] = None,
+        id: Optional[str] = None,
+    ) -> None:
+        """
+        This method adds an object of type 'Correlation' to attribute correlations
+
+        Args:
+            id (str): Unique identifier of the 'Correlation' object. Defaults to 'None'.
+            parameter (): Name of the parameter.. Defaults to None
+            value (): Correlation value between -1 and 1.. Defaults to None
+        """
+
+        params = {
+            "parameter": parameter,
+            "value": value,
+        }
+
+        if id is not None:
+            params["id"] = id
+
+        self.correlations.append(Correlation(**params))
