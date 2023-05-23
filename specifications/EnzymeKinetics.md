@@ -101,12 +101,25 @@ Defines a kinetic parameter.
 - standard_deviation
   - Type: float
   - Description: 1 sigma standard deviation of the kinetic parameter.
+- correlations
+  - Type: Correlation
+  - Multiple: True
+  - Descritpion: Correlation of parameter to other parameters of a model.
 - upper_limit
   - Type: float
   - Description: Upper limit for parameter value.
 - lower_limit
   - Type: float
   - Description: lower limit for parameter value.
+
+### Correlation
+
+- parameter
+  - Type: string
+  - Description: Name of the parameter.
+- value
+  - Type: float
+  - Description: Correlation value between -1 and 1.
 
 ### Series
 
