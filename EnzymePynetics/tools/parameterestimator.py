@@ -74,7 +74,6 @@ class ParameterEstimator():
             only_irrev_MM=only_irrev_MM)
 
         self._run_minimization(display_output)
-        self._calcualte_RMSD()
 
         self.result_dict = self._result_overview()
         if display_output:
