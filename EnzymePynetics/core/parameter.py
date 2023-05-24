@@ -55,7 +55,7 @@ class Parameter(sdRDM.DataModel):
         default="https://github.com/haeussma/EnzymePynetics.git"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="f8a545552dffd4a2f6848b989b2f6e3061d8e08f"
+        default="74ebf7823011e9819e838bda347f15f41fdc1a35"
     )
 
     def add_to_correlations(
