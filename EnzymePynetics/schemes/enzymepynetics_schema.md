@@ -37,6 +37,7 @@ classDiagram
         +string name
         +string equation
         +Parameter[0..*] parameters
+        +bool fit_success
         +float AIC
         +float BIC
         +float RMSD

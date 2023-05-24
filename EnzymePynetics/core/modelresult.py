@@ -6,8 +6,8 @@ from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
 
 
-from .correlation import Correlation
 from .parameter import Parameter
+from .correlation import Correlation
 
 
 @forge_signature
@@ -37,6 +37,11 @@ class ModelResult(sdRDM.DataModel):
         multiple=True,
     )
 
+    fit_success: Optional[bool] = Field(
+        default=None,
+        description="Whether or not model fitting was possible.",
+    )
+
     AIC: Optional[float] = Field(
         default=None,
         description="Akaike information criterion.",
@@ -56,7 +61,7 @@ class ModelResult(sdRDM.DataModel):
         default="https://github.com/haeussma/EnzymePynetics.git"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="74ebf7823011e9819e838bda347f15f41fdc1a35"
+        default="f55399675de0cb2f40c1c7d175da4e51d3cdfdd2"
     )
 
     def add_to_parameters(

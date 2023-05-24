@@ -6,11 +6,11 @@ from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
 
 
+from .parameter import Parameter
 from .measurement import Measurement
+from .modelresult import ModelResult
 from .species import Species
 from .timetypes import TimeTypes
-from .parameter import Parameter
-from .modelresult import ModelResult
 
 
 @forge_signature
@@ -45,7 +45,7 @@ class EnzymeKinetics(sdRDM.DataModel):
         default="https://github.com/haeussma/EnzymePynetics.git"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="74ebf7823011e9819e838bda347f15f41fdc1a35"
+        default="f55399675de0cb2f40c1c7d175da4e51d3cdfdd2"
     )
 
     def add_to_model_results(
@@ -53,6 +53,7 @@ class EnzymeKinetics(sdRDM.DataModel):
         name: Optional[str] = None,
         equation: Optional[str] = None,
         parameters: List[Parameter] = ListPlus(),
+        fit_success: Optional[bool] = None,
         AIC: Optional[float] = None,
         BIC: Optional[float] = None,
         RMSD: Optional[float] = None,
@@ -66,6 +67,7 @@ class EnzymeKinetics(sdRDM.DataModel):
             name (): Name of the kinetic model.. Defaults to None
             equation (): Equation of the kinetic model.. Defaults to None
             parameters (): Kinetic parameters of the model.. Defaults to ListPlus()
+            fit_success (): Whether or not model fitting was possible.. Defaults to None
             AIC (): Akaike information criterion.. Defaults to None
             BIC (): Bayesian information criterion.. Defaults to None
             RMSD (): Root mean square deviation between model and measurement data.. Defaults to None
@@ -75,6 +77,7 @@ class EnzymeKinetics(sdRDM.DataModel):
             "name": name,
             "equation": equation,
             "parameters": parameters,
+            "fit_success": fit_success,
             "AIC": AIC,
             "BIC": BIC,
             "RMSD": RMSD,
