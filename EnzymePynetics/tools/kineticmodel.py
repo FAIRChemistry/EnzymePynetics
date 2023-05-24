@@ -11,18 +11,17 @@ from EnzymePynetics.core.parameter import Parameter
 from EnzymePynetics.core.correlation import Correlation
 
 
-class KineticModel():
-
-    def __init__(self,
-                 name: str,
-                 model: Callable,
-                 params: list,
-                 kcat_initial: float,
-                 Km_initial: float,
-                 y0: List[tuple],
-                 enzyme_inactivation: bool = False
-                 ) -> None:
-
+class KineticModel:
+    def __init__(
+        self,
+        name: str,
+        model: Callable,
+        params: list,
+        kcat_initial: float,
+        Km_initial: float,
+        y0: List[tuple],
+        enzyme_inactivation: bool,
+    ) -> None:
         self.name = name
         self.model = model
         self.params = params
@@ -46,10 +45,18 @@ class KineticModel():
 
         parameters = Parameters()
 
-        parameters.add('k_cat', value=self.kcat_initial,
-                        min=self.kcat_initial/100, max=self.kcat_initial*100)
-        parameters.add('Km', value=self.Km_initial, min=self.Km_initial/100,
-                        max=self.Km_initial*10000)
+        parameters.add(
+            "k_cat",
+            value=self.kcat_initial,
+            min=self.kcat_initial / 100,
+            max=self.kcat_initial * 100,
+        )
+        parameters.add(
+            "Km",
+            value=self.Km_initial,
+            min=self.Km_initial / 100,
+            max=self.Km_initial * 10000,
+        )
 
         if "K_iu" in params:
             parameters.add("K_iu", value=0.1, min=0.0001, max=1000)
@@ -61,8 +68,10 @@ class KineticModel():
             parameters.add("k_inact", value=0.01, min=0.0001, max=0.9999)
 
         return parameters
-    
-    def integrate(self, parameters: Parameters, time: np.ndarray, y0s: List[tuple]) -> np.ndarray:
+
+    def integrate(
+        self, parameters: Parameters, time: np.ndarray, y0s: List[tuple]
+    ) -> np.ndarray:
         """Integrates model based on parameters for a given time array and initial conditions.
 
         Args:
@@ -73,10 +82,21 @@ class KineticModel():
         Returns:
             result (np.ndarray): integrated model over given time.
         """
-        result = [odeint(func=self.model, y0=y0, t=t, args=(parameters, self.enzyme_inactivation)) for y0, t in zip(y0s, time)]
+        result = [
+            odeint(
+                func=self.model, y0=y0, t=t, args=(parameters, self.enzyme_inactivation)
+            )
+            for y0, t in zip(y0s, time)
+        ]
         return np.array(result)
-    
-    def residuals(self, parameters: Parameters, time: np.ndarray, y0s: List[tuple], ydata: np.ndarray) -> np.ndarray:
+
+    def residuals(
+        self,
+        parameters: Parameters,
+        time: np.ndarray,
+        y0s: List[tuple],
+        ydata: np.ndarray,
+    ) -> np.ndarray:
         """Calculates residuals between integrated model and measured data (substrate).
 
         Args:
@@ -91,10 +111,10 @@ class KineticModel():
 
         y0s = np.array(y0s)
         model = self.integrate(parameters, time, y0s)
-        residuals = model[:,:,0] - ydata
+        residuals = model[:, :, 0] - ydata
         return residuals.flatten()
-    
-    def fit(self, ydata: np.ndarray, time: np.ndarray, y0s: List[tuple]) -> MinimizerResult:
+
+    def fit(self, ydata: np.ndarray, time: np.ndarray) -> MinimizerResult:
         """Fit model to substrate data.
 
         Args:
@@ -105,12 +125,14 @@ class KineticModel():
         Returns:
             MinimizerResult: Lest-squares minimization result.
         """
-        fit_result: MinimizerResult = minimize(self.residuals, self.parameters, args=(time, y0s, ydata))
+        fit_result: MinimizerResult = minimize(
+            self.residuals, self.parameters, args=(time, self.y0, ydata)
+        )
         self._fit_result = fit_result
         self.result = self._get_model_results(fit_result)
 
         return fit_result
-    
+
     def _calcualte_RMSD(self, lmfit_result: MinimizerResult) -> float:
         """Calculates root mean square deviation (RMSD) between model and experimental data.
 
@@ -121,8 +143,8 @@ class KineticModel():
             float: RMSD
         """
         residuals = lmfit_result.residual
-        return np.sqrt(1/residuals.size * np.sum(residuals**2))
-    
+        return np.sqrt(1 / residuals.size * np.sum(residuals**2))
+
     def _get_model_results(self, lmfit_result: MinimizerResult) -> ModelResult:
         """Extracts fitting parameters and statistics from the lmfit result.
 
@@ -133,30 +155,39 @@ class KineticModel():
             ModelResult: Result parameters and statistics.
         """
 
-        # Get parameters and correlations between parameters
-        parameters = []
-        for key, value in lmfit_result.params.items():
-            correlations = []
-            for corr_key, corr_value in value.correl.items():
-                correlations.append(Correlation(parameter=corr_key, value=corr_value))
+        if lmfit_result.success:
+            # Get parameters and correlations between parameters
+            parameters = []
+            for key, value in lmfit_result.params.items():
+                correlations = []
+                for corr_key, corr_value in value.correl.items():
+                    correlations.append(
+                        Correlation(parameter=corr_key, value=corr_value)
+                    )
 
-            parameters.append(Parameter(
-                name=key,
-                value=value.value,
-                standard_deviation=value.stderr,
-                upper_limit=value.max,
-                lower_limit=value.min,
-                correlations=correlations
-            ))
-        
-        # Write lmfit results to ModelResult
-        model_result = ModelResult()
-        model_result.name = self.name
-        model_result.equation = "#TODO"
-        model_result.AIC = lmfit_result.aic
-        model_result.BIC = lmfit_result.bic
-        model_result.RMSD = self._calcualte_RMSD(lmfit_result)
-        model_result.parameters = parameters
+                parameters.append(
+                    Parameter(
+                        name=key,
+                        value=value.value,
+                        standard_deviation=value.stderr,
+                        upper_limit=value.max,
+                        lower_limit=value.min,
+                        correlations=correlations,
+                    )
+                )
+
+            # Write lmfit results to ModelResult
+            model_result = ModelResult()
+            model_result.name = self.name
+            model_result.equation = "#TODO"
+            model_result.AIC = lmfit_result.aic
+            model_result.BIC = lmfit_result.bic
+            model_result.RMSD = self._calcualte_RMSD(lmfit_result)
+            model_result.parameters = parameters
+
+        else:
+            model_result = ModelResult()
+            model_result.name = self.name
+            model_result.equation = "#TODO"
 
         return model_result
-
