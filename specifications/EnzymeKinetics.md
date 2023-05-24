@@ -78,6 +78,9 @@ Description of a kinetic model
   - Type: Parameter
   - Description: Kinetic parameters of the model.
   - Multiple: True
+- fit_success
+  - Type: bool
+  - Description: Whether or not model fitting was possible.
 - AIC
   - Type: float
   - Description: Akaike information criterion.
