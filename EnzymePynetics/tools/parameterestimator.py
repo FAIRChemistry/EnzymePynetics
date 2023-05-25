@@ -1,4 +1,4 @@
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Literal
 
 from pyenzyme import EnzymeMLDocument
 from EnzymePynetics.core.enzymekinetics import EnzymeKinetics
@@ -9,19 +9,25 @@ from EnzymePynetics.tools.kineticmodel import KineticModel
 from EnzymePynetics.tools.rate_equations import *
 
 import numpy as np
+import pandas as pd
 from pandas import DataFrame
 from scipy.integrate import odeint
-from lmfit import minimize, report_fit
+from lmfit import report_fit
 from IPython.display import display
 from matplotlib.cm import get_cmap
 import matplotlib.pyplot as plt
-from scipy.stats import linregress
+import plotly.express as px
+import plotly.graph_objects as go
+import seaborn as sns
+
+_VISUALIZATION_MODES = Literal["substrate", "product"]
 
 
 class ParameterEstimator:
     def __init__(self, data: EnzymeKinetics):
         self.data = data
         self.models: Dict[str, KineticModel] = None
+        self._measured_species = None
 
         (
             self.substrate,
@@ -33,6 +39,7 @@ class ParameterEstimator:
         ) = self._initialize_measurement_data()
         self.initial_kcat = self._calculate_kcat()
         self.initial_Km = self._calculate_Km()
+
         # TODO shapcheck function to check for consistent array lengths
 
     def fit_models(
@@ -91,185 +98,6 @@ class ParameterEstimator:
         if display_output:
             display(self.result_dict)
 
-    def visualize(
-        self,
-        model_name: Optional[str] = None,
-        path: Optional[str] = None,
-        title: Optional[str] = None,
-        visualize_species: Optional[str] = None,
-        plot_means: bool = True,
-        ax: plt.Axes = None,
-        **plt_kwargs,
-    ) -> None:
-        """Visualizes the measurement data as well as the fitted model. By default the best fitting model is chosen for visualization
-        (based on Akaike criterion)
-
-        Args:
-            model_name (Optional[str], optional): Specify the name of the model which should be visualized. Defaults to None.
-            path (Optional[str], optional): Provide path, were to save the plot.. Defaults to None.
-            title (Optional[str], optional): Choose alternative title for the plot. Defaults to None.
-            visualize_species (Optional[str], optional): Choose whether 'substrate' or 'product' should be visualized. By default the measured species is visualized. Defaults to None.
-            plot_means (bool, optional): Decide whether all measured data should be plotted or mean values with their respective standard deviation. Defaults to True.
-        """
-        if ax is None:
-            ax_provided = False
-            ax = plt.gca()
-        else:
-            ax_provided = True
-
-        # Select which model to visualize
-        best_model = self.result_dict.index[0]
-        if model_name is None:
-            model_name = best_model
-        model = self.models[model_name]
-
-        # Visualization modes
-        plot_modes = {
-            # Substrate
-            "substrate": [self.subset_substrate, 0, self.data.reactant_name],
-            "product": [self.subset_product, 2, self.data.reactant_name],
-        }
-
-        if visualize_species is None:
-            experimental_data, reactant, name = plot_modes[self.data.stoichiometry]
-        else:
-            experimental_data, reactant, name = plot_modes[visualize_species]
-
-        def g(t, w0, params):
-            """
-            Solution to the ODE w'(t)=f(t,w,p) with initial condition w(0)= w0 = cS
-            """
-
-            w = odeint(
-                model.model,
-                w0,
-                t,
-                args=(
-                    params,
-                    self.enzyme_inactivation,
-                ),
-            )
-            return w
-
-        if plot_means:
-            unique_substrates = np.unique(self.subset_initial_substrate)
-            unique_inhibitors = np.unique(self.subset_inhibitor)
-
-            cS, cE, cP, cI = [
-                self._mean_w0(data, self.subset_initial_substrate) for data in model.y0
-            ]
-
-            # Markers
-            unique_inhibitors = np.unique(self.inhibitor)
-            markers = ["o", "x", "D", "X", "d"]
-            marker_mapping = dict(
-                zip(unique_inhibitors, markers[: len(unique_inhibitors)])
-            )
-            marker_vector = [marker_mapping[item] for item in self.inhibitor[:, 0]]
-
-            unique_concs = np.unique(self.subset_initial_substrate)
-            colors = get_cmap("tab10").colors
-            color_mapping = dict(zip(unique_concs, colors[: len(unique_concs)]))
-
-            for inhibitor, marker in zip(unique_inhibitors, markers):
-                # get substrates
-                init_inhibitor = self.subset_inhibitor[:, 0]
-
-                inhibitor_mask = np.where(init_inhibitor == inhibitor)[0]
-
-                for substrate, color in zip(unique_substrates, colors):
-                    idx = inhibitor_mask[
-                        np.where(
-                            self.subset_initial_substrate[inhibitor_mask] == substrate
-                        )[0]
-                    ]
-                    mean = np.mean(experimental_data[idx, :], axis=0)
-                    std = np.std(experimental_data[idx, :], axis=0)
-
-                    ax.errorbar(
-                        self.subset_time,
-                        mean,
-                        std,
-                        label=substrate,
-                        fmt=marker,
-                        color=color,
-                        **plt_kwargs,
-                    )
-
-                    cS, cE, cP, cI = [
-                        np.mean(data[idx], axis=0) for data in model.w0.values()
-                    ]
-                    w0 = (cS, cE[0], 0, cI[0])
-
-                    data_fitted = g(
-                        t=self.subset_time, w0=w0, params=model.result.params
-                    )
-                    ax.plot(self.subset_time, data_fitted[:, reactant], color=color)
-
-        else:
-            cS, cE, cP, cI = model.w0.values()
-            color_vector = [
-                color_mapping[item] for item in self.subset_initial_substrate
-            ]
-
-            for i, data in enumerate(experimental_data):
-                w0 = (cS[i, 0], cE[i, 0], cP[i, 0], cI[i, 0])
-
-                ax.scatter(
-                    x=self.subset_time,
-                    y=data,
-                    label=self.subset_initial_substrate[i],
-                    marker=marker_vector[i],
-                    color=color_vector[i],
-                    **plt_kwargs,
-                )
-
-                data_fitted = g(t=self.subset_time, w0=w0, params=model.result.params)
-
-                # Plot model
-                ax.plot(
-                    self.subset_time, data_fitted[:, reactant], color=color_vector[i]
-                )
-
-        if title is None:
-            ax.set_title(self.data.title)
-        else:
-            ax.set_title(title)
-
-        # Legend
-        if ax_provided == False:
-            ax.set_ylabel(f"{name} [{self.data.data_conc_unit}]")
-            ax.set_xlabel(f"time [{self.data.time_unit}]")
-
-            handles, labels = ax.get_legend_handles_labels()
-
-            new_handles, new_labels = [[], []]
-            for handle, label in zip(handles, labels):
-                if len(new_labels) == 0:
-                    new_labels.append(label)
-                    new_handles.append(handle)
-                else:
-                    if label == new_labels[-1]:
-                        pass
-                    else:
-                        new_labels.append(label)
-                        new_handles.append(handle)
-            ax.legend(
-                title=f"initial substrate [{self.data.data_conc_unit}]",
-                handles=new_handles,
-                labels=new_labels,
-                loc="center left",
-                bbox_to_anchor=(1, 0.5),
-            )
-
-        if path != None:
-            ax.savefig(path, format="svg")
-
-        if ax_provided == False:
-            report_title = f"Fit report for {model.name} model"
-            print(f"{report_title}")
-            report_fit(model.result)
-
     def get_model_results(self, model: str = None):
         if model == None:
             model = self.result_dict.index[0]
@@ -295,6 +123,7 @@ class ParameterEstimator:
             for species in measurement.species:
                 if species.species_type == SpeciesTypes.SUBSTRATE.value:
                     if len(species.data) != 0:
+                        self._measured_species = species.species_type
                         for replicate in species.data:
                             substrate_data.append(replicate.values)
                     initial_substrate_data.append(species.initial_conc)
@@ -303,6 +132,7 @@ class ParameterEstimator:
                 if species.species_type == SpeciesTypes.PRODUCT.value:
                     self._product_unit = species.conc_unit
                     if len(species.data) != 0:
+                        self._measured_species = species.species_type
                         for replicate in species.data:
                             product_data.append(replicate.values)
 
@@ -683,7 +513,7 @@ class ParameterEstimator:
                 partially_competitive_inhibition.name: partially_competitive_inhibition,
             }
 
-    def _run_minimization(self, display_output: bool) -> DataFrame:
+    def _run_minimization(self, display_output: bool):
         """Performs non-linear least-squared minimization to fit the data to the kinetic
         models by adjusting the kinetic parameters of the models.
 
@@ -698,8 +528,8 @@ class ParameterEstimator:
                 print(f" - {kineticmodel.name} model")
 
             kineticmodel.fit(self.subset_substrate, self.subset_time)
-
-            print(kineticmodel.result)
+            if display_output:
+                print(f" -- Fitting succeeded: {kineticmodel.result.fit_success}")
 
     def _result_overview(self) -> DataFrame:
         """
@@ -722,47 +552,53 @@ class ParameterEstimator:
         result_dict = {}
         for model in self.models.values():
             name = model.name
-            aic = round(model.result.AIC)
+            if model.result.fit_success:
+                aic = round(model.result.AIC)
+                rmsd = model.result.RMSD
 
-            parameter_dict = {}
-            for parameter in model.result.parameters:
-                name = parameter_mapper[parameter.name]
-                value = parameter.value
-                stderr = parameter.standard_deviation
+                parameter_dict = {}
+                for parameter in model.result.parameters:
+                    name = parameter_mapper[parameter.name]
+                    value = parameter.value
+                    stderr = parameter.standard_deviation
 
-                try:
-                    percentual_stderr = stderr / value * 100
-                except TypeError:
-                    percentual_stderr = float("nan")
+                    try:
+                        percentual_stderr = stderr / value * 100
+                    except TypeError:
+                        percentual_stderr = float("nan")
 
-                if name.startswith("Ki time-dep"):
-                    parameter_dict[name] = f"{value:.4f} +/- {percentual_stderr:.2f}%"
+                    if name.startswith("Ki time-dep"):
+                        parameter_dict[
+                            name
+                        ] = f"{value:.4f} +/- {percentual_stderr:.2f}%"
+                    else:
+                        parameter_dict[
+                            name
+                        ] = f"{value:.4f} +/- {percentual_stderr:.2f}%"
+
+                    if parameter.name == "k_cat":
+                        kcat = parameter.value
+                        kcat_stderr = parameter.standard_deviation
+                    if parameter.name == "Km":
+                        Km = parameter.value
+                        Km_stderr = parameter.standard_deviation
+
+                if Km_stderr is None or kcat_stderr is None:
+                    kcat_Km_stderr = float("nan")
+                    kcat_Km = float("nan")
+                    percentual_kcat_Km_stderr = float("nan")
                 else:
-                    parameter_dict[name] = f"{value:.4f} +/- {percentual_stderr:.2f}%"
+                    kcat_Km = kcat / Km
+                    kcat_Km_stderr = (
+                        (kcat_stderr / kcat) ** 2 + (Km_stderr / Km) ** 2
+                    ) ** 0.5 * kcat_Km
+                    percentual_kcat_Km_stderr = kcat_Km_stderr / kcat_Km * 100
 
-                if parameter.name == "k_cat":
-                    kcat = parameter.value
-                    kcat_stderr = parameter.standard_deviation
-                if parameter.name == "Km":
-                    Km = parameter.value
-                    Km_stderr = parameter.standard_deviation
+                parameter_dict[
+                    f"kcat / Km [1/{self._time_unit} * 1/{self._substrate_unit}]"
+                ] = f"{kcat_Km:.3f} +/- {percentual_kcat_Km_stderr:.2f}%"
 
-            if Km_stderr is None or kcat_stderr is None:
-                kcat_Km_stderr = float("nan")
-                kcat_Km = float("nan")
-                percentual_kcat_Km_stderr = float("nan")
-            else:
-                kcat_Km = kcat / Km
-                kcat_Km_stderr = (
-                    (kcat_stderr / kcat) ** 2 + (Km_stderr / Km) ** 2
-                ) ** 0.5 * kcat_Km
-                percentual_kcat_Km_stderr = kcat_Km_stderr / kcat_Km * 100
-
-            parameter_dict[
-                f"kcat / Km [1/{self._time_unit} * 1/{self._substrate_unit}]"
-            ] = f"{kcat_Km:.3f} +/- {percentual_kcat_Km_stderr:.2f}%"
-
-            result_dict[model.name] = {"AIC": aic, **parameter_dict}
+                result_dict[model.name] = {"AIC": aic, "RMSD": rmsd, **parameter_dict}
 
         df = DataFrame.from_dict(result_dict).T.sort_values("AIC", ascending=True)
         df.fillna("-", inplace=True)
@@ -805,6 +641,113 @@ class ParameterEstimator:
             else:
                 mean_array = np.vstack([mean_array, mean])
         return mean_array
+
+    def visualize_model_overview(self, visualized_species: _VISUALIZATION_MODES = None):
+        fig = go.Figure()
+        colors = px.colors.qualitative.Prism
+
+        # plotting options for species
+
+        if visualized_species is None:
+            visualized_species = self._measured_species
+
+            print(visualized_species)
+
+        if visualized_species == "substrate":
+            measurement_data = self.subset_substrate
+            species_tuple = 0
+        else:
+            measurement_data = self.subset_product
+            species_tuple = 2
+
+        for i, data in enumerate(measurement_data):
+            fig.add_trace(
+                go.Scatter(
+                    x=self.subset_time[i],
+                    y=data,
+                    name=f"{self.subset_initial_substrate[i]}",
+                    mode="markers",
+                    marker=dict(color=colors[i], size=10),
+                    customdata=["measurement_data"],
+                    hoverinfo="skip",
+                )
+            )
+
+        # Integrate each successfully fitted model
+        successful_models = []
+        for model in self.models.values():
+            if model.result.fit_success:
+                successful_models.append(model.name)
+                datas = model.integrate(
+                    model._fit_result.params, self.subset_time, model.y0
+                )
+                for i, model_data in enumerate(
+                    datas[:, :, species_tuple]
+                ):  # plots substrate
+                    fig.add_trace(
+                        go.Scatter(
+                            x=self.subset_time[i],
+                            y=model_data,
+                            name=model.name,
+                            marker=dict(color=colors[i]),
+                            customdata=[f"{model.name}"],
+                            showlegend=False,
+                            hoverinfo="name",
+                        )
+                    )
+
+        # Create selection options for dropdown menu
+        buttons = []
+        buttons.append(
+            dict(
+                method="restyle",
+                label="All",
+                visible=True,
+                args=[{"visible": [True] * len(fig.data)}],
+            )
+        )
+
+        # Create dropdown option for each fitte model
+        for name in successful_models:
+            visible_traces = [
+                name == trace["customdata"][0]
+                or "measurement_data" == trace["customdata"][0]
+                for trace in fig.data
+            ]
+            buttons.append(
+                dict(
+                    method="restyle",
+                    label=name,
+                    visible=True,
+                    args=[{"visible": visible_traces}],
+                )
+            )
+
+        # placement of dropdown menue
+        fig.update_layout(
+            updatemenus=[
+                dict(
+                    buttons=buttons,
+                    x=0.0,
+                    xanchor="left",
+                    y=1.15,
+                    yanchor="top",
+                    direction="down",
+                    showactive=True,
+                )
+            ]
+        )
+
+        # Add title, legend...
+        fig.update_layout(
+            showlegend=True,
+            title="Kinetic Model Overview",
+            hovermode="closest",
+            legend_title_text=f"Initial substrate ({self._substrate_unit})",
+            hoverlabel_namelength=-1,
+        )
+
+        return fig
 
     @classmethod
     def from_EnzymeML(

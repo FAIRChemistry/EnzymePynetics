@@ -131,8 +131,6 @@ class KineticModel:
         self._fit_result = fit_result
         self.result = self._get_model_results(fit_result)
 
-        return fit_result
-
     def _calcualte_RMSD(self, lmfit_result: MinimizerResult) -> float:
         """Calculates root mean square deviation (RMSD) between model and experimental data.
 
@@ -155,7 +153,17 @@ class KineticModel:
             ModelResult: Result parameters and statistics.
         """
 
-        if lmfit_result.success:
+        # Write lmfit results to ModelResult
+        model_result = ModelResult()
+        model_result.name = self.name
+        model_result.equation = "#TODO"
+        model_result.fit_success = lmfit_result.success
+
+        if model_result.fit_success:
+            model_result.AIC = lmfit_result.aic
+            model_result.BIC = lmfit_result.bic
+            model_result.RMSD = self._calcualte_RMSD(lmfit_result)
+
             # Get parameters and correlations between parameters
             parameters = []
             for key, value in lmfit_result.params.items():
@@ -176,18 +184,6 @@ class KineticModel:
                     )
                 )
 
-            # Write lmfit results to ModelResult
-            model_result = ModelResult()
-            model_result.name = self.name
-            model_result.equation = "#TODO"
-            model_result.AIC = lmfit_result.aic
-            model_result.BIC = lmfit_result.bic
-            model_result.RMSD = self._calcualte_RMSD(lmfit_result)
             model_result.parameters = parameters
-
-        else:
-            model_result = ModelResult()
-            model_result.name = self.name
-            model_result.equation = "#TODO"
 
         return model_result
