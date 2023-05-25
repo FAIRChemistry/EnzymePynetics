@@ -413,8 +413,8 @@
   "title": "test irreversible MM",
   "__source__": {
     "root": "EnzymeKinetics",
-    "repo": "git://github.com/haeussma/EnzymePynetics.git",
+    "repo": "https://github.com/haeussma/EnzymePynetics.git",
     "commit": "aeef6068d7875e75bfc81dacd796d9320df104e3",
-    "url": "git://github.com/haeussma/EnzymePynetics/tree/aeef6068d7875e75bfc81dacd796d9320df104e3"
+    "url": "https://github.com/haeussma/EnzymePynetics/tree/aeef6068d7875e75bfc81dacd796d9320df104e3"
   }
 }

@@ -1,18 +1,18 @@
 {
-  "id": "enzymekinetics3",
+  "id": "enzymekinetics0",
   "title": "test irreversible MM",
   "measurements": [
     {
-      "id": "measurement18",
+      "id": "measurement0",
       "species": [
         {
-          "id": "species25",
+          "id": "species0",
           "conc_unit": "mmol / l",
           "initial_conc": 0.5,
           "species_type": "substrate",
           "data": [
             {
-              "id": "series24",
+              "id": "series0",
               "values": [
                 0.5,
                 0.3644854817261172,
@@ -40,7 +40,7 @@
           ]
         },
         {
-          "id": "species26",
+          "id": "species1",
           "conc_unit": "mmol / l",
           "initial_conc": 0.01,
           "species_type": "enzyme"
@@ -75,16 +75,16 @@
       "time_unit": "min"
     },
     {
-      "id": "measurement19",
+      "id": "measurement1",
       "species": [
         {
-          "id": "species27",
+          "id": "species2",
           "conc_unit": "mmol / l",
           "initial_conc": 2.0,
           "species_type": "substrate",
           "data": [
             {
-              "id": "series25",
+              "id": "series1",
               "values": [
                 2.0,
                 1.569516923490442,
@@ -112,7 +112,7 @@
           ]
         },
         {
-          "id": "species28",
+          "id": "species3",
           "conc_unit": "mmol / l",
           "initial_conc": 0.01,
           "species_type": "enzyme"
@@ -147,16 +147,16 @@
       "time_unit": "min"
     },
     {
-      "id": "measurement20",
+      "id": "measurement2",
       "species": [
         {
-          "id": "species29",
+          "id": "species4",
           "conc_unit": "mmol / l",
           "initial_conc": 4.0,
           "species_type": "substrate",
           "data": [
             {
-              "id": "series26",
+              "id": "series2",
               "values": [
                 4.0,
                 3.3314940265802093,
@@ -184,7 +184,7 @@
           ]
         },
         {
-          "id": "species30",
+          "id": "species5",
           "conc_unit": "mmol / l",
           "initial_conc": 0.01,
           "species_type": "enzyme"
@@ -219,16 +219,16 @@
       "time_unit": "min"
     },
     {
-      "id": "measurement21",
+      "id": "measurement3",
       "species": [
         {
-          "id": "species31",
+          "id": "species6",
           "conc_unit": "mmol / l",
           "initial_conc": 10.0,
           "species_type": "substrate",
           "data": [
             {
-              "id": "series27",
+              "id": "series3",
               "values": [
                 10.0,
                 9.014848259300036,
@@ -256,7 +256,7 @@
           ]
         },
         {
-          "id": "species32",
+          "id": "species7",
           "conc_unit": "mmol / l",
           "initial_conc": 0.01,
           "species_type": "enzyme"
@@ -291,16 +291,16 @@
       "time_unit": "min"
     },
     {
-      "id": "measurement22",
+      "id": "measurement4",
       "species": [
         {
-          "id": "species33",
+          "id": "species8",
           "conc_unit": "mmol / l",
           "initial_conc": 15.0,
           "species_type": "substrate",
           "data": [
             {
-              "id": "series28",
+              "id": "series4",
               "values": [
                 15.0,
                 13.90360745163819,
@@ -328,7 +328,7 @@
           ]
         },
         {
-          "id": "species34",
+          "id": "species9",
           "conc_unit": "mmol / l",
           "initial_conc": 0.01,
           "species_type": "enzyme"
@@ -363,16 +363,16 @@
       "time_unit": "min"
     },
     {
-      "id": "measurement23",
+      "id": "measurement5",
       "species": [
         {
-          "id": "species35",
+          "id": "species10",
           "conc_unit": "mmol / l",
           "initial_conc": 30.0,
           "species_type": "substrate",
           "data": [
             {
-              "id": "series29",
+              "id": "series5",
               "values": [
                 30.0,
                 28.76776725048138,
@@ -400,7 +400,7 @@
           ]
         },
         {
-          "id": "species36",
+          "id": "species11",
           "conc_unit": "mmol / l",
           "initial_conc": 0.01,
           "species_type": "enzyme"
@@ -438,7 +438,7 @@
   "__source__": {
     "root": "EnzymeKinetics",
     "repo": "https://github.com/haeussma/EnzymePynetics.git",
-    "commit": "8eaa7ed2df32907583fc344ed3f76cc6e1e0b5b9",
-    "url": "https://github.com/haeussma/EnzymePynetics/tree/8eaa7ed2df32907583fc344ed3f76cc6e1e0b5b9"
+    "commit": "f55399675de0cb2f40c1c7d175da4e51d3cdfdd2",
+    "url": "https://github.com/haeussma/EnzymePynetics/tree/f55399675de0cb2f40c1c7d175da4e51d3cdfdd2"
   }
 }
