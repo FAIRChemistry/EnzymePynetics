@@ -6,8 +6,8 @@ from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
 
 
-from .parameter import Parameter
 from .correlation import Correlation
+from .parameter import Parameter
 
 
 @forge_signature
@@ -61,7 +61,7 @@ class ModelResult(sdRDM.DataModel):
         default="https://github.com/haeussma/EnzymePynetics.git"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="d074be8586a8f5ea88aa2ce4fb45d8f0b9f41f57"
+        default="fadd40dc58d78832f5ebbb3627bf1c09494e86ca"
     )
 
     def add_to_parameters(

@@ -6,9 +6,10 @@ from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
 
 
-from .concentrationtypes import ConcentrationTypes
-from .series import Series
+from .timetypes import TimeTypes
 from .speciestypes import SpeciesTypes
+from .series import Series
+from .concentrationtypes import ConcentrationTypes
 
 
 @forge_signature
@@ -52,11 +53,16 @@ class Species(sdRDM.DataModel):
         default="https://github.com/haeussma/EnzymePynetics.git"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="d074be8586a8f5ea88aa2ce4fb45d8f0b9f41f57"
+        default="fadd40dc58d78832f5ebbb3627bf1c09494e86ca"
     )
 
     def add_to_data(
-        self, values: List[float] = ListPlus(), id: Optional[str] = None
+        self,
+        values: List[float] = ListPlus(),
+        values_unit: Optional[ConcentrationTypes] = None,
+        time: List[float] = ListPlus(),
+        time_unit: Optional[TimeTypes] = None,
+        id: Optional[str] = None,
     ) -> None:
         """
         This method adds an object of type 'Series' to attribute data
@@ -64,10 +70,16 @@ class Species(sdRDM.DataModel):
         Args:
             id (str): Unique identifier of the 'Series' object. Defaults to 'None'.
             values (): Time-course data of an individual reaction.. Defaults to ListPlus()
+            values_unit (): Unit of the measurement data.. Defaults to None
+            time (): Time array corresponding to time-course data.. Defaults to ListPlus()
+            time_unit (): Time data unit.. Defaults to None
         """
 
         params = {
             "values": values,
+            "values_unit": values_unit,
+            "time": time,
+            "time_unit": time_unit,
         }
 
         if id is not None:

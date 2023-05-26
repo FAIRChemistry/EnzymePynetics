@@ -6,11 +6,10 @@ from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
 
 
-from .parameter import Parameter
-from .timetypes import TimeTypes
-from .measurement import Measurement
-from .species import Species
 from .modelresult import ModelResult
+from .species import Species
+from .parameter import Parameter
+from .measurement import Measurement
 
 
 @forge_signature
@@ -45,7 +44,7 @@ class EnzymeKinetics(sdRDM.DataModel):
         default="https://github.com/haeussma/EnzymePynetics.git"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="d074be8586a8f5ea88aa2ce4fb45d8f0b9f41f57"
+        default="fadd40dc58d78832f5ebbb3627bf1c09494e86ca"
     )
 
     def add_to_model_results(
@@ -94,8 +93,6 @@ class EnzymeKinetics(sdRDM.DataModel):
         temperature: Optional[float] = None,
         temperature_unit: Optional[str] = None,
         pH: Optional[float] = None,
-        time: List[float] = ListPlus(),
-        time_unit: Optional[TimeTypes] = None,
         id: Optional[str] = None,
     ) -> None:
         """
@@ -107,8 +104,6 @@ class EnzymeKinetics(sdRDM.DataModel):
             temperature (): Temperature of the reaction.. Defaults to None
             temperature_unit (): Temperature unit.. Defaults to None
             pH (): pH of the reaction. Defaults to None
-            time (): Time array corresponding to time-course data.. Defaults to ListPlus()
-            time_unit (): Time data unit.. Defaults to None
         """
 
         params = {
@@ -116,8 +111,6 @@ class EnzymeKinetics(sdRDM.DataModel):
             "temperature": temperature,
             "temperature_unit": temperature_unit,
             "pH": pH,
-            "time": time,
-            "time_unit": time_unit,
         }
 
         if id is not None:

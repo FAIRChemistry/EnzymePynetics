@@ -5,10 +5,11 @@ classDiagram
     Species *-- SpeciesTypes
     Species *-- ConcentrationTypes
     Species *-- Series
-    Measurement *-- TimeTypes
     Measurement *-- Species
     ModelResult *-- Parameter
     Parameter *-- Correlation
+    Series *-- ConcentrationTypes
+    Series *-- TimeTypes
     
     class EnzymeKinetics {
         +string title
@@ -29,8 +30,6 @@ classDiagram
         +float temperature
         +string temperature_unit
         +float pH
-        +float[0..*] time
-        +TimeTypes time_unit
     }
     
     class ModelResult {
@@ -59,6 +58,9 @@ classDiagram
     
     class Series {
         +float[0..*] values
+        +ConcentrationTypes values_unit
+        +float[0..*] time
+        +TimeTypes time_unit
     }
     
     class SpeciesTypes {
