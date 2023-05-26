@@ -1,4 +1,4 @@
-from typing import List, Dict, Optional, Literal
+from typing import List, Dict, Optional, Literal, Union
 
 from pyenzyme import EnzymeMLDocument
 from EnzymePynetics.core.enzymekinetics import EnzymeKinetics
@@ -10,6 +10,7 @@ from EnzymePynetics.tools.rate_equations import *
 
 import numpy as np
 import pandas as pd
+from pathlib import Path
 from pandas import DataFrame
 from scipy.integrate import odeint
 from lmfit import report_fit
@@ -752,21 +753,29 @@ class ParameterEstimator:
     @classmethod
     def from_EnzymeML(
         cls,
-        enzmldoc: EnzymeMLDocument,
-        reactant_id: str,
-        measured_species: SpeciesTypes,
-        substrate_id: str = "s0",
-        inhibitor_id: str = None,
+        enzmldoc: Union[EnzymeMLDocument, Path],
+        measured_species_id: str = "s0",
         protein_id: str = "p0",
+        inhibitor_id: str = None,
     ):
+        if isinstance(enzmldoc, str) or isinstance(enzmldoc, Path):
+            enzmldoc = EnzymeMLDocument.fromFile(enzmldoc)
+
+        elif isinstance(enzmldoc, EnzymeMLDocument):
+            enzmldoc = enzmldoc
+
+        else:
+            raise ValueError(
+                f"enzmldoc is of type. Needs to be eighter EnzymeMLDoocument or string-like path to the omex file."
+            )
+
         pH = enzmldoc.getReaction("r0").ph
         temperature = enzmldoc.getReaction("r0").temperature
         temperature_unit = enzmldoc.getReaction("r0").temperature_unit
 
         measurements = []
         for measurement in enzmldoc.measurement_dict.values():
-            substrate = measurement.getReactant(substrate_id)
-            reactant = measurement.getReactant(reactant_id)
+            measured_species = measurement.getReactant(measured_species_id)
             protein = measurement.getReactant(protein_id)
             if inhibitor_id != None:
                 inhibitor = measurement.getReactant(inhibitor_id)
@@ -776,15 +785,22 @@ class ParameterEstimator:
                 inhibitor_conc = 0
                 inhibitor_conc_unit = None
 
-            reps = [Series(values=reps.data) for reps in reactant.replicates]
+            replicates = [
+                Series(values=reps.data) for reps in measured_species.replicates
+            ]
+            if len(replicates) == 0:
+                raise ValueError(
+                    f"Species {measured_species_id} does not contain measurement data. Specify the according 'measured_species_id' from the EnzymeMLDocument"
+                )
+
+            print(measured_species)
 
             measurements.append(
                 Measurement(
-                    initial_substrate_conc=substrate.init_conc,
-                    enzyme_conc=protein.init_conc,
-                    inhibitor_conc=inhibitor_conc,
-                    inhibitor_conc_unit=inhibitor_conc_unit,
-                    data=reps,
+                    temperature=temperature,
+                    temperature_unit=temperature_unit,
+                    pH=pH,
+                    time=measured_species.time,
                 )
             )
 

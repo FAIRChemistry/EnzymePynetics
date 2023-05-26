@@ -56,13 +56,6 @@ A Measurement object contains information about the applied enzyme concentration
 - pH
   - Type: float
   - Description: pH of the reaction
-- time
-  - Type: float
-  - Description: Time array corresponding to time-course data.
-  - Multiple: True
-- time_unit
-  - Type: TimeTypes
-  - Description: Time data unit.
 
 ### ModelResult
 
@@ -132,6 +125,16 @@ Time-course data of an individual reaction.
   - Type: float
   - Description: Time-course data of an individual reaction.
   - Multiple: True
+- values_unit
+  - Type: ConcentrationTypes
+  - Description: Unit of the measurement data.
+- time
+  - Type: float
+  - Description: Time array corresponding to time-course data.
+  - Multiple: True
+- time_unit
+  - Type: TimeTypes
+  - Description: Time data unit.
 
 ## Enumerations
 
