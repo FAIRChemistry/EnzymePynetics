@@ -5,23 +5,26 @@ from EnzymePynetics.core.enzymekinetics import EnzymeKinetics
 from EnzymePynetics.core.speciestypes import SpeciesTypes
 from EnzymePynetics.core.series import Series
 from EnzymePynetics.core.measurement import Measurement
+from EnzymePynetics.core.species import Species
 from EnzymePynetics.tools.kineticmodel import KineticModel
 from EnzymePynetics.tools.rate_equations import *
 
 import numpy as np
 import pandas as pd
-from pathlib import Path
 from pandas import DataFrame
+from pathlib import Path
 from scipy.integrate import odeint
 from lmfit import report_fit
 from IPython.display import display
 from matplotlib.cm import get_cmap
 import matplotlib.pyplot as plt
+from matplotlib.cm import get_cmap
 import plotly.express as px
 import plotly.graph_objects as go
-import seaborn as sns
+import matplotlib.colors
+from matplotlib.pyplot import cm
 
-_VISUALIZATION_MODES = Literal["substrate", "product"]
+_SPECIES_TYPES = Literal["substrate", "product"]
 
 
 class ParameterEstimator:
@@ -119,16 +122,16 @@ class ParameterEstimator:
 
         # extract data from each measurement and species
         for measurement in self.data.measurements:
-            self._time_unit = measurement.time_unit
-            time_data.append(measurement.time)
             for species in measurement.species:
                 if species.species_type == SpeciesTypes.SUBSTRATE.value:
+                    initial_substrate_data.append(species.initial_conc)
+                    self._substrate_unit = species.conc_unit
                     if len(species.data) != 0:
                         self._measured_species = species.species_type
                         for replicate in species.data:
                             substrate_data.append(replicate.values)
-                    initial_substrate_data.append(species.initial_conc)
-                    self._substrate_unit = species.conc_unit
+                            self._time_unit = replicate.time_unit
+                            time_data.append(replicate.time)
 
                 if species.species_type == SpeciesTypes.PRODUCT.value:
                     self._product_unit = species.conc_unit
@@ -136,6 +139,8 @@ class ParameterEstimator:
                         self._measured_species = species.species_type
                         for replicate in species.data:
                             product_data.append(replicate.values)
+                            self._time_unit = replicate.time_unit
+                            time_data.append(replicate.time)
 
                 if species.species_type == SpeciesTypes.INHIBITOR.value:
                     self._inhibitor_unit = species.conc_unit
@@ -149,7 +154,7 @@ class ParameterEstimator:
                     self._enzyme_unit = species.conc_unit
                     if len(species.data) != 0:
                         for replicate in species.data:
-                            inhibitor_data.append(replicate.values)
+                            enzyme_data.append(replicate.values)
                     else:
                         enzyme_data.append(species.initial_conc)
 
@@ -168,17 +173,6 @@ class ParameterEstimator:
         )
         n_replicates = int(data_shape[0] / n_measurements)
 
-        # calcualte missing species based on specified initial substrate concentration
-        if len(product_data) == 0:
-            product_array = np.array(
-                self._calculate_product(substrate_data, initial_substrate_data)
-            )
-        if len(substrate_data) == 0:
-            substrate_array = np.array(
-                self._calculate_substrate(product_data, initial_substrate_data)
-            )
-            self._substrate_unit = self._product_unit
-
         # adjust data arrays for inhibitor and enzyme according to number of replicates of each measurement
         enzyme_array = np.repeat(enzyme_array, n_replicates)
         enzyme_array = np.repeat(enzyme_array, data_shape[1]).reshape(data_shape)
@@ -190,6 +184,17 @@ class ParameterEstimator:
             inhibitor_array = np.repeat(inhibitor_array, data_shape[1]).reshape(
                 data_shape
             )
+
+        # calcualte missing species based on specified initial substrate concentration
+        if len(product_data) == 0:
+            product_array = np.array(
+                self._calculate_product(substrate_data, initial_substrate_array)
+            )
+        if len(substrate_data) == 0:
+            substrate_array = np.array(
+                self._calculate_substrate(product_data, initial_substrate_array)
+            )
+            self._substrate_unit = self._product_unit
 
         return (
             substrate_array,
@@ -204,6 +209,7 @@ class ParameterEstimator:
         self, product_data: List[List], initial_substrates: List
     ) -> List[List]:
         substrate = []
+
         for product_measurment, initial_substrate in zip(
             product_data, initial_substrates
         ):
@@ -603,8 +609,7 @@ class ParameterEstimator:
 
         df = DataFrame.from_dict(result_dict).T.sort_values("AIC", ascending=True)
         df.fillna("-", inplace=True)
-
-        return df
+        return df.style.background_gradient(cmap="Blues")
 
     def _calculate_mean_std(self, data: np.ndarray):
         """Calculated mean and stddev of data for visualization."""
@@ -643,121 +648,224 @@ class ParameterEstimator:
                 mean_array = np.vstack([mean_array, mean])
         return mean_array
 
-    def visualize_model_overview(self, visualized_species: _VISUALIZATION_MODES = None):
+    def get_species(self, species_type: SpeciesTypes, measurement: int = 0) -> Species:
+        return next(
+            (
+                x
+                for x in self.data.measurements[measurement].species
+                if x.species_type == species_type
+            )
+        )
+
+    @staticmethod
+    def _HEX_to_RGBA_string(color: list) -> str:
+        return f"rgba{tuple(color)}"
+
+    @staticmethod
+    def _visibility_mask(visible_traces: list, fig_data: list) -> list:
+        return [
+            any(fig["customdata"][0] == trace for trace in visible_traces)
+            for fig in fig_data
+        ]
+
+    def visualize_model_overview(self, visualized_species: _SPECIES_TYPES = None):
         fig = go.Figure()
-        colors = px.colors.qualitative.Prism
+        colors = matplotlib.colors.to_rgba_array(px.colors.qualitative.Plotly)
 
-        # plotting options for species
-
+        # Select which species to plot
         if visualized_species is None:
             visualized_species = self._measured_species
-
-            print(visualized_species)
 
         if visualized_species == "substrate":
             measurement_data = self.subset_substrate
             species_tuple = 0
+            visualized_species = self._measured_species
         else:
             measurement_data = self.subset_product
             species_tuple = 2
 
-        for i, data in enumerate(measurement_data):
-            fig.add_trace(
-                go.Scatter(
-                    x=self.subset_time[i],
-                    y=data,
-                    name=f"{self.subset_initial_substrate[i]}",
-                    mode="markers",
-                    marker=dict(color=colors[i], size=10),
-                    customdata=["measurement_data"],
-                    hoverinfo="skip",
-                )
-            )
+        datas = self._restore_replicate_dims(
+            self.subset_initial_substrate, measurement_data
+        )
+        times = self._restore_replicate_dims(
+            self.subset_initial_substrate, self.subset_time
+        )
+        initial_substrates = []
+        for sub in self.subset_initial_substrate:
+            if sub not in initial_substrates:
+                initial_substrates.append(sub)
 
-        # Integrate each successfully fitted model
+        # plot replicates
+
+        for i, (data, time, init_sub) in enumerate(
+            zip(datas, times, initial_substrates)
+        ):
+            for j, (replicate_data, replicate_time) in enumerate(zip(data, time)):
+                show_legend = True if j == 0 else False
+                fig.add_trace(
+                    go.Scatter(
+                        x=replicate_time,
+                        y=replicate_data,
+                        name=f"{init_sub}",
+                        mode="markers",
+                        marker=dict(color=self._HEX_to_RGBA_string(colors[i])),
+                        showlegend=show_legend,
+                        customdata=["replicates"],
+                        hoverinfo="skip",
+                        visible=False,
+                    )
+                )
+
+        # plot means
+        if len(datas.shape) == 3:
+            means = np.mean(datas, axis=1)
+            stds = np.std(datas, axis=1)
+
+            for color, mean, std, init_sub, time in zip(
+                colors, means, stds, initial_substrates, times[:, 0, :]
+            ):
+                fig.add_trace(
+                    go.Scatter(
+                        x=time,
+                        y=mean,
+                        name=f"{init_sub}",
+                        mode="markers",
+                        marker=dict(color=self._HEX_to_RGBA_string(color)),
+                        customdata=["mean"],
+                        hoverinfo="skip",
+                        visible=True,
+                    )
+                )
+
+                color[-1] = 0.25  # change opacity of color
+                fig.add_trace(
+                    go.Scatter(
+                        name=f"{init_sub}",
+                        x=time,
+                        y=mean + std,
+                        mode="lines",
+                        line=dict(width=0),
+                        showlegend=False,
+                        customdata=["std"],
+                    )
+                )
+                fig.add_trace(
+                    go.Scatter(
+                        name=f"{init_sub}",
+                        x=time,
+                        y=mean - std,
+                        line=dict(width=0),
+                        mode="lines",
+                        fillcolor=self._HEX_to_RGBA_string(color),
+                        fill="tonexty",
+                        showlegend=False,
+                        customdata=["std"],
+                    )
+                )
+
+            # Integrate each successfully fitted model
         successful_models = []
+        steps = []
+
         for model in self.models.values():
             if model.result.fit_success:
                 successful_models.append(model.name)
-                datas = model.integrate(
-                    model._fit_result.params, self.subset_time, model.y0
+                mean_y0s = np.mean(
+                    self._restore_replicate_dims(
+                        self.subset_initial_substrate, model.y0
+                    ),
+                    axis=1,
                 )
-                for i, model_data in enumerate(
-                    datas[:, :, species_tuple]
-                ):  # plots substrate
+                datas = model.integrate(
+                    model._fit_result.params,
+                    self.subset_time,
+                    mean_y0s,
+                )
+                for data, time, color, init_sub in zip(
+                    datas[:, :, species_tuple],
+                    times[:, 0, :],
+                    colors,
+                    initial_substrates,
+                ):
+                    color[-1] = 1
                     fig.add_trace(
                         go.Scatter(
-                            x=self.subset_time[i],
-                            y=model_data,
+                            x=time,
+                            y=data,
                             name=model.name,
-                            marker=dict(color=colors[i]),
+                            marker=dict(color=self._HEX_to_RGBA_string(color)),
                             customdata=[f"{model.name}"],
                             showlegend=False,
                             hoverinfo="name",
+                            visible=False,
                         )
                     )
+        for model in successful_models:
+            steps.append(
+                dict(
+                    method="update",
+                    args=[
+                        {
+                            "visible": self._visibility_mask(
+                                visible_traces=["mean", "std", model],
+                                fig_data=fig.data,
+                            )
+                        },
+                        {"title": f"{model}"},
+                    ],
+                )
+            )
 
-        # Create selection options for dropdown menu
-        buttons = []
-        buttons.append(
+        sliders = [
             dict(
-                method="restyle",
-                label="All",
-                visible=True,
-                args=[{"visible": [True] * len(fig.data)}],
+                active=0,
+                currentvalue={"prefix": "Frequency: "},
+                pad={"t": 50},
+                steps=steps,
             )
-        )
+        ]
 
-        # Create dropdown option for each fitte model
-        for name in successful_models:
-            visible_traces = [
-                name == trace["customdata"][0]
-                or "measurement_data" == trace["customdata"][0]
-                for trace in fig.data
-            ]
-            buttons.append(
-                dict(
-                    method="restyle",
-                    label=name,
-                    visible=True,
-                    args=[{"visible": visible_traces}],
-                )
-            )
-
-        # placement of dropdown menue
-        fig.update_layout(
-            updatemenus=[
-                dict(
-                    buttons=buttons,
-                    x=0.0,
-                    xanchor="left",
-                    y=1.15,
-                    yanchor="top",
-                    direction="down",
-                    showactive=True,
-                )
-            ]
-        )
+        fig.update_layout(sliders=sliders)
 
         # Add title, legend...
+        species = self.get_species(visualized_species)
+        substrate = self.get_species("substrate")
         fig.update_layout(
             showlegend=True,
-            title="Kinetic Model Overview",
+            title="Measured data",
+            yaxis_title=f"{species.name} ({species.conc_unit})",
+            xaxis_title=f"time ({self._time_unit})",
             hovermode="closest",
-            legend_title_text=f"Initial substrate ({self._substrate_unit})",
+            legend_title_text=f"Initial {substrate.name} ({self._substrate_unit})",
             hoverlabel_namelength=-1,
         )
 
         return fig
 
+    def _restore_replicate_dims(
+        self, initial_substrate: List[float], data_array: np.ndarray
+    ):
+        unique_initial_substrate = list(set(initial_substrate))
+        data_shape = data_array.shape
+        n_replicates = int(data_shape[0] / len(unique_initial_substrate))
+
+        return data_array.reshape(len(unique_initial_substrate), n_replicates, -1)
+
     @classmethod
     def from_EnzymeML(
         cls,
         enzmldoc: Union[EnzymeMLDocument, Path],
+        substrate_id: str = "s0",
         measured_species_id: str = "s0",
         protein_id: str = "p0",
         inhibitor_id: str = None,
     ):
+        def get_unit(unit: str) -> str:
+            if "mole" in unit:
+                return unit.replace("mole", "mol")
+            else:
+                return unit
+
         if isinstance(enzmldoc, str) or isinstance(enzmldoc, Path):
             enzmldoc = EnzymeMLDocument.fromFile(enzmldoc)
 
@@ -766,7 +874,7 @@ class ParameterEstimator:
 
         else:
             raise ValueError(
-                f"enzmldoc is of type. Needs to be eighter EnzymeMLDoocument or string-like path to the omex file."
+                f"enzmldoc is of type. Needs to be eighter EnzymeMLDocument or string-like path to the omex file."
             )
 
         pH = enzmldoc.getReaction("r0").ph
@@ -775,46 +883,65 @@ class ParameterEstimator:
 
         measurements = []
         for measurement in enzmldoc.measurement_dict.values():
+            substrate = measurement.getReactant(substrate_id)
+            enzyme = measurement.getProtein(protein_id)
             measured_species = measurement.getReactant(measured_species_id)
-            protein = measurement.getReactant(protein_id)
-            if inhibitor_id != None:
-                inhibitor = measurement.getReactant(inhibitor_id)
-                inhibitor_conc = inhibitor.init_conc
-                inhibitor_conc_unit = inhibitor.unit
-            else:
-                inhibitor_conc = 0
-                inhibitor_conc_unit = None
+
+            substrate_species = Species(
+                id=substrate_id,
+                name=enzmldoc.getReactant(substrate_id).name,
+                initial_conc=substrate.init_conc,
+                conc_unit=get_unit(substrate.unit),
+                species_type=SpeciesTypes.SUBSTRATE.value,
+            )
 
             replicates = [
-                Series(values=reps.data) for reps in measured_species.replicates
+                Series(
+                    values=rep.data,
+                    value_unit=get_unit(substrate.unit),
+                    time=rep.time,
+                    time_unit=rep.time_unit,
+                )
+                for rep in measured_species.replicates
             ]
             if len(replicates) == 0:
                 raise ValueError(
                     f"Species {measured_species_id} does not contain measurement data. Specify the according 'measured_species_id' from the EnzymeMLDocument"
                 )
 
-            print(measured_species)
+            if substrate_id == measured_species_id:
+                substrate_species.data = replicates
+            else:
+                product_species = Species(
+                    id=measured_species_id,
+                    name=enzmldoc.getReactant(measured_species_id).name,
+                    initial_conc=measured_species.init_conc,
+                    conc_unit=get_unit(measured_species.unit),
+                    species_type=SpeciesTypes.PRODUCT.value,
+                    data=replicates,
+                )
+
+            if inhibitor_id != None:
+                inhibitor = measurement.getReactant(inhibitor_id)
+
+            enzyme_species = Species(
+                id=protein_id,
+                name=enzmldoc.getProtein(protein_id).name,
+                initial_conc=enzyme.init_conc,
+                species_type=SpeciesTypes.ENZYME.value,
+            )
+
+            species = [substrate_species, enzyme_species, product_species]
 
             measurements.append(
                 Measurement(
                     temperature=temperature,
                     temperature_unit=temperature_unit,
                     pH=pH,
-                    time=measured_species.time,
+                    species=species,
                 )
             )
 
-        experimental_data = EnzymeKineticsExperiment(
-            data_conc_unit=reactant.replicates[0].data_unit,
-            time_unit=reactant.replicates[0].time_unit,
-            title=enzmldoc.name,
-            temperature=temperature,
-            temperature_unit=temperature_unit,
-            pH=pH,
-            reactant_name=enzmldoc.getReactant(reactant_id).name,
-            measurements=measurements,
-            stoichiometry=measured_species,
-            time=reactant.replicates[0].time,
-        )
+        enzyme_kinetics = EnzymeKinetics(name=enzmldoc.name, measurements=measurements)
 
-        return cls(experimental_data)
+        return cls(data=enzyme_kinetics)
