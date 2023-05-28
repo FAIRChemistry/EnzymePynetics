@@ -27,7 +27,7 @@ class Series(sdRDM.DataModel):
         multiple=True,
     )
 
-    values_unit: Optional[ConcentrationTypes] = Field(
+    value_unit: Optional[ConcentrationTypes] = Field(
         default=None,
         description="Unit of the measurement data.",
     )
