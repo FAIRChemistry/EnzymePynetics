@@ -10,7 +10,7 @@ class Correlation(sdRDM.DataModel):
 
     """"""
 
-    id: str = Field(
+    id: Optional[str] = Field(
         description="Unique identifier of the given object.",
         default_factory=IDGenerator("correlationINDEX"),
         xml="@id",
@@ -30,5 +30,5 @@ class Correlation(sdRDM.DataModel):
         default="https://github.com/haeussma/EnzymePynetics.git"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="fadd40dc58d78832f5ebbb3627bf1c09494e86ca"
+        default="474442613e38de1032eef164a8a9d723ec995fac"
     )
