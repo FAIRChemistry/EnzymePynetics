@@ -6,10 +6,10 @@ from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
 
 
-from .speciestypes import SpeciesTypes
-from .series import Series
 from .species import Species
+from .series import Series
 from .concentrationtypes import ConcentrationTypes
+from .speciestypes import SpeciesTypes
 
 
 @forge_signature
@@ -17,7 +17,7 @@ class Measurement(sdRDM.DataModel):
 
     """A Measurement object contains information about the applied enzyme concentration and one or multiple time-course concentration measurements. Additionally, the initial substrate concentration should be specified. This is neccessary to derive the substrate concentration for the modeling process. If an inhibitor was applied to the measurement, its concentration and the respective conetration unit can be specified to account for inhibition in kinetic modeling."""
 
-    id: str = Field(
+    id: Optional[str] = Field(
         description="Unique identifier of the given object.",
         default_factory=IDGenerator("measurementINDEX"),
         xml="@id",
@@ -48,7 +48,7 @@ class Measurement(sdRDM.DataModel):
         default="https://github.com/haeussma/EnzymePynetics.git"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="fadd40dc58d78832f5ebbb3627bf1c09494e86ca"
+        default="474442613e38de1032eef164a8a9d723ec995fac"
     )
 
     def add_to_species(

@@ -6,8 +6,8 @@ from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
 
 
-from .timetypes import TimeTypes
 from .concentrationtypes import ConcentrationTypes
+from .timetypes import TimeTypes
 
 
 @forge_signature
@@ -15,7 +15,7 @@ class Series(sdRDM.DataModel):
 
     """Time-course data of an individual reaction."""
 
-    id: str = Field(
+    id: Optional[str] = Field(
         description="Unique identifier of the given object.",
         default_factory=IDGenerator("seriesINDEX"),
         xml="@id",
@@ -27,7 +27,7 @@ class Series(sdRDM.DataModel):
         multiple=True,
     )
 
-    value_unit: Optional[ConcentrationTypes] = Field(
+    values_unit: Optional[ConcentrationTypes] = Field(
         default=None,
         description="Unit of the measurement data.",
     )
@@ -47,5 +47,5 @@ class Series(sdRDM.DataModel):
         default="https://github.com/haeussma/EnzymePynetics.git"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="fadd40dc58d78832f5ebbb3627bf1c09494e86ca"
+        default="474442613e38de1032eef164a8a9d723ec995fac"
     )

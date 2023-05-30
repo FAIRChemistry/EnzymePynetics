@@ -6,8 +6,8 @@ from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
 
 
-from .correlation import Correlation
 from .parameter import Parameter
+from .correlation import Correlation
 
 
 @forge_signature
@@ -15,7 +15,7 @@ class ModelResult(sdRDM.DataModel):
 
     """Description of a kinetic model"""
 
-    id: str = Field(
+    id: Optional[str] = Field(
         description="Unique identifier of the given object.",
         default_factory=IDGenerator("modelresultINDEX"),
         xml="@id",
@@ -61,7 +61,7 @@ class ModelResult(sdRDM.DataModel):
         default="https://github.com/haeussma/EnzymePynetics.git"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="fadd40dc58d78832f5ebbb3627bf1c09494e86ca"
+        default="474442613e38de1032eef164a8a9d723ec995fac"
     )
 
     def add_to_parameters(

@@ -6,9 +6,9 @@ from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
 
 
-from .modelresult import ModelResult
 from .species import Species
 from .parameter import Parameter
+from .modelresult import ModelResult
 from .measurement import Measurement
 
 
@@ -17,7 +17,7 @@ class EnzymeKinetics(sdRDM.DataModel):
 
     """Base class, dealing with measurement data of an enzyme kinetics assay."""
 
-    id: str = Field(
+    id: Optional[str] = Field(
         description="Unique identifier of the given object.",
         default_factory=IDGenerator("enzymekineticsINDEX"),
         xml="@id",
@@ -44,7 +44,7 @@ class EnzymeKinetics(sdRDM.DataModel):
         default="https://github.com/haeussma/EnzymePynetics.git"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="fadd40dc58d78832f5ebbb3627bf1c09494e86ca"
+        default="474442613e38de1032eef164a8a9d723ec995fac"
     )
 
     def add_to_model_results(
