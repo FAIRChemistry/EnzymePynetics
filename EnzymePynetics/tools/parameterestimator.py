@@ -670,7 +670,7 @@ class ParameterEstimator:
     def _restore_replicate_dims(
         self, initial_substrate: List[float], data_array: np.ndarray
     ):
-        unique_initial_substrate = list(set(initial_substrate))
+        unique_initial_substrate = np.unique(initial_substrate)
         data_shape = data_array.shape
         n_replicates = int(data_shape[0] / len(unique_initial_substrate))
 
@@ -729,9 +729,11 @@ class ParameterEstimator:
         fig = make_subplots(rows=datas.shape[0], cols=1, shared_yaxes="all")
 
         for inhibitor_count, inhibitor in enumerate(datas):
-            for i, (data, time, init_sub) in enumerate(
+            print(inhibitor[5])
+            for substrate_count, (data, time, init_sub) in enumerate(
                 zip(inhibitor, times, initial_substrates)
             ):
+                print(f"data_shape: {data.shape}")
                 for j, (replicate_data, replicate_time) in enumerate(zip(data, time)):
                     show_legend = True if j == 0 else False
                     fig.add_trace(
@@ -740,11 +742,13 @@ class ParameterEstimator:
                             y=replicate_data,
                             name=f"{init_sub}",
                             mode="markers",
-                            marker=dict(color=self._HEX_to_RGBA_string(colors[i])),
+                            marker=dict(
+                                color=self._HEX_to_RGBA_string(colors[substrate_count])
+                            ),
                             showlegend=show_legend,
                             customdata=["replicates"],
                             hoverinfo="skip",
-                            visible=False,
+                            visible=True,
                         ),
                         col=1,
                         row=inhibitor_count + 1,
@@ -809,42 +813,88 @@ class ParameterEstimator:
             for model in self.models.values():
                 if model.result.fit_success:
                     successful_models.append(model.name)
-                    mean_y0s = np.mean(
+
+                    means_y0s = np.mean(
                         self._restore_replicate_dims(
                             self.subset_initial_substrate, model.y0
                         ),
-                        axis=1,
+                        axis=2,
                     )
 
-                    print(mean_y0s)
-
-                    datas = model.integrate(
-                        model._fit_result.params,
-                        self.subset_time,
-                        mean_y0s,
-                    )
-
-                    for data, time, color, init_sub in zip(
-                        datas[:, :, species_tuple],
-                        times[:, 0, :],
-                        colors,
-                        initial_substrates,
-                    ):
-                        color[-1] = 1
-                        fig.add_trace(
-                            go.Scatter(
-                                x=time,
-                                y=data,
-                                name=model.name,
-                                marker=dict(color=self._HEX_to_RGBA_string(color)),
-                                customdata=[f"{model.name}"],
-                                showlegend=False,
-                                hoverinfo="name",
-                                visible=False,
-                            )
+                    for i, mean_y0s in enumerate(means_y0s):
+                        datas = model.integrate(
+                            model._fit_result.params,
+                            self.subset_time,
+                            mean_y0s,
                         )
 
-        fig.update_layout(height=1400, width=800)
+                        for data, time, color, init_sub in zip(
+                            datas[:, :, species_tuple],
+                            times[:, 0, :],
+                            colors,
+                            initial_substrates,
+                        ):
+                            color[-1] = 1
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=time,
+                                    y=data,
+                                    name=model.name,
+                                    marker=dict(color=self._HEX_to_RGBA_string(color)),
+                                    customdata=[f"{model.name}"],
+                                    showlegend=False,
+                                    hoverinfo="name",
+                                    visible=False,
+                                ),
+                                col=1,
+                                row=i + 1,
+                            )
+
+        for model in successful_models:
+            steps.append(
+                dict(
+                    method="update",
+                    args=[
+                        {
+                            "visible": self._visibility_mask(
+                                visible_traces=["mean", "std", model],
+                                fig_data=fig.data,
+                            )
+                        },
+                        {"title": f"Data + Model"},
+                    ],
+                    label=f"{model}",
+                )
+            )
+
+            sliders = [
+                dict(
+                    active=0,
+                    currentvalue=dict(prefix="Model: ", font=dict(color="black")),
+                    tickcolor="white",
+                    tickwidth=0,
+                    font=dict(color="white"),
+                    pad={"t": 50},
+                    steps=steps,
+                )
+            ]
+        max_data = np.nanmax([ys["y"] for ys in fig.__dict__["_data_objs"]])
+
+        fig.update_layout(
+            sliders=sliders,
+            updatemenus=[
+                dict(
+                    type="buttons",
+                    direction="right",
+                    x=0.7,
+                    y=1.3,
+                    showactive=True,
+                )
+            ],
+            yaxis_range=[0 - 0.05 * max_data, max_data + 0.05 * max_data],
+        )
+
+        fig.update_layout(height=1400)
 
         return fig
 
@@ -1010,7 +1060,6 @@ class ParameterEstimator:
             )
         ]
 
-        min_data = np.nanmin([ys["y"] for ys in fig.__dict__["_data_objs"]])
         max_data = np.nanmax([ys["y"] for ys in fig.__dict__["_data_objs"]])
 
         # Buttons
