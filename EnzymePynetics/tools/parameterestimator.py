@@ -20,6 +20,7 @@ from matplotlib.cm import get_cmap
 import matplotlib.pyplot as plt
 from matplotlib.cm import get_cmap
 import plotly.express as px
+from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 import matplotlib.colors
 from matplotlib.pyplot import cm
@@ -148,7 +149,7 @@ class ParameterEstimator:
                         for replicate in species.data:
                             inhibitor_data.append(replicate.values)
                     else:
-                        inhibitor_data.append(replicate.values)
+                        inhibitor_data.append(species.initial_conc)
 
                 if species.species_type == SpeciesTypes.ENZYME.value:
                     self._enzyme_unit = species.conc_unit
@@ -180,6 +181,7 @@ class ParameterEstimator:
         if len(inhibitor_array) == 0:
             inhibitor_array = np.zeros(data_shape)
         else:
+            print(inhibitor_array.shape)
             inhibitor_array = np.repeat(inhibitor_array, n_replicates)
             inhibitor_array = np.repeat(inhibitor_array, data_shape[1]).reshape(
                 data_shape
@@ -491,8 +493,18 @@ class ParameterEstimator:
                 kcat_initial=self.initial_kcat,
                 Km_initial=self.initial_Km,
                 model=uncompetitive_inhibition_model,
-                enzyme_inactivation=self.enzyme_inactivation,
+                enzyme_inactivation=False,
             )
+            uncompetitive_inhibition_inactivation = KineticModel(
+                name="uncompetitive inhibition with enzyme inactivation",
+                params=["K_iu"],
+                y0=y0,
+                kcat_initial=self.initial_kcat,
+                Km_initial=self.initial_Km,
+                model=uncompetitive_inhibition_model,
+                enzyme_inactivation=True,
+            )
+
             noncompetitive_inhibition = KineticModel(
                 name="non-competitive inhibition",
                 params=["K_iu", "K_ic"],
@@ -500,8 +512,18 @@ class ParameterEstimator:
                 kcat_initial=self.initial_kcat,
                 Km_initial=self.initial_Km,
                 model=noncompetitive_inhibition_model,
-                enzyme_inactivation=self.enzyme_inactivation,
+                enzyme_inactivation=False,
             )
+            noncompetitive_inhibition_inactivation = KineticModel(
+                name="non-competitive inhibition with enzyme inactivation",
+                params=["K_iu", "K_ic"],
+                y0=y0,
+                kcat_initial=self.initial_kcat,
+                Km_initial=self.initial_Km,
+                model=noncompetitive_inhibition_model,
+                enzyme_inactivation=True,
+            )
+
             partially_competitive_inhibition = KineticModel(
                 name="partially competitive inhibition",
                 params=["K_ic", "K_iu"],
@@ -509,15 +531,29 @@ class ParameterEstimator:
                 kcat_initial=self.initial_kcat,
                 Km_initial=self.initial_Km,
                 model=partially_competitive_inhibition_model,
-                enzyme_inactivation=self.enzyme_inactivation,
+                enzyme_inactivation=False,
+            )
+            partially_competitive_inhibition_inactivation = KineticModel(
+                name="partially competitive inhibition with enzyme inactivation",
+                params=["K_ic", "K_iu"],
+                y0=y0,
+                kcat_initial=self.initial_kcat,
+                Km_initial=self.initial_Km,
+                model=partially_competitive_inhibition_model,
+                enzyme_inactivation=True,
             )
 
             return {
                 irreversible_Michaelis_Menten.name: irreversible_Michaelis_Menten,
+                irreversible_Michaelis_Menten_inactivation.name: irreversible_Michaelis_Menten_inactivation,
                 competitive_inhibition.name: competitive_inhibition,
+                competitive_inhibition_inactivation.name: competitive_inhibition_inactivation,
                 uncompetitive_inhibition.name: uncompetitive_inhibition,
+                uncompetitive_inhibition_inactivation.name: uncompetitive_inhibition_inactivation,
                 noncompetitive_inhibition.name: noncompetitive_inhibition,
+                noncompetitive_inhibition_inactivation.name: noncompetitive_inhibition_inactivation,
                 partially_competitive_inhibition.name: partially_competitive_inhibition,
+                partially_competitive_inhibition_inactivation.name: partially_competitive_inhibition_inactivation,
             }
 
     def _run_minimization(self, display_output: bool):
@@ -611,43 +647,6 @@ class ParameterEstimator:
         df.fillna("-", inplace=True)
         return df.style.background_gradient(cmap="Blues")
 
-    def _calculate_mean_std(self, data: np.ndarray):
-        """Calculated mean and stddev of data for visualization."""
-        mean_data = np.array([])
-        std_data = np.array([])
-        unique_initial_substrates = np.unique(self.subset_initial_substrate)
-        if np.any(self.inhibitor > 0):
-            unique_inhibitors = np.unique(self.inhibitor)
-        for concentration in unique_initial_substrates:
-            idx = np.where(self.subset_initial_substrate == concentration)
-            mean_data = np.append(mean_data, np.mean(data[idx], axis=0))
-            std_data = np.append(std_data, np.std(data[idx], axis=0))
-            self.inhibitor
-
-        mean_data = mean_data.reshape(
-            len(unique_initial_substrates),
-            int(len(mean_data) / len(unique_initial_substrates)),
-        )
-        std_data = std_data.reshape(
-            len(unique_initial_substrates),
-            int(len(std_data) / len(unique_initial_substrates)),
-        )
-
-        return mean_data, std_data
-
-    def _mean_w0(self, measurement_data: np.ndarray, init_substrate):
-        """Calculates the mean values of substrate product and inhibitor to initialize the fitter, if "plot_means" is set in the 'visualize' method."""
-        unique = np.unique(init_substrate)
-        mean_array = np.array([])
-        for concentration in unique:
-            idx = np.where(init_substrate == concentration)
-            mean = np.mean(measurement_data[idx], axis=0)
-            if mean_array.size == 0:
-                mean_array = np.append(mean_array, mean)
-            else:
-                mean_array = np.vstack([mean_array, mean])
-        return mean_array
-
     def get_species(self, species_type: SpeciesTypes, measurement: int = 0) -> Species:
         return next(
             (
@@ -667,6 +666,187 @@ class ParameterEstimator:
             any(fig["customdata"][0] == trace for trace in visible_traces)
             for fig in fig_data
         ]
+
+    def _restore_replicate_dims(
+        self, initial_substrate: List[float], data_array: np.ndarray
+    ):
+        unique_initial_substrate = list(set(initial_substrate))
+        data_shape = data_array.shape
+        n_replicates = int(data_shape[0] / len(unique_initial_substrate))
+
+        if np.all(self.subset_inhibitor == 0):
+            return data_array.reshape(len(unique_initial_substrate), n_replicates, -1)
+
+        else:
+            unique_inhibitor_concs = np.unique(self.subset_inhibitor)
+            n_replicates = int(
+                data_shape[0]
+                / len(unique_initial_substrate)
+                / len(unique_inhibitor_concs)
+            )
+
+            return data_array.reshape(
+                len(unique_inhibitor_concs),
+                len(unique_initial_substrate),
+                n_replicates,
+                -1,
+            )
+
+    def visualize_subplots(self, visualized_species: _SPECIES_TYPES = None):
+        colors = matplotlib.colors.to_rgba_array(px.colors.qualitative.Plotly)
+
+        # Select which species to plot
+        if visualized_species is None:
+            visualized_species = self._measured_species
+
+        if visualized_species == "substrate":
+            measurement_data = self.subset_substrate
+            species_tuple = 0
+            visualized_species = self._measured_species
+        else:
+            measurement_data = self.subset_product
+            species_tuple = 2
+
+        datas = self._restore_replicate_dims(
+            self.subset_initial_substrate, measurement_data
+        )
+        times = self._restore_replicate_dims(
+            self.subset_initial_substrate, self.subset_time
+        )
+
+        initial_substrates = []
+        for sub in self.subset_initial_substrate:
+            if sub not in initial_substrates:
+                initial_substrates.append(sub)
+
+        datas = self._restore_replicate_dims(
+            self.subset_initial_substrate, measurement_data
+        )
+        times = self._restore_replicate_dims(
+            self.subset_initial_substrate, self.subset_time
+        )
+
+        fig = make_subplots(rows=datas.shape[0], cols=1, shared_yaxes="all")
+
+        for inhibitor_count, inhibitor in enumerate(datas):
+            for i, (data, time, init_sub) in enumerate(
+                zip(inhibitor, times, initial_substrates)
+            ):
+                for j, (replicate_data, replicate_time) in enumerate(zip(data, time)):
+                    show_legend = True if j == 0 else False
+                    fig.add_trace(
+                        go.Scatter(
+                            x=replicate_time,
+                            y=replicate_data,
+                            name=f"{init_sub}",
+                            mode="markers",
+                            marker=dict(color=self._HEX_to_RGBA_string(colors[i])),
+                            showlegend=show_legend,
+                            customdata=["replicates"],
+                            hoverinfo="skip",
+                            visible=False,
+                        ),
+                        col=1,
+                        row=inhibitor_count + 1,
+                    )
+            if datas.shape[2] > 1:
+                means = np.mean(inhibitor, axis=1)
+                stds = np.std(inhibitor, axis=1)
+
+                for color, mean, std, init_sub, time in zip(
+                    colors, means, stds, initial_substrates, times[:, 0, :]
+                ):
+                    color[-1] = 1
+                    fig.add_trace(
+                        go.Scatter(
+                            x=time,
+                            y=mean,
+                            name=f"{init_sub}",
+                            mode="markers",
+                            marker=dict(color=self._HEX_to_RGBA_string(color)),
+                            customdata=["mean"],
+                            hoverinfo="skip",
+                            visible=True,
+                        ),
+                        col=1,
+                        row=inhibitor_count + 1,
+                    )
+
+                    color[-1] = 0.25  # change opacity of color
+                    fig.add_trace(
+                        go.Scatter(
+                            name=f"{init_sub}",
+                            x=time,
+                            y=mean + std,
+                            mode="lines",
+                            line=dict(width=0),
+                            showlegend=False,
+                            customdata=["std"],
+                        ),
+                        col=1,
+                        row=inhibitor_count + 1,
+                    )
+                    fig.add_trace(
+                        go.Scatter(
+                            name=f"{init_sub}",
+                            x=time,
+                            y=mean - std,
+                            line=dict(width=0),
+                            mode="lines",
+                            fillcolor=self._HEX_to_RGBA_string(color),
+                            fill="tonexty",
+                            showlegend=False,
+                            customdata=["std"],
+                        ),
+                        col=1,
+                        row=inhibitor_count + 1,
+                    )
+
+            # Integrate each successfully fitted model
+            successful_models = []
+            steps = []
+
+            for model in self.models.values():
+                if model.result.fit_success:
+                    successful_models.append(model.name)
+                    mean_y0s = np.mean(
+                        self._restore_replicate_dims(
+                            self.subset_initial_substrate, model.y0
+                        ),
+                        axis=1,
+                    )
+
+                    print(mean_y0s)
+
+                    datas = model.integrate(
+                        model._fit_result.params,
+                        self.subset_time,
+                        mean_y0s,
+                    )
+
+                    for data, time, color, init_sub in zip(
+                        datas[:, :, species_tuple],
+                        times[:, 0, :],
+                        colors,
+                        initial_substrates,
+                    ):
+                        color[-1] = 1
+                        fig.add_trace(
+                            go.Scatter(
+                                x=time,
+                                y=data,
+                                name=model.name,
+                                marker=dict(color=self._HEX_to_RGBA_string(color)),
+                                customdata=[f"{model.name}"],
+                                showlegend=False,
+                                hoverinfo="name",
+                                visible=False,
+                            )
+                        )
+
+        fig.update_layout(height=1400, width=800)
+
+        return fig
 
     def visualize_model_overview(self, visualized_species: _SPECIES_TYPES = None):
         fig = go.Figure()
@@ -763,7 +943,7 @@ class ParameterEstimator:
                     )
                 )
 
-            # Integrate each successfully fitted model
+        # Integrate each successfully fitted model
         successful_models = []
         steps = []
 
@@ -781,6 +961,7 @@ class ParameterEstimator:
                     self.subset_time,
                     mean_y0s,
                 )
+
                 for data, time, color, init_sub in zip(
                     datas[:, :, species_tuple],
                     times[:, 0, :],
@@ -811,21 +992,65 @@ class ParameterEstimator:
                                 fig_data=fig.data,
                             )
                         },
-                        {"title": f"{model}"},
+                        {"title": f"Data + Model"},
                     ],
+                    label=f"{model}",
                 )
             )
 
         sliders = [
             dict(
                 active=0,
-                currentvalue={"prefix": "Frequency: "},
+                currentvalue=dict(prefix="Model: ", font=dict(color="black")),
+                tickcolor="white",
+                tickwidth=0,
+                font=dict(color="white"),
                 pad={"t": 50},
                 steps=steps,
             )
         ]
 
-        fig.update_layout(sliders=sliders)
+        min_data = np.nanmin([ys["y"] for ys in fig.__dict__["_data_objs"]])
+        max_data = np.nanmax([ys["y"] for ys in fig.__dict__["_data_objs"]])
+
+        # Buttons
+        buttons = []
+        buttons.append(
+            dict(
+                method="restyle",
+                label="Averages",
+                visible=True,
+                args=[
+                    dict(
+                        visible=self._visibility_mask(
+                            visible_traces=["mean", "std", model], fig_data=fig.data
+                        )
+                    )
+                ],
+                args2=[
+                    dict(
+                        visible=self._visibility_mask(
+                            visible_traces=["replicates", model], fig_data=fig.data
+                        )
+                    )
+                ],
+            )
+        )
+
+        fig.update_layout(
+            sliders=sliders,
+            updatemenus=[
+                dict(
+                    type="buttons",
+                    direction="right",
+                    x=0.7,
+                    y=1.3,
+                    showactive=True,
+                    buttons=buttons,
+                )
+            ],
+            yaxis_range=[0 - 0.05 * max_data, max_data + 0.05 * max_data],
+        )
 
         # Add title, legend...
         species = self.get_species(visualized_species)
@@ -839,17 +1064,20 @@ class ParameterEstimator:
             legend_title_text=f"Initial {substrate.name} ({self._substrate_unit})",
             hoverlabel_namelength=-1,
         )
+        fig.add_annotation(
+            dict(
+                font=dict(color="black"),
+                x=10,
+                y=1.1,
+                showarrow=False,
+                text="Today",
+                textangle=0,
+                xref="x",
+                yref="paper",
+            )
+        )
 
         return fig
-
-    def _restore_replicate_dims(
-        self, initial_substrate: List[float], data_array: np.ndarray
-    ):
-        unique_initial_substrate = list(set(initial_substrate))
-        data_shape = data_array.shape
-        n_replicates = int(data_shape[0] / len(unique_initial_substrate))
-
-        return data_array.reshape(len(unique_initial_substrate), n_replicates, -1)
 
     @classmethod
     def from_EnzymeML(
@@ -921,9 +1149,6 @@ class ParameterEstimator:
                     data=replicates,
                 )
 
-            if inhibitor_id != None:
-                inhibitor = measurement.getReactant(inhibitor_id)
-
             enzyme_species = Species(
                 id=protein_id,
                 name=enzmldoc.getProtein(protein_id).name,
@@ -932,6 +1157,24 @@ class ParameterEstimator:
             )
 
             species = [substrate_species, enzyme_species, product_species]
+
+            if inhibitor_id != None:
+                inhibitor = measurement.getReactant(inhibitor_id)
+
+                inhibitor_species = Species(
+                    id=inhibitor_id,
+                    name=enzmldoc.getReactant(inhibitor_id).name,
+                    initial_conc=inhibitor.init_conc,
+                    conc_unit=get_unit(inhibitor.unit),
+                    species_type=SpeciesTypes.INHIBITOR.value,
+                )
+
+                species = [
+                    substrate_species,
+                    enzyme_species,
+                    product_species,
+                    inhibitor_species,
+                ]
 
             measurements.append(
                 Measurement(
