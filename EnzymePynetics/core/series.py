@@ -6,8 +6,8 @@ from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
 
 
-from .concentrationtypes import ConcentrationTypes
 from .timetypes import TimeTypes
+from .concentrationtypes import ConcentrationTypes
 
 
 @forge_signature
@@ -47,5 +47,5 @@ class Series(sdRDM.DataModel):
         default="https://github.com/haeussma/EnzymePynetics.git"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="474442613e38de1032eef164a8a9d723ec995fac"
+        default="32234c4d1f9bcd2161b9114788408f8ca0865adb"
     )
