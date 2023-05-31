@@ -707,6 +707,10 @@ class ParameterEstimator:
             measurement_data = self.subset_product
             species_tuple = 2
 
+        unique_initial_substrates = np.unique(self.subset_initial_substrate)
+        unique_inhibitors = np.unique(self.inhibitor)
+
+        # Reshape data and time array to contain inhibitor and replicate information
         datas = self._restore_replicate_dims(
             self.subset_initial_substrate, measurement_data
         )
@@ -714,62 +718,83 @@ class ParameterEstimator:
             self.subset_initial_substrate, self.subset_time
         )
 
-        initial_substrates = []
-        for sub in self.subset_initial_substrate:
-            if sub not in initial_substrates:
-                initial_substrates.append(sub)
+        # get measured species and substrate species
+        species = self.get_species(visualized_species)
+        substrate = self.get_species("substrate")
+        inhibitor = self.get_species("inhibitor")
 
-        datas = self._restore_replicate_dims(
-            self.subset_initial_substrate, measurement_data
+        subplot_titles = []
+        for row, inhibitor_conc in enumerate(unique_inhibitors):
+            if inhibitor_conc == 0:
+                subplot_titles.append(f"without {inhibitor.name}")
+            else:
+                subplot_titles.append(
+                    f"{inhibitor_conc} {inhibitor.conc_unit} {inhibitor.name}"
+                )
+
+        fig = make_subplots(
+            rows=datas.shape[0],
+            cols=1,
+            shared_yaxes="all",
+            y_title=f"Initial {substrate.name} ({self._substrate_unit})",
+            x_title=f"time ({self._time_unit})",
+            subplot_titles=subplot_titles,
+            horizontal_spacing=0.05,
+            vertical_spacing=0.05,
         )
-        times = self._restore_replicate_dims(
-            self.subset_initial_substrate, self.subset_time
-        )
 
-        fig = make_subplots(rows=datas.shape[0], cols=1, shared_yaxes="all")
+        # Adjust syle of subplot label
+        for count, annotation in enumerate(fig.layout["annotations"]):
+            if inhibitor.name in annotation["text"]:
+                fig.layout["annotations"][count]["x"] = 0
+                fig.layout["annotations"][count]["font"]["size"] = 12
+                fig.layout["annotations"][count]["xanchor"] = "left"
 
-        for inhibitor_count, inhibitor in enumerate(datas):
-            print(inhibitor[5])
-            for substrate_count, (data, time, init_sub) in enumerate(
-                zip(inhibitor, times, initial_substrates)
+        for inhibitor_count, (inhibitor_data, inhibitor_time) in enumerate(
+            zip(datas, times)
+        ):
+            for data, time, init_sub, color in zip(
+                inhibitor_data, inhibitor_time, unique_initial_substrates, colors
             ):
-                print(f"data_shape: {data.shape}")
-                for j, (replicate_data, replicate_time) in enumerate(zip(data, time)):
-                    show_legend = True if j == 0 else False
+                for replicate_count, (replicate_data, replicate_time) in enumerate(
+                    zip(data, time)
+                ):
+                    show_legend = (
+                        True if replicate_count == 0 and inhibitor_count == 0 else False
+                    )
+                    color[-1] = 1
                     fig.add_trace(
                         go.Scatter(
                             x=replicate_time,
                             y=replicate_data,
                             name=f"{init_sub}",
                             mode="markers",
-                            marker=dict(
-                                color=self._HEX_to_RGBA_string(colors[substrate_count])
-                            ),
+                            marker=dict(color=self._HEX_to_RGBA_string(color)),
                             showlegend=show_legend,
                             customdata=["replicates"],
                             hoverinfo="skip",
-                            visible=True,
+                            visible=False,
                         ),
                         col=1,
                         row=inhibitor_count + 1,
                     )
-            if datas.shape[2] > 1:
-                means = np.mean(inhibitor, axis=1)
-                stds = np.std(inhibitor, axis=1)
 
-                for color, mean, std, init_sub, time in zip(
-                    colors, means, stds, initial_substrates, times[:, 0, :]
-                ):
+                if datas.shape[2] > 1:
+                    show_legend = True if inhibitor_count == 0 else False
+
+                    mean = np.mean(data, axis=0)
+                    std = np.std(data, axis=0)
                     color[-1] = 1
                     fig.add_trace(
                         go.Scatter(
-                            x=time,
+                            x=time[0],
                             y=mean,
                             name=f"{init_sub}",
                             mode="markers",
                             marker=dict(color=self._HEX_to_RGBA_string(color)),
                             customdata=["mean"],
                             hoverinfo="skip",
+                            showlegend=show_legend,
                             visible=True,
                         ),
                         col=1,
@@ -780,12 +805,13 @@ class ParameterEstimator:
                     fig.add_trace(
                         go.Scatter(
                             name=f"{init_sub}",
-                            x=time,
+                            x=time[0],
                             y=mean + std,
                             mode="lines",
                             line=dict(width=0),
                             showlegend=False,
                             customdata=["std"],
+                            visible=True,
                         ),
                         col=1,
                         row=inhibitor_count + 1,
@@ -793,7 +819,7 @@ class ParameterEstimator:
                     fig.add_trace(
                         go.Scatter(
                             name=f"{init_sub}",
-                            x=time,
+                            x=time[0],
                             y=mean - std,
                             line=dict(width=0),
                             mode="lines",
@@ -801,84 +827,110 @@ class ParameterEstimator:
                             fill="tonexty",
                             showlegend=False,
                             customdata=["std"],
+                            visible=True,
                         ),
                         col=1,
                         row=inhibitor_count + 1,
                     )
 
-            # Integrate each successfully fitted model
-            successful_models = []
-            steps = []
-
-            for model in self.models.values():
-                if model.result.fit_success:
-                    successful_models.append(model.name)
-
-                    means_y0s = np.mean(
-                        self._restore_replicate_dims(
-                            self.subset_initial_substrate, model.y0
-                        ),
-                        axis=2,
+        # Integrate each successfully fitted model
+        successfull_models = []
+        steps = []
+        for model in self.models.values():
+            if model.result.fit_success:
+                successfull_models.append(model)
+                means_y0s = np.mean(
+                    self._restore_replicate_dims(
+                        self.subset_initial_substrate, model.y0
+                    ),
+                    axis=2,
+                )
+                for inhibitor_count, (inhibitor_y0s, time) in enumerate(
+                    zip(means_y0s, times)
+                ):
+                    datas = model.integrate(
+                        model._fit_result.params,
+                        time[:, 0, :],
+                        inhibitor_y0s,
                     )
 
-                    for i, mean_y0s in enumerate(means_y0s):
-                        datas = model.integrate(
-                            model._fit_result.params,
-                            self.subset_time,
-                            mean_y0s,
+                    for data, t, color, init_sub in zip(
+                        datas[:, :, species_tuple],
+                        time[:, 0, :],
+                        colors,
+                        unique_initial_substrates,
+                    ):
+                        color[-1] = 1
+                        fig.add_trace(
+                            go.Scatter(
+                                x=t,
+                                y=data,
+                                name=model.name,
+                                marker=dict(color=self._HEX_to_RGBA_string(color)),
+                                customdata=[model.name],
+                                showlegend=False,
+                                hoverinfo="name",
+                                visible=False,
+                            ),
+                            col=1,
+                            row=inhibitor_count + 1,
                         )
-
-                        for data, time, color, init_sub in zip(
-                            datas[:, :, species_tuple],
-                            times[:, 0, :],
-                            colors,
-                            initial_substrates,
-                        ):
-                            color[-1] = 1
-                            fig.add_trace(
-                                go.Scatter(
-                                    x=time,
-                                    y=data,
-                                    name=model.name,
-                                    marker=dict(color=self._HEX_to_RGBA_string(color)),
-                                    customdata=[f"{model.name}"],
-                                    showlegend=False,
-                                    hoverinfo="name",
-                                    visible=False,
-                                ),
-                                col=1,
-                                row=i + 1,
-                            )
-
-        for model in successful_models:
+        for model in successfull_models:
             steps.append(
                 dict(
                     method="update",
                     args=[
                         {
                             "visible": self._visibility_mask(
-                                visible_traces=["mean", "std", model],
+                                visible_traces=["mean", "std", model.name],
                                 fig_data=fig.data,
                             )
                         },
                         {"title": f"Data + Model"},
                     ],
-                    label=f"{model}",
+                    label=f"{model.name}",
                 )
             )
 
-            sliders = [
-                dict(
-                    active=0,
-                    currentvalue=dict(prefix="Model: ", font=dict(color="black")),
-                    tickcolor="white",
-                    tickwidth=0,
-                    font=dict(color="white"),
-                    pad={"t": 50},
-                    steps=steps,
-                )
-            ]
+        print(steps)
+        sliders = [
+            dict(
+                active=0,
+                currentvalue=dict(prefix="Model: ", font=dict(color="black")),
+                tickcolor="white",
+                tickwidth=0,
+                font=dict(color="white"),
+                pad={"t": 50},
+                steps=steps,
+            )
+        ]
+
         max_data = np.nanmax([ys["y"] for ys in fig.__dict__["_data_objs"]])
+
+        # # Buttons
+        # buttons = []
+        # print(self._visibility_mask(visible_traces=["mean", "std"], fig_data=fig.data))
+        # buttons.append(
+        #     dict(
+        #         method="restyle",
+        #         label="Averages",
+        #         visible=True,
+        #         args=[
+        #             dict(
+        #                 visible=self._visibility_mask(
+        #                     visible_traces=["mean", "std"], fig_data=fig.data
+        #                 )
+        #             )
+        #         ],
+        #         args2=[
+        #             dict(
+        #                 visible=self._visibility_mask(
+        #                     visible_traces=["replicates"], fig_data=fig.data
+        #                 )
+        #             )
+        #         ],
+        #     )
+        # )
 
         fig.update_layout(
             sliders=sliders,
@@ -889,12 +941,21 @@ class ParameterEstimator:
                     x=0.7,
                     y=1.3,
                     showactive=True,
+                    # buttons=buttons,
                 )
             ],
             yaxis_range=[0 - 0.05 * max_data, max_data + 0.05 * max_data],
         )
 
-        fig.update_layout(height=1400)
+        # Add title, legend...
+        fig.update_layout(
+            showlegend=True,
+            title="Measured data",
+            hovermode="closest",
+            hoverlabel_namelength=-1,
+        )
+
+        fig.update_layout(height=400 + len(unique_inhibitors) * 150)
 
         return fig
 
@@ -1048,6 +1109,8 @@ class ParameterEstimator:
                 )
             )
 
+        print(steps)
+
         sliders = [
             dict(
                 active=0,
@@ -1072,14 +1135,14 @@ class ParameterEstimator:
                 args=[
                     dict(
                         visible=self._visibility_mask(
-                            visible_traces=["mean", "std", model], fig_data=fig.data
+                            visible_traces=["mean", "std"], fig_data=fig.data
                         )
                     )
                 ],
                 args2=[
                     dict(
                         visible=self._visibility_mask(
-                            visible_traces=["replicates", model], fig_data=fig.data
+                            visible_traces=["replicates"], fig_data=fig.data
                         )
                     )
                 ],
