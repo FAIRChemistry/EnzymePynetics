@@ -181,7 +181,6 @@ class ParameterEstimator:
         if len(inhibitor_array) == 0:
             inhibitor_array = np.zeros(data_shape)
         else:
-            print(inhibitor_array.shape)
             inhibitor_array = np.repeat(inhibitor_array, n_replicates)
             inhibitor_array = np.repeat(inhibitor_array, data_shape[1]).reshape(
                 data_shape
@@ -892,7 +891,6 @@ class ParameterEstimator:
                 )
             )
 
-        print(steps)
         sliders = [
             dict(
                 active=0,
@@ -1108,8 +1106,6 @@ class ParameterEstimator:
                     label=f"{model}",
                 )
             )
-
-        print(steps)
 
         sliders = [
             dict(
