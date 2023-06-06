@@ -44,7 +44,7 @@ class EnzymeKinetics(sdRDM.DataModel):
         default="https://github.com/haeussma/EnzymePynetics.git"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="5df8e2db86f7bbf45cece844377d5affbe7ec235"
+        default="c51b21efd31bbf48caf8f868892e316131260f59"
     )
 
     def add_to_model_results(

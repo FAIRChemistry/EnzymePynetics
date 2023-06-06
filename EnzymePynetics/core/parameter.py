@@ -30,6 +30,11 @@ class Parameter(sdRDM.DataModel):
         description="Value of the kinetic parameter.",
     )
 
+    unit: Optional[str] = Field(
+        default=None,
+        description="Unit of the parameter.",
+    )
+
     standard_deviation: Optional[float] = Field(
         default=None,
         description="1 sigma standard deviation of the kinetic parameter.",
@@ -55,7 +60,7 @@ class Parameter(sdRDM.DataModel):
         default="https://github.com/haeussma/EnzymePynetics.git"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="5df8e2db86f7bbf45cece844377d5affbe7ec235"
+        default="c51b21efd31bbf48caf8f868892e316131260f59"
     )
 
     def add_to_correlations(

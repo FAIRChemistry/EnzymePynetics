@@ -45,6 +45,7 @@ classDiagram
     class Parameter {
         +string name
         +float value
+        +string unit
         +float standard_deviation
         +Correlation[0..*] correlations
         +float upper_limit
