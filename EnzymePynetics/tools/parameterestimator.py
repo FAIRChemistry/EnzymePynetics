@@ -711,6 +711,15 @@ class ParameterEstimator:
                 -1,
             )
 
+    @staticmethod
+    def _format_unit(unit: str) -> str:
+        unit = unit.replace(" / l", " L<sup>-1</sup>")
+        unit = unit.replace("1 / s", "s<sup>-1</sup>")
+        unit = unit.replace("1 / min", "min<sup>-1</sup>")
+        unit = unit.replace("umol", "µmol")
+        unit = unit.replace("ug", "µg")
+        return unit
+
     def visualize_subplots(self, visualized_species: _SPECIES_TYPES = None):
         colors = matplotlib.colors.to_rgba_array(px.colors.qualitative.Plotly)
 
@@ -852,6 +861,9 @@ class ParameterEstimator:
                         row=inhibitor_count + 1,
                     )
 
+        ydata = [ys["y"] for ys in fig.__dict__["_data_objs"]]
+        xdata = [xs["x"] for xs in fig.__dict__["_data_objs"]]
+
         # Integrate each successfully fitted model
         successfull_models = []
         steps = []
@@ -923,8 +935,6 @@ class ParameterEstimator:
             )
         ]
 
-        max_data = np.nanmax([ys["y"] for ys in fig.__dict__["_data_objs"]])
-
         # # Buttons
         # buttons = []
         # print(self._visibility_mask(visible_traces=["mean", "std"], fig_data=fig.data))
@@ -962,7 +972,7 @@ class ParameterEstimator:
                     # buttons=buttons,
                 )
             ],
-            yaxis_range=[0 - 0.05 * max_data, max_data + 0.05 * max_data],
+            # yaxis_range=[-0.05 * np.nanmax(ydata), 1.05 * np.nanmax(ydata)],
         )
 
         # Add title, legend...
@@ -1080,6 +1090,9 @@ class ParameterEstimator:
         steps = []
         annotations = []
 
+        ydata = [ys["y"] for ys in fig.__dict__["_data_objs"]]
+        xdata = [xs["x"] for xs in fig.__dict__["_data_objs"]]
+
         for model_name in self.result_dict.index:
             model = self.models[model_name]
             if model.result.fit_success:
@@ -1116,7 +1129,7 @@ class ParameterEstimator:
                             visible=False,
                         )
                     )
-                param_value_map = dict(
+                param_name_map = dict(
                     k_cat="<b><i>k</i><sub>cat</sub>:</b>",
                     Km="<b><i>K</i><sub>m</sub>:</b>",
                     K_ie="<b><i>K</i><sub>ie</sub>:</b>",
@@ -1127,14 +1140,14 @@ class ParameterEstimator:
                 for parameter in model.result.parameters:
                     params = (
                         params
-                        + f"{param_value_map[parameter.name]} "
-                        + f"{parameter.value:.3f} "
-                        + f"{parameter.unit} \n\n"
+                        + f"{param_name_map[parameter.name]} "
+                        + f"{parameter.value:.2f} "
+                        + f"{self._format_unit(parameter.unit)} \n\n"
                     )
                 annotations.append(
                     go.layout.Annotation(
-                        font=dict(color="black"),
-                        x=0,
+                        font=dict(color="black", size=10),
+                        x=-0.05 * np.nanmax(xdata),
                         y=-0.55,
                         showarrow=False,
                         text=f"<b>AIC:</b> {round(model.result.AIC)}\n\n {params}",
@@ -1168,7 +1181,7 @@ class ParameterEstimator:
                     ),
                     dict(title=f"Measured data", annotations=[empty_annotation]),
                 ],
-                label="Measured data",
+                label="",
             )
         )
         for model, annotation in zip(successful_models, annotations):
@@ -1198,8 +1211,6 @@ class ParameterEstimator:
                 steps=steps,
             )
         ]
-
-        max_data = np.nanmax([ys["y"] for ys in fig.__dict__["_data_objs"]])
 
         # # Buttons
         # buttons = []
@@ -1237,7 +1248,8 @@ class ParameterEstimator:
                     showactive=True,
                 )
             ],
-            yaxis_range=[0 - 0.05 * max_data, max_data + 0.05 * max_data],
+            yaxis_range=[-0.05 * np.nanmax(ydata), 1.05 * np.nanmax(ydata)],
+            xaxis_range=[-0.05 * np.nanmax(xdata), 1.05 * np.nanmax(xdata)],
         )
 
         # Add title, legend...
@@ -1246,10 +1258,10 @@ class ParameterEstimator:
         fig.update_layout(
             showlegend=True,
             title="Measured data",
-            yaxis_title=f"{species.name} ({species.conc_unit.replace(' / l', ' L<sup>-1</sup>')})",
-            xaxis_title=f"time ({self._time_unit})",
+            yaxis_title=f"{species.name} ({self._format_unit(species.conc_unit)})",
+            xaxis_title=f"time ({self._format_unit(self._time_unit)})",
             hovermode="closest",
-            legend_title_text=f"Initial {substrate.name} <br><sub>({self._substrate_unit.replace(' / l', ' L<sup>-1</sup>')})</sub></br>",
+            legend_title_text=f"Initial {substrate.name} <br>({self._format_unit(self._substrate_unit)})</br>",
             hoverlabel_namelength=-1,
         )
 
