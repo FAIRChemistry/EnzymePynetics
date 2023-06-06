@@ -949,7 +949,10 @@ class ParameterEstimator:
         fig.update_layout(
             showlegend=True,
             title="Measured data",
+            yaxis_title=f"{species.name} ({species.conc_unit})",
+            xaxis_title=f"time ({self._time_unit})",
             hovermode="closest",
+            legend_title_text=f"Initial {substrate.name} ({self._substrate_unit})",
             hoverlabel_namelength=-1,
         )
 
@@ -959,7 +962,7 @@ class ParameterEstimator:
 
     def visualize_model_overview(self, visualized_species: _SPECIES_TYPES = None):
         fig = go.Figure()
-        colors = matplotlib.colors.to_rgba_array(px.colors.qualitative.Plotly)
+        colors = matplotlib.colors.to_rgba_array(px.colors.qualitative.T10_r)
 
         # Select which species to plot
         if visualized_species is None:
@@ -1055,8 +1058,10 @@ class ParameterEstimator:
         # Integrate each successfully fitted model
         successful_models = []
         steps = []
+        annotations = []
 
-        for model in self.models.values():
+        for model_name in self.result_dict.index:
+            model = self.models[model_name]
             if model.result.fit_success:
                 successful_models.append(model.name)
                 mean_y0s = np.mean(
@@ -1082,6 +1087,7 @@ class ParameterEstimator:
                         go.Scatter(
                             x=time,
                             y=data,
+                            mode="lines",
                             name=model.name,
                             marker=dict(color=self._HEX_to_RGBA_string(color)),
                             customdata=[f"{model.name}"],
@@ -1090,27 +1096,80 @@ class ParameterEstimator:
                             visible=False,
                         )
                     )
-        for model in successful_models:
-            steps.append(
-                dict(
-                    method="update",
-                    args=[
-                        {
-                            "visible": self._visibility_mask(
-                                visible_traces=["mean", "std", model],
-                                fig_data=fig.data,
-                            )
-                        },
-                        {"title": f"Data + Model"},
-                    ],
-                    label=f"{model}",
+                param_value_map = dict(
+                    k_cat="<b><i>k</i><sub>cat</sub>:</b>",
+                    Km="<b><i>K</i><sub>m</sub>:</b>",
+                    K_ie="<b><i>K</i><sub>ie</sub>:</b>",
+                    K_ic="<b><i>K</i><sub>ic</sub>:</b>",
+                    K_iu="<b><i>K</i><sub>iu</sub>:</b>",
                 )
+                params = ""
+                for parameter in model.result.parameters:
+                    params = (
+                        params
+                        + f"{param_value_map[parameter.name]} "
+                        + f"{parameter.value:.3f}\n\n "
+                    )
+                annotations.append(
+                    go.layout.Annotation(
+                        font=dict(color="black"),
+                        x=0,
+                        y=-0.55,
+                        showarrow=False,
+                        text=f"<b>AIC:</b> {round(model.result.AIC)}\n\n {params}",
+                        textangle=0,
+                        xref="x",
+                        yref="paper",
+                        xanchor="left",
+                    )
+                )
+
+        empty_annotation = go.layout.Annotation(
+            font=dict(color="white"),
+            x=0,
+            y=-0.55,
+            showarrow=False,
+            text=f"",
+            textangle=0,
+            xref="x",
+            yref="paper",
+            xanchor="left",
+        )
+
+        steps.append(
+            dict(
+                method="update",
+                args=[
+                    dict(
+                        visible=self._visibility_mask(
+                            visible_traces=["mean", "std"], fig_data=fig.data
+                        )
+                    ),
+                    dict(title=f"Measured data", annotations=[empty_annotation]),
+                ],
+                label="Measured data",
             )
+        )
+        for model, annotation in zip(successful_models, annotations):
+            step = dict(
+                method="update",
+                args=[
+                    dict(
+                        visible=self._visibility_mask(
+                            visible_traces=["mean", "std", model], fig_data=fig.data
+                        )
+                    ),
+                    dict(title=f"Data + Model", annotations=[annotation]),
+                ],
+                label=f"{model}",
+            )
+
+            steps.append(step)
 
         sliders = [
             dict(
                 active=0,
-                currentvalue=dict(prefix="Model: ", font=dict(color="black")),
+                currentvalue=dict(prefix="", font=dict(color="black")),
                 tickcolor="white",
                 tickwidth=0,
                 font=dict(color="white"),
@@ -1121,29 +1180,30 @@ class ParameterEstimator:
 
         max_data = np.nanmax([ys["y"] for ys in fig.__dict__["_data_objs"]])
 
-        # Buttons
-        buttons = []
-        buttons.append(
-            dict(
-                method="restyle",
-                label="Averages",
-                visible=True,
-                args=[
-                    dict(
-                        visible=self._visibility_mask(
-                            visible_traces=["mean", "std"], fig_data=fig.data
-                        )
-                    )
-                ],
-                args2=[
-                    dict(
-                        visible=self._visibility_mask(
-                            visible_traces=["replicates"], fig_data=fig.data
-                        )
-                    )
-                ],
-            )
-        )
+        # # Buttons
+        # buttons = []
+        # buttons.append(
+        #     dict(
+        #         method="restyle",
+        #         label="Averages",
+        #         visible=True,
+        #         args=[
+        #             dict(
+        #                 visible=self._visibility_mask(
+        #                     visible_traces=["mean", "std"], fig_data=fig.data
+        #                 )
+        #             ),
+        #         ],
+        #         args2=[
+        #             dict(
+        #                 visible=self._visibility_mask(
+        #                     visible_traces=["replicates"], fig_data=fig.data
+        #                 ),
+        #                 args=[{"annotations": annotation}],
+        #             ),
+        #         ],
+        #     )
+        # )
 
         fig.update_layout(
             sliders=sliders,
@@ -1154,7 +1214,6 @@ class ParameterEstimator:
                     x=0.7,
                     y=1.3,
                     showactive=True,
-                    buttons=buttons,
                 )
             ],
             yaxis_range=[0 - 0.05 * max_data, max_data + 0.05 * max_data],
@@ -1166,23 +1225,11 @@ class ParameterEstimator:
         fig.update_layout(
             showlegend=True,
             title="Measured data",
-            yaxis_title=f"{species.name} ({species.conc_unit})",
+            yaxis_title=f"{species.name} ({species.conc_unit.replace(' / l', ' L<sup>-1</sup>')})",
             xaxis_title=f"time ({self._time_unit})",
             hovermode="closest",
-            legend_title_text=f"Initial {substrate.name} ({self._substrate_unit})",
+            legend_title_text=f"Initial {substrate.name} <br><sub>({self._substrate_unit.replace(' / l', ' L<sup>-1</sup>')})</sub></br>",
             hoverlabel_namelength=-1,
-        )
-        fig.add_annotation(
-            dict(
-                font=dict(color="black"),
-                x=10,
-                y=1.1,
-                showarrow=False,
-                text="Today",
-                textangle=0,
-                xref="x",
-                yref="paper",
-            )
         )
 
         return fig
@@ -1247,6 +1294,7 @@ class ParameterEstimator:
 
             if substrate_id == measured_species_id:
                 substrate_species.data = replicates
+                product_species = []
             else:
                 product_species = Species(
                     id=measured_species_id,
