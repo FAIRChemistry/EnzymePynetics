@@ -94,6 +94,9 @@ Defines a kinetic parameter.
 - value
   - Type: float
   - Description: Value of the kinetic parameter.
+- unit
+  - Type: string
+  - Description: Unit of the parameter.
 - standard_deviation
   - Type: float
   - Description: 1 sigma standard deviation of the kinetic parameter.
