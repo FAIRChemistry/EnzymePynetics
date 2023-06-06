@@ -99,6 +99,26 @@ class ParameterEstimator:
 
         self._run_minimization(display_output)
 
+        # Set units in ModelResults object
+        for model_name, model in self.models.items():
+            for p, parameter in enumerate(model.result.parameters):
+                if parameter.name == "k_cat" or parameter.name == "K_ie":
+                    self.models[model_name].result.parameters[
+                        p
+                    ].unit = f"1 / {self._time_unit}"
+                elif parameter.name == "Km":
+                    self.models[model_name].result.parameters[
+                        p
+                    ].unit = self._substrate_unit
+                elif np.any(self.subset_inhibitor != 0):
+                    self.models[model_name].result.parameters[
+                        p
+                    ].unit = self._inhibitor_unit
+                else:
+                    self.models[model_name].result.parameters[
+                        p
+                    ].unit = self._substrate_unit
+
         self.result_dict = self._result_overview()
         if display_output:
             display(self.result_dict)
@@ -1108,7 +1128,8 @@ class ParameterEstimator:
                     params = (
                         params
                         + f"{param_value_map[parameter.name]} "
-                        + f"{parameter.value:.3f}\n\n "
+                        + f"{parameter.value:.3f} "
+                        + f"{parameter.unit} \n\n"
                     )
                 annotations.append(
                     go.layout.Annotation(
