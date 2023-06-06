@@ -47,5 +47,5 @@ class Series(sdRDM.DataModel):
         default="https://github.com/haeussma/EnzymePynetics.git"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="c51b21efd31bbf48caf8f868892e316131260f59"
+        default="97d144b1cf80e739d275726a20fd54138720808d"
     )
