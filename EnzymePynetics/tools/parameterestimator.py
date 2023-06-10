@@ -720,7 +720,9 @@ class ParameterEstimator:
         unit = unit.replace("ug", "µg")
         return unit
 
-    def visualize_subplots(self, visualized_species: _SPECIES_TYPES = None):
+    def visualize_subplots(
+        self, visualized_species: _SPECIES_TYPES = None, save_path: str = None
+    ):
         colors = matplotlib.colors.to_rgba_array(px.colors.qualitative.Plotly)
 
         # Select which species to plot
@@ -988,9 +990,16 @@ class ParameterEstimator:
 
         fig.update_layout(height=400 + len(unique_inhibitors) * 150)
 
+        if save_path != None:
+            import plotly.io as pio
+
+            pio.write_image(fig, save_path, format="svg")
+
         return fig
 
-    def visualize_model_overview(self, visualized_species: _SPECIES_TYPES = None):
+    def visualize_model_overview(
+        self, visualized_species: _SPECIES_TYPES = None, save_path: str = None
+    ):
         fig = go.Figure()
         colors = matplotlib.colors.to_rgba_array(px.colors.qualitative.T10_r)
 
@@ -1131,7 +1140,7 @@ class ParameterEstimator:
                     )
                 param_name_map = dict(
                     k_cat="<b><i>k</i><sub>cat</sub>:</b>",
-                    Km="<b><i>K</i><sub>m</sub>:</b>",
+                    Km="<b><i>K</i><sub>M</sub>:</b>",
                     K_ie="<b><i>K</i><sub>ie</sub>:</b>",
                     K_ic="<b><i>K</i><sub>ic</sub>:</b>",
                     K_iu="<b><i>K</i><sub>iu</sub>:</b>",
@@ -1141,7 +1150,7 @@ class ParameterEstimator:
                     params = (
                         params
                         + f"{param_name_map[parameter.name]} "
-                        + f"{parameter.value:.2f} "
+                        + f"{parameter.value:.3f} "
                         + f"{self._format_unit(parameter.unit)} \n\n"
                     )
                 annotations.append(
@@ -1265,7 +1274,17 @@ class ParameterEstimator:
             hoverlabel_namelength=-1,
         )
 
-        return fig
+        config = {
+            "toImageButtonOptions": {
+                "format": "svg",  # one of png, svg, jpeg, webp
+                "filename": "custom_image",
+                # "height": 600,
+                # "width": 700,
+                "scale": 1,  # Multiply title/legend/axis/canvas sizes by this factor
+            }
+        }
+
+        return fig.show(config=config)
 
     @classmethod
     def from_EnzymeML(
