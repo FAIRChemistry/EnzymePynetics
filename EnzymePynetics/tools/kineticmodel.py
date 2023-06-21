@@ -84,7 +84,8 @@ class KineticModel:
         """
         result = [
             odeint(
-                func=self.model, y0=y0, t=t, args=(parameters, self.enzyme_inactivation)
+                func=self.model, y0=y0, t=t, args=(
+                    parameters, self.enzyme_inactivation)
             )
             for y0, t in zip(y0s, time)
         ]
@@ -100,7 +101,7 @@ class KineticModel:
         """Calculates residuals between integrated model and measured data (substrate).
 
         Args:
-            parameters (Parameters): lmfit parameters
+            parameters (Parameters): LmFit parameters
             time (ndarray): time array, corresponding to ydata.
             y0s (List[tuple]): initial conditions of modeled species
             ydata (ndarray): measured substrate data, corresponding to time data.
@@ -120,11 +121,12 @@ class KineticModel:
         Args:
             ydata (ndarray): Experimental substrate data
             time (ndarray): Time array corresponding to measurement data
-            y0s (List[tuple]): intial conditions of modeled species
+            y0s (List[tuple]): initial conditions of modeled species
 
         Returns:
-            MinimizerResult: Lest-squares minimization result.
+            MinimizerResult: least-squares minimization result.
         """
+
         fit_result: MinimizerResult = minimize(
             self.residuals, self.parameters, args=(time, self.y0, ydata)
         )

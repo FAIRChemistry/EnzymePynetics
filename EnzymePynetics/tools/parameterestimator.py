@@ -1,3 +1,4 @@
+from types import NoneType
 from typing import List, Dict, Optional, Literal, Union
 
 from pyenzyme import EnzymeMLDocument
@@ -10,42 +11,38 @@ from EnzymePynetics.tools.kineticmodel import KineticModel
 from EnzymePynetics.tools.rate_equations import *
 
 import numpy as np
-import pandas as pd
 from pandas import DataFrame
 from pathlib import Path
-from scipy.integrate import odeint
-from lmfit import report_fit
 from IPython.display import display
-from matplotlib.cm import get_cmap
-import matplotlib.pyplot as plt
-from matplotlib.cm import get_cmap
 import plotly.express as px
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 import matplotlib.colors
-from matplotlib.pyplot import cm
 
 _SPECIES_TYPES = Literal["substrate", "product"]
 
 
 class ParameterEstimator:
-    def __init__(self, data: EnzymeKinetics):
+    def __init__(self, data: EnzymeKinetics, measured_species: SpeciesTypes = None):
         self.data = data
         self.models: Dict[str, KineticModel] = None
-        self._measured_species = None
+
+        if measured_species:
+            self._measured_species = measured_species
+        else:
+            self._measured_species = self._get_measured_species(
+                data.measurements)
 
         (
             self.substrate,
             self.initial_substrate,
-            self.product,
             self.enzyme,
+            self.product,
             self.inhibitor,
             self.time,
         ) = self._initialize_measurement_data()
         self.initial_kcat = self._calculate_kcat()
         self.initial_Km = self._calculate_Km()
-
-        # TODO shapcheck function to check for consistent array lengths
 
     def fit_models(
         self,
@@ -109,15 +106,15 @@ class ParameterEstimator:
                 elif parameter.name == "Km":
                     self.models[model_name].result.parameters[
                         p
-                    ].unit = self._substrate_unit
+                    ].unit = self._conc_unit
                 elif np.any(self.subset_inhibitor != 0):
                     self.models[model_name].result.parameters[
                         p
-                    ].unit = self._inhibitor_unit
+                    ].unit = self._inhibitor_conc_unit
                 else:
                     self.models[model_name].result.parameters[
                         p
-                    ].unit = self._substrate_unit
+                    ].unit = self._conc_unit
 
         self.result_dict = self._result_overview()
         if display_output:
@@ -129,129 +126,112 @@ class ParameterEstimator:
 
         return self.models[model].result.params
 
+    @staticmethod
+    def _get_measured_species(measurements: List[Measurement]) -> SpeciesTypes:
+        """Checks if substrate or product data is provided."""
+
+        measured_species = []
+        for measurement in measurements:
+            for species in measurement.species:
+                if len(species.data) != 0:
+                    measured_species.append(species.species_type)
+
+        if len(measured_species) > 1:
+            raise ValueError(
+                "Data contains measurments for substrate and product. Define which species should be used for "
+                "parameter estimation, by specifying 'measured_species'. Using substrate and product data "
+                "is currently not supported."
+            )
+
+        if len(measured_species) == 0:
+            raise ValueError("Data contains no measurment data.")
+
+        if len(measured_species) == 1:
+            return measured_species[0]
+
     def _initialize_measurement_data(self):
         """
         Extracts data from data objects and reshapes it for fitting.
         """
 
-        substrate_data = []
-        initial_substrate_data = []
-        product_data = []
-        enzyme_data = []
-        inhibitor_data = []
-        time_data = []
+        init_substrate_list = []
+        enzyme_list = []
+        inhibitor_list = []
+        time_list = []
+        measured_data_list = []
 
-        # extract data from each measurement and species
+        # Extract data of measured species and measurement conditions
         for measurement in self.data.measurements:
-            for species in measurement.species:
-                if species.species_type == SpeciesTypes.SUBSTRATE.value:
-                    initial_substrate_data.append(species.initial_conc)
-                    self._substrate_unit = species.conc_unit
-                    if len(species.data) != 0:
-                        self._measured_species = species.species_type
-                        for replicate in species.data:
-                            substrate_data.append(replicate.values)
-                            self._time_unit = replicate.time_unit
-                            time_data.append(replicate.time)
+            measured_species = self._get_species(
+                measurement, self._measured_species)
+            for replicate in measured_species.data:
+                measured_data_list.append(replicate.values)
 
-                if species.species_type == SpeciesTypes.PRODUCT.value:
-                    self._product_unit = species.conc_unit
-                    if len(species.data) != 0:
-                        self._measured_species = species.species_type
-                        for replicate in species.data:
-                            product_data.append(replicate.values)
-                            self._time_unit = replicate.time_unit
-                            time_data.append(replicate.time)
+                time_list.append(replicate.time)
 
-                if species.species_type == SpeciesTypes.INHIBITOR.value:
-                    self._inhibitor_unit = species.conc_unit
-                    if len(species.data) != 0:
-                        for replicate in species.data:
-                            inhibitor_data.append(replicate.values)
-                    else:
-                        inhibitor_data.append(species.initial_conc)
+                enzyme_list.append([self._get_init_conc(
+                    measurement, SpeciesTypes.ENZYME)] * len(replicate.time))
 
-                if species.species_type == SpeciesTypes.ENZYME.value:
-                    self._enzyme_unit = species.conc_unit
-                    if len(species.data) != 0:
-                        for replicate in species.data:
-                            enzyme_data.append(replicate.values)
-                    else:
-                        enzyme_data.append(species.initial_conc)
+                inhibitor_list.append([self._get_init_conc(
+                    measurement, SpeciesTypes.INHIBITOR)] * len(replicate.time))
 
-        # np arrays
-        substrate_array = np.array(substrate_data)
-        initial_substrate_array = np.array(initial_substrate_data)
-        product_array = np.array(product_data)
-        enzyme_array = np.array(enzyme_data)
-        inhibitor_array = np.array(inhibitor_data)
-        time_array = np.array(time_data)
+                init_substrate_list.append([self._get_init_conc(
+                    measurement, SpeciesTypes.SUBSTRATE)] * len(replicate.time))
 
-        # get shape information of data
-        n_measurements = len(self.data.measurements)
-        data_shape = (
-            substrate_array.shape if substrate_array.size > 0 else product_array.shape
-        )
-        n_replicates = int(data_shape[0] / n_measurements)
+                self._time_unit = replicate.time_unit
+                self._conc_unit = replicate.values_unit
 
-        # adjust data arrays for inhibitor and enzyme according to number of replicates of each measurement
-        enzyme_array = np.repeat(enzyme_array, n_replicates)
-        enzyme_array = np.repeat(enzyme_array, data_shape[1]).reshape(data_shape)
-        initial_substrate_array = np.repeat(initial_substrate_array, n_replicates)
-        if len(inhibitor_array) == 0:
-            inhibitor_array = np.zeros(data_shape)
+        init_substrate_array = np.array(init_substrate_list)
+        enzyme_array = np.array(enzyme_list)
+        time_array = np.array(time_list)
+        inhibitor_array = np.array(inhibitor_list)
+
+        try:
+            self._inhibitor_conc_unit = self._get_species(
+                measurement, SpeciesTypes.INHIBITOR).conc_unit
+        except StopIteration:
+            self._inhibitor_conc_unit = None
+
+        # Calculate missing species (e.g. substrate if product was measured)
+        if self._measured_species is SpeciesTypes.SUBSTRATE:
+            substrate_array = np.array(measured_data_list)
+            product_array = init_substrate_array - substrate_array
+
         else:
-            inhibitor_array = np.repeat(inhibitor_array, n_replicates)
-            inhibitor_array = np.repeat(inhibitor_array, data_shape[1]).reshape(
-                data_shape
-            )
+            product_array = np.array(measured_data_list)
+            substrate_array = init_substrate_array - product_array
 
-        # calcualte missing species based on specified initial substrate concentration
-        if len(product_data) == 0:
-            product_array = np.array(
-                self._calculate_product(substrate_data, initial_substrate_array)
-            )
-        if len(substrate_data) == 0:
-            substrate_array = np.array(
-                self._calculate_substrate(product_data, initial_substrate_array)
-            )
-            self._substrate_unit = self._product_unit
+        return (substrate_array, init_substrate_array, enzyme_array,
+                product_array, inhibitor_array, time_array)
 
-        return (
-            substrate_array,
-            initial_substrate_array,
-            product_array,
-            enzyme_array,
-            inhibitor_array,
-            time_array,
-        )
+    @staticmethod
+    def _get_species(measurement: Measurement, species_type: SpeciesTypes) -> Species:
+        """Returns the respective species of a measurement"""
 
-    def _calculate_substrate(
-        self, product_data: List[List], initial_substrates: List
-    ) -> List[List]:
-        substrate = []
+        return next(species for species in measurement.species
+                    if species.species_type == species_type.value)
 
-        for product_measurment, initial_substrate in zip(
-            product_data, initial_substrates
-        ):
-            substrate.append(
-                [initial_substrate - value for value in product_measurment]
-            )
+    def _get_init_conc(self, measurement: Measurement, species_type: SpeciesTypes) -> float:
+        """Extracts the initial concentration of a species for a given measurement"""
 
-        return substrate
+        try:
+            return self._get_species(measurement, species_type).initial_conc
 
-    def _calculate_product(
-        self, substrate_data: List[List], initial_substrates: List
-    ) -> List[List]:
-        product = []
-        for substrate_measurement, initial_substrate in zip(
-            substrate_data, initial_substrates
-        ):
-            product.append(
-                [initial_substrate - value for value in substrate_measurement]
-            )
+        except StopIteration:
+            if species_type is SpeciesTypes.INHIBITOR:
+                return 0
+            else:
+                raise StopIteration()
 
-        return product
+    @staticmethod
+    def _repeat_value(time_array, species_array):
+        """Repeats initial conditions of a species for n measurements, according to time axis of 
+        respective measurement."""
+
+        for idx, time in enumerate(time_array):
+            species_array[idx] = np.repeat(species_array[idx], len(time))
+
+        return np.array(species_array)
 
     @staticmethod
     def _get_y0s(substrate, enzyme, product, inhibitor):
@@ -309,7 +289,8 @@ class ParameterEstimator:
                     )
                 else:
                     idx = np.append(
-                        idx, np.where(self.initial_substrate == concentration)[0]
+                        idx, np.where(self.initial_substrate ==
+                                      concentration)[0]
                     )
         idx = idx.astype(int)
 
@@ -370,7 +351,7 @@ class ParameterEstimator:
             }
 
         if np.all(self.inhibitor == 0):
-            ### Product inhibition models
+            # Product inhibition models
 
             y0 = self._get_y0s(
                 substrate=self.substrate,
@@ -436,7 +417,7 @@ class ParameterEstimator:
                 enzyme_inactivation=True,
             )
 
-            ### Substrate inhibition models
+            # Substrate inhibition models
 
             y0 = self._get_y0s(
                 substrate=self.substrate,
@@ -591,7 +572,8 @@ class ParameterEstimator:
 
             kineticmodel.fit(self.subset_substrate, self.subset_time)
             if display_output:
-                print(f" -- Fitting succeeded: {kineticmodel.result.fit_success}")
+                print(
+                    f" -- Fitting succeeded: {kineticmodel.result.fit_success}")
 
     def _result_overview(self) -> DataFrame:
         """
@@ -599,13 +581,13 @@ class ParameterEstimator:
         """
 
         if np.all(self.inhibitor == 0):
-            inhibitor_unit = self._substrate_unit
+            inhibitor_unit = self._conc_unit
         else:
-            inhibitor_unit = self._inhibitor_unit
+            inhibitor_unit = self._inhibitor_conc_unit
 
         parameter_mapper = {
             "k_cat": f"kcat [1/{self._time_unit}]",
-            "Km": f"Km [{self._substrate_unit}]",
+            "Km": f"Km [{self._conc_unit}]",
             "K_ic": f"Ki competitive [{inhibitor_unit}]",
             "K_iu": f"Ki uncompetitive [{inhibitor_unit}]",
             "K_ie": f"ki time-dep enzyme-inactiv. [1/{self._time_unit}]",
@@ -657,12 +639,14 @@ class ParameterEstimator:
                     percentual_kcat_Km_stderr = kcat_Km_stderr / kcat_Km * 100
 
                 parameter_dict[
-                    f"kcat / Km [1/{self._time_unit} * 1/{self._substrate_unit}]"
+                    f"kcat / Km [1/{self._time_unit} * 1/{self._conc_unit}]"
                 ] = f"{kcat_Km:.3f} +/- {percentual_kcat_Km_stderr:.2f}%"
 
-                result_dict[model.name] = {"AIC": aic, "RMSD": rmsd, **parameter_dict}
+                result_dict[model.name] = {
+                    "AIC": aic, "RMSD": rmsd, **parameter_dict}
 
-        df = DataFrame.from_dict(result_dict).T.sort_values("AIC", ascending=True)
+        df = DataFrame.from_dict(result_dict).T.sort_values(
+            "AIC", ascending=True)
         df.fillna("-", inplace=True)
         return df.style.background_gradient(cmap="Blues")
 
@@ -766,7 +750,7 @@ class ParameterEstimator:
             rows=datas.shape[0],
             cols=1,
             shared_yaxes="all",
-            y_title=f"Initial {substrate.name} ({self._substrate_unit})",
+            y_title=f"Initial {substrate.name} ({self._conc_unit})",
             x_title=f"time ({self._time_unit})",
             subplot_titles=subplot_titles,
             horizontal_spacing=0.05,
@@ -899,7 +883,8 @@ class ParameterEstimator:
                                 x=t,
                                 y=data,
                                 name=model.name,
-                                marker=dict(color=self._HEX_to_RGBA_string(color)),
+                                marker=dict(
+                                    color=self._HEX_to_RGBA_string(color)),
                                 customdata=[model.name],
                                 showlegend=False,
                                 hoverinfo="name",
@@ -937,31 +922,6 @@ class ParameterEstimator:
             )
         ]
 
-        # # Buttons
-        # buttons = []
-        # print(self._visibility_mask(visible_traces=["mean", "std"], fig_data=fig.data))
-        # buttons.append(
-        #     dict(
-        #         method="restyle",
-        #         label="Averages",
-        #         visible=True,
-        #         args=[
-        #             dict(
-        #                 visible=self._visibility_mask(
-        #                     visible_traces=["mean", "std"], fig_data=fig.data
-        #                 )
-        #             )
-        #         ],
-        #         args2=[
-        #             dict(
-        #                 visible=self._visibility_mask(
-        #                     visible_traces=["replicates"], fig_data=fig.data
-        #                 )
-        #             )
-        #         ],
-        #     )
-        # )
-
         fig.update_layout(
             sliders=sliders,
             updatemenus=[
@@ -984,16 +944,11 @@ class ParameterEstimator:
             yaxis_title=f"{species.name} ({species.conc_unit})",
             xaxis_title=f"time ({self._time_unit})",
             hovermode="closest",
-            legend_title_text=f"Initial {substrate.name} ({self._substrate_unit})",
+            legend_title_text=f"Initial {substrate.name} ({self._conc_unit})",
             hoverlabel_namelength=-1,
         )
 
         fig.update_layout(height=400 + len(unique_inhibitors) * 150)
-
-        if save_path != None:
-            import plotly.io as pio
-
-            pio.write_image(fig, save_path, format="svg")
 
         return fig
 
@@ -1022,7 +977,7 @@ class ParameterEstimator:
             self.subset_initial_substrate, self.subset_time
         )
         initial_substrates = []
-        for sub in self.subset_initial_substrate:
+        for sub in self.subset_initial_substrate.flatten():
             if sub not in initial_substrates:
                 initial_substrates.append(sub)
 
@@ -1147,6 +1102,7 @@ class ParameterEstimator:
                 )
                 params = ""
                 for parameter in model.result.parameters:
+                    print(parameter)
                     params = (
                         params
                         + f"{param_name_map[parameter.name]} "
@@ -1188,7 +1144,8 @@ class ParameterEstimator:
                             visible_traces=["mean", "std"], fig_data=fig.data
                         )
                     ),
-                    dict(title=f"Measured data", annotations=[empty_annotation]),
+                    dict(title=f"Measured data",
+                         annotations=[empty_annotation]),
                 ],
                 label="",
             )
@@ -1221,31 +1178,6 @@ class ParameterEstimator:
             )
         ]
 
-        # # Buttons
-        # buttons = []
-        # buttons.append(
-        #     dict(
-        #         method="restyle",
-        #         label="Averages",
-        #         visible=True,
-        #         args=[
-        #             dict(
-        #                 visible=self._visibility_mask(
-        #                     visible_traces=["mean", "std"], fig_data=fig.data
-        #                 )
-        #             ),
-        #         ],
-        #         args2=[
-        #             dict(
-        #                 visible=self._visibility_mask(
-        #                     visible_traces=["replicates"], fig_data=fig.data
-        #                 ),
-        #                 args=[{"annotations": annotation}],
-        #             ),
-        #         ],
-        #     )
-        # )
-
         fig.update_layout(
             sliders=sliders,
             updatemenus=[
@@ -1270,7 +1202,7 @@ class ParameterEstimator:
             yaxis_title=f"{species.name} ({self._format_unit(species.conc_unit)})",
             xaxis_title=f"time ({self._format_unit(self._time_unit)})",
             hovermode="closest",
-            legend_title_text=f"Initial {substrate.name} <br>({self._format_unit(self._substrate_unit)})</br>",
+            legend_title_text=f"Initial {substrate.name} <br>({self._format_unit(self._conc_unit)})</br>",
             hoverlabel_namelength=-1,
         )
 
@@ -1309,12 +1241,17 @@ class ParameterEstimator:
 
         else:
             raise ValueError(
-                f"enzmldoc is of type. Needs to be eighter EnzymeMLDocument or string-like path to the omex file."
+                f"enzmldoc is of type {type(enzmldoc)}. Needs to be eighter EnzymeMLDocument or string-like path to an omex archive."
             )
 
         pH = enzmldoc.getReaction("r0").ph
         temperature = enzmldoc.getReaction("r0").temperature
         temperature_unit = enzmldoc.getReaction("r0").temperature_unit
+
+        if measured_species_id == substrate_id:
+            measured_species_type = SpeciesTypes.SUBSTRATE
+        else:
+            measured_species_type = SpeciesTypes.PRODUCT
 
         measurements = []
         for measurement in enzmldoc.measurement_dict.values():
@@ -1327,7 +1264,7 @@ class ParameterEstimator:
                 name=enzmldoc.getReactant(substrate_id).name,
                 initial_conc=substrate.init_conc,
                 conc_unit=get_unit(substrate.unit),
-                species_type=SpeciesTypes.SUBSTRATE.value,
+                species_type=SpeciesTypes.SUBSTRATE,
             )
 
             replicates = [
@@ -1353,7 +1290,7 @@ class ParameterEstimator:
                     name=enzmldoc.getReactant(measured_species_id).name,
                     initial_conc=measured_species.init_conc,
                     conc_unit=get_unit(measured_species.unit),
-                    species_type=SpeciesTypes.PRODUCT.value,
+                    species_type=SpeciesTypes.PRODUCT,
                     data=replicates,
                 )
 
@@ -1361,7 +1298,7 @@ class ParameterEstimator:
                 id=protein_id,
                 name=enzmldoc.getProtein(protein_id).name,
                 initial_conc=enzyme.init_conc,
-                species_type=SpeciesTypes.ENZYME.value,
+                species_type=SpeciesTypes.ENZYME,
             )
 
             species = [substrate_species, enzyme_species, product_species]
@@ -1374,7 +1311,7 @@ class ParameterEstimator:
                     name=enzmldoc.getReactant(inhibitor_id).name,
                     initial_conc=inhibitor.init_conc,
                     conc_unit=get_unit(inhibitor.unit),
-                    species_type=SpeciesTypes.INHIBITOR.value,
+                    species_type=SpeciesTypes.INHIBITOR,
                 )
 
                 species = [
@@ -1393,6 +1330,7 @@ class ParameterEstimator:
                 )
             )
 
-        enzyme_kinetics = EnzymeKinetics(name=enzmldoc.name, measurements=measurements)
+        enzyme_kinetics = EnzymeKinetics(
+            name=enzmldoc.name, measurements=measurements)
 
-        return cls(data=enzyme_kinetics)
+        return cls(data=enzyme_kinetics, measured_species=measured_species_type)
