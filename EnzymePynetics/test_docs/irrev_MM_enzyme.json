@@ -48,31 +48,7 @@
       ],
       "temperature": 37.0,
       "temperature_unit": "C",
-      "pH": 7.0,
-      "time": [
-        0.0,
-        1.0,
-        2.0,
-        3.0,
-        4.0,
-        5.0,
-        6.0,
-        7.0,
-        8.0,
-        9.0,
-        10.0,
-        11.0,
-        12.0,
-        13.0,
-        14.0,
-        15.0,
-        16.0,
-        17.0,
-        18.0,
-        19.0,
-        20.0
-      ],
-      "time_unit": "min"
+      "pH": 7.0
     },
     {
       "id": "measurement1",
@@ -120,31 +96,7 @@
       ],
       "temperature": 37.0,
       "temperature_unit": "C",
-      "pH": 7.0,
-      "time": [
-        0.0,
-        1.0,
-        2.0,
-        3.0,
-        4.0,
-        5.0,
-        6.0,
-        7.0,
-        8.0,
-        9.0,
-        10.0,
-        11.0,
-        12.0,
-        13.0,
-        14.0,
-        15.0,
-        16.0,
-        17.0,
-        18.0,
-        19.0,
-        20.0
-      ],
-      "time_unit": "min"
+      "pH": 7.0
     },
     {
       "id": "measurement2",
@@ -192,31 +144,7 @@
       ],
       "temperature": 37.0,
       "temperature_unit": "C",
-      "pH": 7.0,
-      "time": [
-        0.0,
-        1.0,
-        2.0,
-        3.0,
-        4.0,
-        5.0,
-        6.0,
-        7.0,
-        8.0,
-        9.0,
-        10.0,
-        11.0,
-        12.0,
-        13.0,
-        14.0,
-        15.0,
-        16.0,
-        17.0,
-        18.0,
-        19.0,
-        20.0
-      ],
-      "time_unit": "min"
+      "pH": 7.0
     },
     {
       "id": "measurement3",
@@ -264,31 +192,7 @@
       ],
       "temperature": 37.0,
       "temperature_unit": "C",
-      "pH": 7.0,
-      "time": [
-        0.0,
-        1.0,
-        2.0,
-        3.0,
-        4.0,
-        5.0,
-        6.0,
-        7.0,
-        8.0,
-        9.0,
-        10.0,
-        11.0,
-        12.0,
-        13.0,
-        14.0,
-        15.0,
-        16.0,
-        17.0,
-        18.0,
-        19.0,
-        20.0
-      ],
-      "time_unit": "min"
+      "pH": 7.0
     },
     {
       "id": "measurement4",
@@ -336,31 +240,7 @@
       ],
       "temperature": 37.0,
       "temperature_unit": "C",
-      "pH": 7.0,
-      "time": [
-        0.0,
-        1.0,
-        2.0,
-        3.0,
-        4.0,
-        5.0,
-        6.0,
-        7.0,
-        8.0,
-        9.0,
-        10.0,
-        11.0,
-        12.0,
-        13.0,
-        14.0,
-        15.0,
-        16.0,
-        17.0,
-        18.0,
-        19.0,
-        20.0
-      ],
-      "time_unit": "min"
+      "pH": 7.0
     },
     {
       "id": "measurement5",
@@ -408,37 +288,13 @@
       ],
       "temperature": 37.0,
       "temperature_unit": "C",
-      "pH": 7.0,
-      "time": [
-        0.0,
-        1.0,
-        2.0,
-        3.0,
-        4.0,
-        5.0,
-        6.0,
-        7.0,
-        8.0,
-        9.0,
-        10.0,
-        11.0,
-        12.0,
-        13.0,
-        14.0,
-        15.0,
-        16.0,
-        17.0,
-        18.0,
-        19.0,
-        20.0
-      ],
-      "time_unit": "min"
+      "pH": 7.0
     }
   ],
   "__source__": {
     "root": "EnzymeKinetics",
     "repo": "https://github.com/haeussma/EnzymePynetics.git",
-    "commit": "f55399675de0cb2f40c1c7d175da4e51d3cdfdd2",
-    "url": "https://github.com/haeussma/EnzymePynetics/tree/f55399675de0cb2f40c1c7d175da4e51d3cdfdd2"
+    "commit": "713ee5a2f815884eec947bce314f9f07ab27b451",
+    "url": "https://github.com/haeussma/EnzymePynetics/tree/713ee5a2f815884eec947bce314f9f07ab27b451"
   }
 }
