@@ -24,18 +24,41 @@ import matplotlib.colors
 
 class ParameterEstimator:
     def __init__(self, data: EnzymeKinetics, measured_species: SpeciesTypes = None):
-        self.data = data
-        self.models: Dict[str, KineticModel] = None
 
+        # Identify measured species (Substrate or Product)
         if measured_species:
             self._measured_species = measured_species
         else:
             self._measured_species = self._get_measured_species(
                 data.measurements)
 
-        self.dframe = self._initialize_measurement_data()
-        # self.initial_kcat = self._calculate_kcat()
-        # self.initial_Km = self._calculate_Km()
+        # Get names of all species
+        self.substrate_name = self._get_species_name(
+            data, SpeciesTypes.SUBSTRATE)
+        self.product_name = self._get_species_name(
+            data, SpeciesTypes.PRODUCT)
+        self.enzyme_name = self._get_species_name(
+            data, SpeciesTypes.ENZYME)
+        self.inhibitor_name = self._get_species_name(
+            data, SpeciesTypes.INHIBITOR)
+        self.measured_species_name = self._get_species_name(
+            data, self._measured_species)
+
+        # Get and verify units of all species
+        (
+            self.substrate_unit,
+            self.product_unit,
+            self.enzyme_unit,
+            self.inhibitor_unit,
+            self.time_unit
+        ) = self._get_units(
+            data)
+
+        # Get measurement data
+        self.data = self._create_dataframe(data)
+
+        # Create model attribute
+        self.models: Dict[str, KineticModel] = None
 
     def fit_models(
         self,
@@ -90,7 +113,6 @@ class ParameterEstimator:
         self._run_minimization(display_output)
 
         # Set units in ModelResults object
-        print(f"conc_unit: {self._conc_unit}")
         for model_name, model in self.models.items():
             for p, parameter in enumerate(model.result.parameters):
                 if parameter.name == "k_cat" or parameter.name == "K_ie":
@@ -120,42 +142,34 @@ class ParameterEstimator:
 
         return self.models[model].result.params
 
-    @staticmethod
-    def _get_measured_species(measurements: List[Measurement]) -> SpeciesTypes:
-        """Checks if substrate or product data is provided."""
+    def _get_init_conc(self, measurement: Measurement, species_type: SpeciesTypes) -> float:
+        """Extracts the initial concentration of a species for a given measurement"""
 
-        measured_species = []
-        for measurement in measurements:
-            for species in measurement.species:
-                if species.data:
-                    measured_species.append(species.species_type)
+        try:
+            return self._get_species(measurement, species_type).initial_conc
 
-        if len(measured_species) > 1:
-            raise ValueError(
-                "Data contains measurments for substrate and product. Define which species should be used for "
-                "parameter estimation, by specifying 'measured_species'. Using substrate and product data "
-                "is currently not supported."
-            )
+        except StopIteration:
+            if species_type is SpeciesTypes.INHIBITOR:
+                return 0
+            else:
+                raise StopIteration()
 
-        if not measured_species:
-            raise ValueError("Data contains no measurment data.")
-
-        if len(measured_species) == 1:
-            return measured_species[0]
-
-    def _initialize_dataframe(self) -> pd.DataFrame:
+    def _create_dataframe(self, kinetic_data: EnzymeKinetics) -> pd.DataFrame:
         """Extracts measurement data and conditions from ```EnzymeKinetics``` object.
         Returns DataFrame."""
 
         entries = []
 
         # Extract data of measured species and measurement conditions
-        for measurement in self.data.measurements:
+        for measurement in kinetic_data.measurements:
 
             measured_species = self._get_species(
                 measurement, self._measured_species)
+            self._measured_species_name = measured_species.name
+
             inhibitor = self._get_init_conc(
                 measurement, SpeciesTypes.INHIBITOR)
+
             init_substrate = self._get_init_conc(
                 measurement, SpeciesTypes.SUBSTRATE)
             enzyme = self._get_init_conc(measurement, SpeciesTypes.ENZYME)
@@ -173,7 +187,8 @@ class ParameterEstimator:
                     )
         dframe = pd.DataFrame.from_dict(entries)
 
-        dframe = self._calculate_missing_species(dframe)
+        dframe = self._calculate_missing_species(
+            dframe, self._measured_species)
 
         dframe = dframe.set_index(
             [SpeciesTypes.INHIBITOR.value, "init_substrate",
@@ -182,33 +197,79 @@ class ParameterEstimator:
 
         return dframe
 
-    def _calculate_missing_species(self, dframe: pd.DataFrame) -> pd.DataFrame:
-        """Calculates missing species (e.g. substrate if product was measured)
-        and adds it to the ```DataFrame```."""
+    def _get_species_name(self, kinetic_data: EnzymeKinetics, species: SpeciesTypes):
+        """Returns the name of a species, if species is not defined,
+        none is returned"""
 
-        if self._measured_species is SpeciesTypes.SUBSTRATE:
-            dframe[SpeciesTypes.PRODUCT.value] = dframe["init_substrate"] - \
-                dframe[SpeciesTypes.SUBSTRATE.value]
+        try:
+            return self._get_species(kinetic_data.measurements[0], species).name
 
-            return dframe
+        except StopIteration:
+            return None
 
-        elif self._measured_species is SpeciesTypes.PRODUCT:
-            dframe[SpeciesTypes.SUBSTRATE.value] = dframe["init_substrate"] - \
-                dframe[SpeciesTypes.SUBSTRATE.value]
+    def visualize_data(self, species: SpeciesTypes = None):
+        """Plots 
 
-            return dframe
+        Args:
+            species (SpeciesTypes, optional): _description_. Defaults to None.
 
-        else:
-            raise ValueError(
-                "Messured species not defined."
-            )
+        Returns:
+            _type_: _description_
+        """
+        if isinstance(species, str):
+            species = SpeciesTypes(species.lower())
+            print(species)
 
-    def _get_units(self, data: EnzymeKinetics, species: SpeciesTypes):
+        if not species:
+            species = self._measured_species
+
+        dframe = self.data.sort_index().reset_index()
+
+        fig = px.scatter(data_frame=dframe,
+                         y=species.value,
+                         x="time",
+                         color=dframe["init_substrate"].astype(str),
+                         animation_frame=SpeciesTypes.INHIBITOR.value)
+
+        fig.update_layout(
+            legend=dict(title=f"Initial {self.substrate_name} ({self.substrate_unit})"))
+
+        # Set axis labels with corresponding unit
+        fig.update_xaxes(dict(title=f"time ({self.time_unit})"))
+
+        if species == SpeciesTypes.SUBSTRATE:
+            ylable = self.substrate_name
+            unit = self.substrate_unit
+        if species == SpeciesTypes.PRODUCT:
+            ylable = self.product_name
+            unit = self.product_unit
+        if species == SpeciesTypes.ENZYME:
+            ylable = self.enzyme_name
+            unit = self.enzyme_unit
+        if species == SpeciesTypes.INHIBITOR:
+            ylable = self.inhibitor_name
+            unit = self.inhibitor_unit
+
+        ylable = self.substrate_name if species == SpeciesTypes.SUBSTRATE else self.product_name
+        ylable = self.substrate_name if species == SpeciesTypes.SUBSTRATE else self.product_name
+
+        fig.update_yaxes(dict(title=f"{ylable} ({unit})"))
+
+        # Set slider label
+        fig.update_layout(
+            sliders=[dict(currentvalue=dict(prefix=f"{self.inhibitor_name} ",
+                                            suffix=f" {self.inhibitor_unit}"))])
+
+        return fig
+
+    def _get_units(self, data: EnzymeKinetics):
+        """Extracts and verifies units for measurement data."""
 
         # Substrate unit
         try:
             substrate_units = [self._get_species(
-                meas, SpeciesTypes.SUBSTRATE) for meas in data.measurements]
+                meas, SpeciesTypes.SUBSTRATE).conc_unit for meas in data.measurements]
+
             if self.all_equal(substrate_units):
                 substrate_unit = substrate_units[0]
             else:
@@ -226,7 +287,7 @@ class ParameterEstimator:
         # Product unit
         try:
             product_units = [self._get_species(
-                meas, SpeciesTypes.PRODUCT) for meas in data.measurements]
+                meas, SpeciesTypes.PRODUCT).conc_unit for meas in data.measurements]
 
             if self.all_equal(product_units):
                 product_unit = product_units[0]
@@ -247,7 +308,7 @@ class ParameterEstimator:
         # Enzyme unit
         try:
             enzyme_units = [self._get_species(
-                meas, SpeciesTypes.ENZYME) for meas in data.measurements]
+                meas, SpeciesTypes.ENZYME).conc_unit for meas in data.measurements]
             if self.all_equal(enzyme_units):
                 enzyme_unit = enzyme_units[0]
             else:
@@ -265,7 +326,7 @@ class ParameterEstimator:
         # Inhibitor unit
         try:
             inhibitor_units = [self._get_species(
-                meas, SpeciesTypes.INHIBITOR) for meas in data.measurements]
+                meas, SpeciesTypes.INHIBITOR).conc_unit for meas in data.measurements]
             if self.all_equal(inhibitor_units):
                 inhibitor_unit = inhibitor_units[0]
             else:
@@ -280,59 +341,19 @@ class ParameterEstimator:
         time_units = []
         for meas in data.measurements:
             for species in meas.species:
-                if species.data:
-                    for replicate in species.data:
-                        time_units.append()
+                time_units.append(species.time_unit)
 
-        # self._time_unit = replicate.time_unit
-        # self._conc_unit = replicate.values_unit
+        time_units = list(filter(lambda item: item is not None, time_units))
 
-        # try:
-        #     self._inhibitor_conc_unit = self._get_species(
-        #         measurement, SpeciesTypes.INHIBITOR).conc_unit
-        # except StopIteration:
-        #     self._inhibitor_conc_unit = None
+        if self.all_equal(time_units):
+            time_unit = time_units[0]
+        else:
+            raise ValueError(
+                f"Time unit is not identical for all measurments.",
+                print(time_units)
+            )
 
-    def all_equal(iterable):
-        g = groupby(iterable)
-        return next(g, True) and not next(g, False)
-
-    @staticmethod
-    def _get_species(measurement: Measurement, species_type: SpeciesTypes) -> Species:
-        """Returns the respective species of a measurement"""
-
-        return next(species for species in measurement.species
-                    if species.species_type == species_type.value)
-
-    def _get_init_conc(self, measurement: Measurement, species_type: SpeciesTypes) -> float:
-        """Extracts the initial concentration of a species for a given measurement"""
-
-        try:
-            return self._get_species(measurement, species_type).initial_conc
-
-        except StopIteration:
-            if species_type is SpeciesTypes.INHIBITOR:
-                return 0
-            else:
-                raise StopIteration()
-
-    @staticmethod
-    def _repeat_value(time_array, species_array):
-        """Repeats initial conditions of a species for n measurements, according to time axis of 
-        respective measurement."""
-
-        for idx, time in enumerate(time_array):
-            species_array[idx] = np.repeat(species_array[idx], len(time))
-
-        return np.array(species_array)
-
-    @staticmethod
-    def _get_y0s(substrate, enzyme, product, inhibitor):
-        y0s = []
-        for s, e, p, i in zip(substrate, enzyme, product, inhibitor):
-            y0s.append((s[0], e[0], p[0], i[0]))
-
-        return np.array(y0s)
+        return (substrate_unit, product_unit, enzyme_unit, inhibitor_unit, time_unit)
 
     def _calculate_rates(self):
         """
@@ -765,17 +786,6 @@ class ParameterEstimator:
         df.fillna("-", inplace=True)
         return df.style.background_gradient(cmap="Blues")
 
-    @staticmethod
-    def _HEX_to_RGBA_string(color: list) -> str:
-        return f"rgba{tuple(color)}"
-
-    @staticmethod
-    def _visibility_mask(visible_traces: list, fig_data: list) -> list:
-        return [
-            any(fig["customdata"][0] == trace for trace in visible_traces)
-            for fig in fig_data
-        ]
-
     def _restore_replicate_dims(
         self, initial_substrate: List[float], data_array: np.ndarray
     ):
@@ -800,32 +810,6 @@ class ParameterEstimator:
                 n_replicates,
                 -1,
             )
-
-    @staticmethod
-    def _format_unit(unit: str) -> str:
-        unit = unit.replace(" / l", " L<sup>-1</sup>")
-        unit = unit.replace("1 / s", "s<sup>-1</sup>")
-        unit = unit.replace("1 / min", "min<sup>-1</sup>")
-        unit = unit.replace("umol", "µmol")
-        unit = unit.replace("ug", "µg")
-        return unit
-
-    @staticmethod
-    def group_lists(measurement_data: List[List[float]], init_inhibitors: List[float]):
-        result = []
-        temp = []
-        prev_val = init_inhibitors[0]
-
-        for i in range(len(measurement_data)):
-            if init_inhibitors[i] != prev_val:
-                result.append(temp)
-                temp = []
-
-            temp.append(measurement_data[i])
-            prev_val = init_inhibitors[i]
-
-        result.append(temp)
-        return result
 
     def visualize_subplots(
         self, visualized_species: SpeciesTypes = None, save_path: str = None
@@ -1439,20 +1423,16 @@ class ParameterEstimator:
                 initial_conc=substrate.init_conc,
                 conc_unit=get_unit(substrate.unit),
                 species_type=SpeciesTypes.SUBSTRATE,
+                time_unit=[
+                    rep.time_unit for rep in measured_species.replicates][0]
             )
 
             replicates = [
-                Series(
-                    values=rep.data,
-                    values_unit=get_unit(substrate.unit),
-                    time=rep.time,
-                    time_unit=rep.time_unit,
-                )
-                for rep in measured_species.replicates
+                Series(values=rep.data, time=rep.time) for rep in measured_species.replicates
             ]
             if len(replicates) == 0:
                 raise ValueError(
-                    f"Species {measured_species_id} does not contain measurement data. Specify the according 'measured_species_id' from the EnzymeMLDocument"
+                    f"Species {measured_species_id} does not contain measurement data. Specify 'measured_species_id' according to according in the EnzymeMLDocument"
                 )
 
             if substrate_id == measured_species_id:
@@ -1473,6 +1453,7 @@ class ParameterEstimator:
                 name=enzmldoc.getProtein(protein_id).name,
                 initial_conc=enzyme.init_conc,
                 species_type=SpeciesTypes.ENZYME,
+                conc_unit=get_unit(enzyme.unit)
             )
 
             species = [substrate_species, enzyme_species, product_species]
@@ -1508,3 +1489,114 @@ class ParameterEstimator:
             name=enzmldoc.name, measurements=measurements)
 
         return cls(data=enzyme_kinetics, measured_species=measured_species_type)
+
+    @staticmethod
+    def all_equal(iterable):
+        g = groupby(iterable)
+        return next(g, True) and not next(g, False)
+
+    @staticmethod
+    def _get_species(measurement: Measurement, species_type: SpeciesTypes) -> Species:
+        """Returns the respective species of a measurement"""
+
+        return next(species for species in measurement.species
+                    if species.species_type == species_type.value)
+
+    @staticmethod
+    def _repeat_value(time_array, species_array):
+        """Repeats initial conditions of a species for n measurements, according to time axis of 
+        respective measurement."""
+
+        for idx, time in enumerate(time_array):
+            species_array[idx] = np.repeat(species_array[idx], len(time))
+
+        return np.array(species_array)
+
+    @staticmethod
+    def _get_y0s(substrate, enzyme, product, inhibitor):
+        y0s = []
+        for s, e, p, i in zip(substrate, enzyme, product, inhibitor):
+            y0s.append((s[0], e[0], p[0], i[0]))
+
+        return np.array(y0s)
+
+    @staticmethod
+    def _HEX_to_RGBA_string(color: list) -> str:
+        return f"rgba{tuple(color)}"
+
+    @staticmethod
+    def _visibility_mask(visible_traces: list, fig_data: list) -> list:
+        return [
+            any(fig["customdata"][0] == trace for trace in visible_traces)
+            for fig in fig_data
+        ]
+
+    @staticmethod
+    def _format_unit(unit: str) -> str:
+        unit = unit.replace(" / l", " L<sup>-1</sup>")
+        unit = unit.replace("1 / s", "s<sup>-1</sup>")
+        unit = unit.replace("1 / min", "min<sup>-1</sup>")
+        unit = unit.replace("umol", "µmol")
+        unit = unit.replace("ug", "µg")
+        return unit
+
+    @staticmethod
+    def group_lists(measurement_data: List[List[float]], init_inhibitors: List[float]):
+        result = []
+        temp = []
+        prev_val = init_inhibitors[0]
+
+        for i in range(len(measurement_data)):
+            if init_inhibitors[i] != prev_val:
+                result.append(temp)
+                temp = []
+
+            temp.append(measurement_data[i])
+            prev_val = init_inhibitors[i]
+
+        result.append(temp)
+        return result
+
+    @staticmethod
+    def _get_measured_species(measurements: List[Measurement]) -> SpeciesTypes:
+        """Checks if substrate or product data is provided."""
+
+        measured_species = []
+        for measurement in measurements:
+            for species in measurement.species:
+                if species.data:
+                    measured_species.append(species.species_type)
+
+        if len(measured_species) > 1:
+            raise ValueError(
+                "Data contains measurments for substrate and product. Define which species should be used for "
+                "parameter estimation, by specifying 'measured_species'. Using substrate and product data "
+                "is currently not supported."
+            )
+
+        if not measured_species:
+            raise ValueError("Data contains no measurment data.")
+
+        if len(measured_species) == 1:
+            return measured_species[0]
+
+    @staticmethod
+    def _calculate_missing_species(dframe: pd.DataFrame, measured_species: SpeciesTypes) -> pd.DataFrame:
+        """Calculates missing species (e.g. substrate if product was measured)
+        and adds it to the ```DataFrame```."""
+
+        if measured_species is SpeciesTypes.SUBSTRATE:
+            dframe[SpeciesTypes.PRODUCT.value] = dframe["init_substrate"] - \
+                dframe[SpeciesTypes.SUBSTRATE.value]
+
+            return dframe
+
+        if measured_species is SpeciesTypes.PRODUCT:
+            dframe[SpeciesTypes.SUBSTRATE.value] = dframe["init_substrate"] - \
+                dframe[SpeciesTypes.PRODUCT.value]
+
+            return dframe
+
+        raise ValueError(
+            "Measured species not defined."
+        )
