@@ -6,10 +6,6 @@ from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
 
 
-from .concentrationtypes import ConcentrationTypes
-from .timetypes import TimeTypes
-
-
 @forge_signature
 class Series(sdRDM.DataModel):
 
@@ -27,25 +23,15 @@ class Series(sdRDM.DataModel):
         multiple=True,
     )
 
-    values_unit: Optional[ConcentrationTypes] = Field(
-        default=None,
-        description="Unit of the measurement data.",
-    )
-
     time: List[float] = Field(
         description="Time array corresponding to time-course data.",
         default_factory=ListPlus,
         multiple=True,
     )
 
-    time_unit: Optional[TimeTypes] = Field(
-        default=None,
-        description="Time data unit.",
-    )
-
     __repo__: Optional[str] = PrivateAttr(
         default="https://github.com/haeussma/EnzymePynetics.git"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="1b430a2c12a77bd82cbd6f3995639921bcc8b293"
+        default="df3e2f4bc8efec727aab1644f342fefba9029ee7"
     )

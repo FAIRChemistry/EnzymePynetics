@@ -4,12 +4,11 @@ classDiagram
     EnzymeKinetics *-- ModelResult
     Species *-- SpeciesTypes
     Species *-- ConcentrationTypes
+    Species *-- TimeTypes
     Species *-- Series
     Measurement *-- Species
     ModelResult *-- Parameter
     Parameter *-- Correlation
-    Series *-- ConcentrationTypes
-    Series *-- TimeTypes
     
     class EnzymeKinetics {
         +string title
@@ -20,6 +19,7 @@ classDiagram
     class Species {
         +string name
         +ConcentrationTypes conc_unit
+        +TimeTypes time_unit
         +float initial_conc
         +SpeciesTypes species_type
         +Series[0..*] data
@@ -59,9 +59,7 @@ classDiagram
     
     class Series {
         +float[0..*] values
-        +ConcentrationTypes values_unit
         +float[0..*] time
-        +TimeTypes time_unit
     }
     
     class SpeciesTypes {

@@ -6,10 +6,11 @@ from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
 
 
-from .species import Species
-from .concentrationtypes import ConcentrationTypes
+from .timetypes import TimeTypes
 from .series import Series
+from .concentrationtypes import ConcentrationTypes
 from .speciestypes import SpeciesTypes
+from .species import Species
 
 
 @forge_signature
@@ -48,13 +49,14 @@ class Measurement(sdRDM.DataModel):
         default="https://github.com/haeussma/EnzymePynetics.git"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="1b430a2c12a77bd82cbd6f3995639921bcc8b293"
+        default="df3e2f4bc8efec727aab1644f342fefba9029ee7"
     )
 
     def add_to_species(
         self,
         name: Optional[str] = None,
         conc_unit: Optional[ConcentrationTypes] = None,
+        time_unit: Optional[TimeTypes] = None,
         initial_conc: Optional[float] = None,
         species_type: Optional[SpeciesTypes] = None,
         data: List[Series] = ListPlus(),
@@ -67,6 +69,7 @@ class Measurement(sdRDM.DataModel):
             id (str): Unique identifier of the 'Species' object. Defaults to 'None'.
             name (): name of the reactant.. Defaults to None
             conc_unit (): Concentration unit of the measurement data.. Defaults to None
+            time_unit (): Time data unit.. Defaults to None
             initial_conc (): Initial concentration of the reactant.. Defaults to None
             species_type (): Define the role of the species in the reaction.. Defaults to None
             data (): One or multiple time-course measurement data arrays.. Defaults to ListPlus()
@@ -75,6 +78,7 @@ class Measurement(sdRDM.DataModel):
         params = {
             "name": name,
             "conc_unit": conc_unit,
+            "time_unit": time_unit,
             "initial_conc": initial_conc,
             "species_type": species_type,
             "data": data,
