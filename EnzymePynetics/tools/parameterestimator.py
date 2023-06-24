@@ -1,5 +1,6 @@
-from types import NoneType
-from typing import List, Dict, Optional, Literal, Union
+from ast import Raise, Sub
+from typing import List, Dict, Literal, Union
+from matplotlib.pyplot import flag
 
 from pyenzyme import EnzymeMLDocument
 from EnzymePynetics.core.enzymekinetics import EnzymeKinetics
@@ -11,15 +12,14 @@ from EnzymePynetics.tools.kineticmodel import KineticModel
 from EnzymePynetics.tools.rate_equations import *
 
 import numpy as np
-from pandas import DataFrame
+import pandas as pd
+from itertools import groupby
 from pathlib import Path
 from IPython.display import display
 import plotly.express as px
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 import matplotlib.colors
-
-_SPECIES_TYPES = Literal["substrate", "product"]
 
 
 class ParameterEstimator:
@@ -33,16 +33,9 @@ class ParameterEstimator:
             self._measured_species = self._get_measured_species(
                 data.measurements)
 
-        (
-            self.substrate,
-            self.initial_substrate,
-            self.enzyme,
-            self.product,
-            self.inhibitor,
-            self.time,
-        ) = self._initialize_measurement_data()
-        self.initial_kcat = self._calculate_kcat()
-        self.initial_Km = self._calculate_Km()
+        self.dframe = self._initialize_measurement_data()
+        # self.initial_kcat = self._calculate_kcat()
+        # self.initial_Km = self._calculate_Km()
 
     def fit_models(
         self,
@@ -97,6 +90,7 @@ class ParameterEstimator:
         self._run_minimization(display_output)
 
         # Set units in ModelResults object
+        print(f"conc_unit: {self._conc_unit}")
         for model_name, model in self.models.items():
             for p, parameter in enumerate(model.result.parameters):
                 if parameter.name == "k_cat" or parameter.name == "K_ie":
@@ -133,7 +127,7 @@ class ParameterEstimator:
         measured_species = []
         for measurement in measurements:
             for species in measurement.species:
-                if len(species.data) != 0:
+                if species.data:
                     measured_species.append(species.species_type)
 
         if len(measured_species) > 1:
@@ -143,66 +137,165 @@ class ParameterEstimator:
                 "is currently not supported."
             )
 
-        if len(measured_species) == 0:
+        if not measured_species:
             raise ValueError("Data contains no measurment data.")
 
         if len(measured_species) == 1:
             return measured_species[0]
 
-    def _initialize_measurement_data(self):
-        """
-        Extracts data from data objects and reshapes it for fitting.
-        """
+    def _initialize_dataframe(self) -> pd.DataFrame:
+        """Extracts measurement data and conditions from ```EnzymeKinetics``` object.
+        Returns DataFrame."""
 
-        init_substrate_list = []
-        enzyme_list = []
-        inhibitor_list = []
-        time_list = []
-        measured_data_list = []
+        entries = []
 
         # Extract data of measured species and measurement conditions
         for measurement in self.data.measurements:
+
             measured_species = self._get_species(
                 measurement, self._measured_species)
+            inhibitor = self._get_init_conc(
+                measurement, SpeciesTypes.INHIBITOR)
+            init_substrate = self._get_init_conc(
+                measurement, SpeciesTypes.SUBSTRATE)
+            enzyme = self._get_init_conc(measurement, SpeciesTypes.ENZYME)
+
             for replicate in measured_species.data:
-                measured_data_list.append(replicate.values)
+                for time, concentration in zip(replicate.time, replicate.values):
+                    entries.append(
+                        {
+                            SpeciesTypes.INHIBITOR.value: inhibitor,
+                            "init_substrate": init_substrate,
+                            SpeciesTypes.ENZYME.value: enzyme,
+                            "time": time,
+                            self._measured_species.value: concentration,
+                        }
+                    )
+        dframe = pd.DataFrame.from_dict(entries)
 
-                time_list.append(replicate.time)
+        dframe = self._calculate_missing_species(dframe)
 
-                enzyme_list.append([self._get_init_conc(
-                    measurement, SpeciesTypes.ENZYME)] * len(replicate.time))
+        dframe = dframe.set_index(
+            [SpeciesTypes.INHIBITOR.value, "init_substrate",
+                SpeciesTypes.ENZYME.value, "time"]
+        ).sort_index()
 
-                inhibitor_list.append([self._get_init_conc(
-                    measurement, SpeciesTypes.INHIBITOR)] * len(replicate.time))
+        return dframe
 
-                init_substrate_list.append([self._get_init_conc(
-                    measurement, SpeciesTypes.SUBSTRATE)] * len(replicate.time))
+    def _calculate_missing_species(self, dframe: pd.DataFrame) -> pd.DataFrame:
+        """Calculates missing species (e.g. substrate if product was measured)
+        and adds it to the ```DataFrame```."""
 
-                self._time_unit = replicate.time_unit
-                self._conc_unit = replicate.values_unit
-
-        init_substrate_array = np.array(init_substrate_list)
-        enzyme_array = np.array(enzyme_list)
-        time_array = np.array(time_list)
-        inhibitor_array = np.array(inhibitor_list)
-
-        try:
-            self._inhibitor_conc_unit = self._get_species(
-                measurement, SpeciesTypes.INHIBITOR).conc_unit
-        except StopIteration:
-            self._inhibitor_conc_unit = None
-
-        # Calculate missing species (e.g. substrate if product was measured)
         if self._measured_species is SpeciesTypes.SUBSTRATE:
-            substrate_array = np.array(measured_data_list)
-            product_array = init_substrate_array - substrate_array
+            dframe[SpeciesTypes.PRODUCT.value] = dframe["init_substrate"] - \
+                dframe[SpeciesTypes.SUBSTRATE.value]
+
+            return dframe
+
+        elif self._measured_species is SpeciesTypes.PRODUCT:
+            dframe[SpeciesTypes.SUBSTRATE.value] = dframe["init_substrate"] - \
+                dframe[SpeciesTypes.SUBSTRATE.value]
+
+            return dframe
 
         else:
-            product_array = np.array(measured_data_list)
-            substrate_array = init_substrate_array - product_array
+            raise ValueError(
+                "Messured species not defined."
+            )
 
-        return (substrate_array, init_substrate_array, enzyme_array,
-                product_array, inhibitor_array, time_array)
+    def _get_units(self, data: EnzymeKinetics, species: SpeciesTypes):
+
+        # Substrate unit
+        try:
+            substrate_units = [self._get_species(
+                meas, SpeciesTypes.SUBSTRATE) for meas in data.measurements]
+            if self.all_equal(substrate_units):
+                substrate_unit = substrate_units[0]
+            else:
+                raise ValueError(
+                    f"{SpeciesTypes.SUBSTRATE.value} species unit is not identical for all measurments."
+                )
+
+        except StopIteration:
+            raise ValueError(
+                f"{SpeciesTypes.SUBSTRATE.value} species not found in measurements. "
+                f"Add {SpeciesTypes.SUBSTRATE.value} species to each measurement with respective "
+                "unit and initial concentration."
+            )
+
+        # Product unit
+        try:
+            product_units = [self._get_species(
+                meas, SpeciesTypes.PRODUCT) for meas in data.measurements]
+
+            if self.all_equal(product_units):
+                product_unit = product_units[0]
+            else:
+                raise ValueError(
+                    f"{SpeciesTypes.SUBSTRATE.value} species unit is not identical for all measurments."
+                )
+
+        except StopIteration:
+            product_unit = substrate_unit
+
+        if substrate_unit != product_unit:
+            raise ValueError(
+                f"{SpeciesTypes.SUBSTRATE.value} unit ({substrate_unit}) and {SpeciesTypes.PRODUCT.value} "
+                f"unit ({product_unit}) need to be identical."
+            )
+
+        # Enzyme unit
+        try:
+            enzyme_units = [self._get_species(
+                meas, SpeciesTypes.ENZYME) for meas in data.measurements]
+            if self.all_equal(enzyme_units):
+                enzyme_unit = enzyme_units[0]
+            else:
+                raise ValueError(
+                    f"{SpeciesTypes.SUBSTRATE.value} species unit is not identical for all measurments."
+                )
+
+        except StopIteration:
+            raise ValueError(
+                f"{SpeciesTypes.ENZYME.value} species not found in measurements. "
+                f"Add {SpeciesTypes.ENZYME.value} species to each measurement with respective "
+                "unit and initial concentration."
+            )
+
+        # Inhibitor unit
+        try:
+            inhibitor_units = [self._get_species(
+                meas, SpeciesTypes.INHIBITOR) for meas in data.measurements]
+            if self.all_equal(inhibitor_units):
+                inhibitor_unit = inhibitor_units[0]
+            else:
+                raise ValueError(
+                    f"{SpeciesTypes.SUBSTRATE.value} species unit is not identical for all measurments."
+                )
+
+        except StopIteration:
+            inhibitor_unit = substrate_unit
+
+        # Time unit
+        time_units = []
+        for meas in data.measurements:
+            for species in meas.species:
+                if species.data:
+                    for replicate in species.data:
+                        time_units.append()
+
+        # self._time_unit = replicate.time_unit
+        # self._conc_unit = replicate.values_unit
+
+        # try:
+        #     self._inhibitor_conc_unit = self._get_species(
+        #         measurement, SpeciesTypes.INHIBITOR).conc_unit
+        # except StopIteration:
+        #     self._inhibitor_conc_unit = None
+
+    def all_equal(iterable):
+        g = groupby(iterable)
+        return next(g, True) and not next(g, False)
 
     @staticmethod
     def _get_species(measurement: Measurement, species_type: SpeciesTypes) -> Species:
@@ -542,16 +635,38 @@ class ParameterEstimator:
                 model=partially_competitive_inhibition_model,
                 enzyme_inactivation=True,
             )
+            competitive_inhibition_with_substrate_inhibition_model
+
+            comp_inhib_sub_inhib = KineticModel(
+                name="competitive inhibition with uncompetitive substrate inhibition",
+                params=["K_ic", "K_iu"],
+                y0=y0,
+                kcat_initial=self.initial_kcat,
+                Km_initial=self.initial_Km,
+                model=competitive_inhibition_with_substrate_inhibition_model,
+                enzyme_inactivation=False,
+            )
+            comp_inhib_sub_inhib_enz_inact = KineticModel(
+                name="competitive inhibition with uncompetitive substrate inhibition with enzyme inactivation",
+                params=["K_ic", "K_iu"],
+                y0=y0,
+                kcat_initial=self.initial_kcat,
+                Km_initial=self.initial_Km,
+                model=competitive_inhibition_with_substrate_inhibition_model,
+                enzyme_inactivation=True,
+            )
 
             return {
+                comp_inhib_sub_inhib_enz_inact.name: comp_inhib_sub_inhib_enz_inact,
+                comp_inhib_sub_inhib.name: comp_inhib_sub_inhib,
                 irreversible_Michaelis_Menten.name: irreversible_Michaelis_Menten,
                 irreversible_Michaelis_Menten_inactivation.name: irreversible_Michaelis_Menten_inactivation,
                 competitive_inhibition.name: competitive_inhibition,
                 competitive_inhibition_inactivation.name: competitive_inhibition_inactivation,
                 uncompetitive_inhibition.name: uncompetitive_inhibition,
                 uncompetitive_inhibition_inactivation.name: uncompetitive_inhibition_inactivation,
-                noncompetitive_inhibition.name: noncompetitive_inhibition,
-                noncompetitive_inhibition_inactivation.name: noncompetitive_inhibition_inactivation,
+                # noncompetitive_inhibition.name: noncompetitive_inhibition,
+                # noncompetitive_inhibition_inactivation.name: noncompetitive_inhibition_inactivation,
                 partially_competitive_inhibition.name: partially_competitive_inhibition,
                 partially_competitive_inhibition_inactivation.name: partially_competitive_inhibition_inactivation,
             }
@@ -575,7 +690,7 @@ class ParameterEstimator:
                 print(
                     f" -- Fitting succeeded: {kineticmodel.result.fit_success}")
 
-    def _result_overview(self) -> DataFrame:
+    def _result_overview(self) -> pd.DataFrame:
         """
         Prettifies the results of all kinetic models and organized them in a pandas DataFrame.
         """
@@ -650,15 +765,6 @@ class ParameterEstimator:
         df.fillna("-", inplace=True)
         return df.style.background_gradient(cmap="Blues")
 
-    def get_species(self, species_type: SpeciesTypes, measurement: int = 0) -> Species:
-        return next(
-            (
-                x
-                for x in self.data.measurements[measurement].species
-                if x.species_type == species_type
-            )
-        )
-
     @staticmethod
     def _HEX_to_RGBA_string(color: list) -> str:
         return f"rgba{tuple(color)}"
@@ -704,8 +810,25 @@ class ParameterEstimator:
         unit = unit.replace("ug", "µg")
         return unit
 
+    @staticmethod
+    def group_lists(measurement_data: List[List[float]], init_inhibitors: List[float]):
+        result = []
+        temp = []
+        prev_val = init_inhibitors[0]
+
+        for i in range(len(measurement_data)):
+            if init_inhibitors[i] != prev_val:
+                result.append(temp)
+                temp = []
+
+            temp.append(measurement_data[i])
+            prev_val = init_inhibitors[i]
+
+        result.append(temp)
+        return result
+
     def visualize_subplots(
-        self, visualized_species: _SPECIES_TYPES = None, save_path: str = None
+        self, visualized_species: SpeciesTypes = None, save_path: str = None
     ):
         colors = matplotlib.colors.to_rgba_array(px.colors.qualitative.Plotly)
 
@@ -713,7 +836,7 @@ class ParameterEstimator:
         if visualized_species is None:
             visualized_species = self._measured_species
 
-        if visualized_species == "substrate":
+        if visualized_species == SpeciesTypes.SUBSTRATE.value:
             measurement_data = self.subset_substrate
             species_tuple = 0
             visualized_species = self._measured_species
@@ -721,21 +844,33 @@ class ParameterEstimator:
             measurement_data = self.subset_product
             species_tuple = 2
 
-        unique_initial_substrates = np.unique(self.subset_initial_substrate)
-        unique_inhibitors = np.unique(self.inhibitor)
+        # Get measured data for visualization
+        measurement_data, measurement_time = self._get_timecourse_data(
+            visualized_species)
+
+        init_substrates = []
+        init_enzymes = []
+        init_inhibitors = []
+        for measurement in self.data.measurements:
+            init_substrates.append(self._get_init_conc(
+                measurement, SpeciesTypes.SUBSTRATE))
+            init_enzymes.append(self._get_init_conc(
+                measurement, SpeciesTypes.ENZYME))
+            init_inhibitors.append(self._get_init_conc(
+                measurement, SpeciesTypes.INHIBITOR))
+
+        # plot replicates
+        unique_initial_substrates = np.unique(init_substrates)
+        unique_inhibitors = np.unique(init_inhibitors)
 
         # Reshape data and time array to contain inhibitor and replicate information
-        datas = self._restore_replicate_dims(
-            self.subset_initial_substrate, measurement_data
-        )
-        times = self._restore_replicate_dims(
-            self.subset_initial_substrate, self.subset_time
-        )
+        datas = self.group_lists(measurement_data, init_inhibitors)
+        times = self.group_lists(measurement_time, init_inhibitors)
 
         # get measured species and substrate species
-        species = self.get_species(visualized_species)
-        substrate = self.get_species("substrate")
-        inhibitor = self.get_species("inhibitor")
+        species = self._get_species(measurement, visualized_species)
+        substrate = self._get_species(measurement, SpeciesTypes.SUBSTRATE)
+        inhibitor = self._get_species(measurement, SpeciesTypes.INHIBITOR)
 
         subplot_titles = []
         for row, inhibitor_conc in enumerate(unique_inhibitors):
@@ -747,7 +882,7 @@ class ParameterEstimator:
                 )
 
         fig = make_subplots(
-            rows=datas.shape[0],
+            rows=len(datas),
             cols=1,
             shared_yaxes="all",
             y_title=f"Initial {substrate.name} ({self._conc_unit})",
@@ -757,7 +892,7 @@ class ParameterEstimator:
             vertical_spacing=0.05,
         )
 
-        # Adjust syle of subplot label
+        # Adjust style of subplot label
         for count, annotation in enumerate(fig.layout["annotations"]):
             if inhibitor.name in annotation["text"]:
                 fig.layout["annotations"][count]["x"] = 0
@@ -770,12 +905,14 @@ class ParameterEstimator:
             for data, time, init_sub, color in zip(
                 inhibitor_data, inhibitor_time, unique_initial_substrates, colors
             ):
+
                 for replicate_count, (replicate_data, replicate_time) in enumerate(
                     zip(data, time)
                 ):
                     show_legend = (
                         True if replicate_count == 0 and inhibitor_count == 0 else False
                     )
+
                     color[-1] = 1
                     fig.add_trace(
                         go.Scatter(
@@ -793,75 +930,73 @@ class ParameterEstimator:
                         row=inhibitor_count + 1,
                     )
 
-                if datas.shape[2] > 1:
-                    show_legend = True if inhibitor_count == 0 else False
+                show_legend = True if inhibitor_count == 0 else False
 
-                    mean = np.mean(data, axis=0)
-                    std = np.std(data, axis=0)
-                    color[-1] = 1
-                    fig.add_trace(
-                        go.Scatter(
-                            x=time[0],
-                            y=mean,
-                            name=f"{init_sub}",
-                            mode="markers",
-                            marker=dict(color=self._HEX_to_RGBA_string(color)),
-                            customdata=["mean"],
-                            hoverinfo="skip",
-                            showlegend=show_legend,
-                            visible=True,
-                        ),
-                        col=1,
-                        row=inhibitor_count + 1,
-                    )
+                mean = np.mean(data, axis=0)
+                std = np.std(data, axis=0)
+                color[-1] = 1
+                fig.add_trace(
+                    go.Scatter(
+                        x=time[0],
+                        y=mean,
+                        name=f"{init_sub}",
+                        mode="markers",
+                        marker=dict(color=self._HEX_to_RGBA_string(color)),
+                        customdata=["mean"],
+                        hoverinfo="skip",
+                        showlegend=show_legend,
+                        visible=True,
+                    ),
+                    col=1,
+                    row=inhibitor_count + 1,
+                )
 
-                    color[-1] = 0.25  # change opacity of color
-                    fig.add_trace(
-                        go.Scatter(
-                            name=f"{init_sub}",
-                            x=time[0],
-                            y=mean + std,
-                            mode="lines",
-                            line=dict(width=0),
-                            showlegend=False,
-                            customdata=["std"],
-                            visible=True,
-                        ),
-                        col=1,
-                        row=inhibitor_count + 1,
-                    )
-                    fig.add_trace(
-                        go.Scatter(
-                            name=f"{init_sub}",
-                            x=time[0],
-                            y=mean - std,
-                            line=dict(width=0),
-                            mode="lines",
-                            fillcolor=self._HEX_to_RGBA_string(color),
-                            fill="tonexty",
-                            showlegend=False,
-                            customdata=["std"],
-                            visible=True,
-                        ),
-                        col=1,
-                        row=inhibitor_count + 1,
-                    )
+                color[-1] = 0.25  # change opacity of color
+                fig.add_trace(
+                    go.Scatter(
+                        name=f"{init_sub}",
+                        x=time[0],
+                        y=mean + std,
+                        mode="lines",
+                        line=dict(width=0),
+                        showlegend=False,
+                        customdata=["std"],
+                        visible=True,
+                    ),
+                    col=1,
+                    row=inhibitor_count + 1,
+                )
+                fig.add_trace(
+                    go.Scatter(
+                        name=f"{init_sub}",
+                        x=time[0],
+                        y=mean - std,
+                        line=dict(width=0),
+                        mode="lines",
+                        fillcolor=self._HEX_to_RGBA_string(color),
+                        fill="tonexty",
+                        showlegend=False,
+                        customdata=["std"],
+                        visible=True,
+                    ),
+                    col=1,
+                    row=inhibitor_count + 1,
+                )
 
         ydata = [ys["y"] for ys in fig.__dict__["_data_objs"]]
         xdata = [xs["x"] for xs in fig.__dict__["_data_objs"]]
 
         # Integrate each successfully fitted model
+
         successfull_models = []
         steps = []
         for model in self.models.values():
             if model.result.fit_success:
                 successfull_models.append(model)
-                means_y0s = np.mean(
-                    self._restore_replicate_dims(
-                        self.subset_initial_substrate, model.y0
-                    ),
-                    axis=2,
-                )
+                print(model.y0)
+
+                means_y0s = model.y0
+
                 for inhibitor_count, (inhibitor_y0s, time) in enumerate(
                     zip(means_y0s, times)
                 ):
@@ -952,8 +1087,51 @@ class ParameterEstimator:
 
         return fig
 
+    def _get_timecourse_data(self, species_type: SpeciesTypes) -> List[List[List[float]]]:
+        """Gets measurement data of a species for the data set.
+        Returns List[List[List]] representing measurements[replicates[timecourse]] along with 
+        time information with the same shape"""
+
+        data = []
+        time = []
+        for measurement in self.data.measurements:
+            species = self._get_species(measurement, species_type)
+
+            replicates = []
+            subset_time = []
+            for replicate in species.data:
+                replicates.append(replicate.values)
+                subset_time.append(replicate.time)
+
+            data.append(replicates)
+            time.append(subset_time)
+
+        return data, time
+
+    def _get_timecourse_inhibitors(self, species_type: SpeciesTypes) -> List[List[List[float]]]:
+        """Gets measurement data of a species for the data set.
+        Returns List[List[List]] representing measurements[replicates[timecourse]] along with 
+        time information with the same shape"""
+
+        inhibitors = []
+        old_inhib_conc = 0
+        for measurement in self.data.measurements:
+            data = []
+            inhib_conc = self._get_init_conc(
+                measurement, SpeciesTypes.INHIBITOR)
+            species = self._get_species(measurement, species_type)
+            if inhib_conc == old_inhib_conc:
+                replicates = []
+                for replicate in species.data:
+                    replicates.append(replicate.values)
+                data.append(replicates)
+            inhibitors.append(data)
+            old_inhib_conc = inhib_conc
+
+        return inhibitors
+
     def visualize_model_overview(
-        self, visualized_species: _SPECIES_TYPES = None, save_path: str = None
+        self, visualized_species: SpeciesTypes = None, save_path: str = None
     ):
         fig = go.Figure()
         colors = matplotlib.colors.to_rgba_array(px.colors.qualitative.T10_r)
@@ -962,29 +1140,25 @@ class ParameterEstimator:
         if visualized_species is None:
             visualized_species = self._measured_species
 
-        if visualized_species == "substrate":
-            measurement_data = self.subset_substrate
-            species_tuple = 0
-            visualized_species = self._measured_species
-        else:
-            measurement_data = self.subset_product
-            species_tuple = 2
+        # Get measured data for visualization
+        measurement_data, measurement_time = self._get_timecourse_data(
+            visualized_species)
 
-        datas = self._restore_replicate_dims(
-            self.subset_initial_substrate, measurement_data
-        )
-        times = self._restore_replicate_dims(
-            self.subset_initial_substrate, self.subset_time
-        )
-        initial_substrates = []
-        for sub in self.subset_initial_substrate.flatten():
-            if sub not in initial_substrates:
-                initial_substrates.append(sub)
+        init_substrates = []
+        init_enzymes = []
+        init_inhibitors = []
+        for measurement in self.data.measurements:
+            init_substrates.append(self._get_init_conc(
+                measurement, SpeciesTypes.SUBSTRATE))
+            init_enzymes.append(self._get_init_conc(
+                measurement, SpeciesTypes.ENZYME))
+            init_inhibitors.append(self._get_init_conc(
+                measurement, SpeciesTypes.INHIBITOR))
 
         # plot replicates
 
         for i, (data, time, init_sub) in enumerate(
-            zip(datas, times, initial_substrates)
+            zip(measurement_data, measurement_time, init_substrates)
         ):
             for j, (replicate_data, replicate_time) in enumerate(zip(data, time)):
                 show_legend = True if j == 0 else False
@@ -1003,16 +1177,16 @@ class ParameterEstimator:
                 )
 
         # plot means
-        if len(datas.shape) == 3:
-            means = np.mean(datas, axis=1)
-            stds = np.std(datas, axis=1)
+        if any(len(meas) > 1 for meas in measurement_data):
 
-            for color, mean, std, init_sub, time in zip(
-                colors, means, stds, initial_substrates, times[:, 0, :]
+            for color, replicate_data, init_sub, time in zip(
+                colors, measurement_data, init_substrates, measurement_time
             ):
+                mean = np.mean(replicate_data, axis=0)
+                std = np.std(replicate_data, axis=0)
                 fig.add_trace(
                     go.Scatter(
-                        x=time,
+                        x=time[0],
                         y=mean,
                         name=f"{init_sub}",
                         mode="markers",
@@ -1027,7 +1201,7 @@ class ParameterEstimator:
                 fig.add_trace(
                     go.Scatter(
                         name=f"{init_sub}",
-                        x=time,
+                        x=time[0],
                         y=mean + std,
                         mode="lines",
                         line=dict(width=0),
@@ -1038,7 +1212,7 @@ class ParameterEstimator:
                 fig.add_trace(
                     go.Scatter(
                         name=f"{init_sub}",
-                        x=time,
+                        x=time[0],
                         y=mean - std,
                         line=dict(width=0),
                         mode="lines",
@@ -1067,22 +1241,22 @@ class ParameterEstimator:
                     ),
                     axis=1,
                 )
-                datas = model.integrate(
+                integration_data = model.integrate(
                     model._fit_result.params,
                     self.subset_time,
                     mean_y0s,
                 )
 
                 for data, time, color, init_sub in zip(
-                    datas[:, :, species_tuple],
-                    times[:, 0, :],
+                    integration_data[:, :, 0],
+                    measurement_time,
                     colors,
-                    initial_substrates,
+                    init_substrates,
                 ):
                     color[-1] = 1
                     fig.add_trace(
                         go.Scatter(
-                            x=time,
+                            x=time[0],
                             y=data,
                             mode="lines",
                             name=model.name,
@@ -1194,17 +1368,17 @@ class ParameterEstimator:
         )
 
         # Add title, legend...
-        species = self.get_species(visualized_species)
-        substrate = self.get_species("substrate")
-        fig.update_layout(
-            showlegend=True,
-            title="Measured data",
-            yaxis_title=f"{species.name} ({self._format_unit(species.conc_unit)})",
-            xaxis_title=f"time ({self._format_unit(self._time_unit)})",
-            hovermode="closest",
-            legend_title_text=f"Initial {substrate.name} <br>({self._format_unit(self._conc_unit)})</br>",
-            hoverlabel_namelength=-1,
-        )
+        # species = self._get_species(visualized_species)
+        # substrate = self._get_species("substrate")
+        # fig.update_layout(
+        #     showlegend=True,
+        #     title="Measured data",
+        #     yaxis_title=f"{species.name} ({self._format_unit(species.conc_unit)})",
+        #     xaxis_title=f"time ({self._format_unit(self._time_unit)})",
+        #     hovermode="closest",
+        #     legend_title_text=f"Initial {substrate.name} <br>({self._format_unit(self._conc_unit)})</br>",
+        #     hoverlabel_namelength=-1,
+        # )
 
         config = {
             "toImageButtonOptions": {
@@ -1270,7 +1444,7 @@ class ParameterEstimator:
             replicates = [
                 Series(
                     values=rep.data,
-                    value_unit=get_unit(substrate.unit),
+                    values_unit=get_unit(substrate.unit),
                     time=rep.time,
                     time_unit=rep.time_unit,
                 )

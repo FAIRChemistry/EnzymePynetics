@@ -28,6 +28,9 @@ Base class, dealing with measurement data of an enzyme kinetics assay.
 - conc_unit
   - Type: ConcentrationTypes
   - Description: Concentration unit of the measurement data.
+- time_unit
+  - Type: TimeTypes
+  - Description: Time data unit.
 - initial_conc
   - Type: float
   - Description: Initial concentration of the reactant.
@@ -128,16 +131,10 @@ Time-course data of an individual reaction.
   - Type: float
   - Description: Time-course data of an individual reaction.
   - Multiple: True
-- values_unit
-  - Type: ConcentrationTypes
-  - Description: Unit of the measurement data.
 - time
   - Type: float
   - Description: Time array corresponding to time-course data.
   - Multiple: True
-- time_unit
-  - Type: TimeTypes
-  - Description: Time data unit.
 
 ## Enumerations
 
