@@ -121,7 +121,6 @@ class KineticModel:
         Args:
             ydata (ndarray): Experimental substrate data
             time (ndarray): Time array corresponding to measurement data
-            y0s (List[tuple]): initial conditions of modeled species
 
         Returns:
             MinimizerResult: least-squares minimization result.
