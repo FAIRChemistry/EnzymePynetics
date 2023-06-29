@@ -89,6 +89,8 @@ def noncompetitive_product_inhibition_model(w0: tuple, t, params, flag_enzyme_in
 def substrate_inhibition_model(w0: tuple, t, params, flag_enzyme_inactivation: bool) -> tuple:
     cS, cE, cP, cI = w0
 
+    # TODO: when models are integrated y0s ar not correctly assigned to cI species, Does not impact results, yet incorrect inhibitor data is generated.
+
     k_cat = params['k_cat'].value
     Km = params['Km'].value
     K_iu = params["K_iu"].value

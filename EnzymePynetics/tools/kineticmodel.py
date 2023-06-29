@@ -2,7 +2,7 @@ from typing import List
 from lmfit import Parameters, minimize
 from lmfit.minimizer import MinimizerResult
 from typing import Dict, Callable, Tuple
-from numpy import log, exp
+from numpy import isin, log, exp
 from scipy.integrate import odeint
 import numpy as np
 
@@ -70,7 +70,7 @@ class KineticModel:
         return parameters
 
     def integrate(
-        self, parameters: Parameters, time: np.ndarray, y0s: List[tuple]
+        self, parameters: Parameters, time: list, y0: tuple
     ) -> np.ndarray:
         """Integrates model based on parameters for a given time array and initial conditions.
 
@@ -82,14 +82,10 @@ class KineticModel:
         Returns:
             result (np.ndarray): integrated model over given time.
         """
-        result = [
-            odeint(
-                func=self.model, y0=y0, t=t, args=(
-                    parameters, self.enzyme_inactivation)
-            )
-            for y0, t in zip(y0s, time)
-        ]
-        return np.array(result)
+
+        result = np.array([odeint(func=self.model, y0=y, t=t, args=(
+            parameters, self.enzyme_inactivation)) for y, t in zip(y0, time)])
+        return result
 
     def residuals(
         self,
@@ -112,7 +108,7 @@ class KineticModel:
 
         y0s = np.array(y0s)
         model = self.integrate(parameters, time, y0s)
-        residuals = model[:, :, 0] - ydata
+        residuals = model[:, :, 0] - ydata  # fitting to substrate data
         return residuals.flatten()
 
     def fit(self, ydata: np.ndarray, time: np.ndarray) -> MinimizerResult:

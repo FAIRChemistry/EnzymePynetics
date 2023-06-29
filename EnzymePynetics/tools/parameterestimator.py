@@ -199,7 +199,8 @@ class ParameterEstimator:
             dframe, self._measured_species)
 
         dframe = dframe.set_index(
-            [SpeciesTypes.INHIBITOR.value, "init_substrate", "replicate"]
+            [SpeciesTypes.INHIBITOR.value, "init_substrate",
+                "replicate"]
         ).sort_index()
 
         return dframe
@@ -1402,6 +1403,95 @@ class ParameterEstimator:
         }
 
         return fig.show(config=config)
+
+    def _get_init_conditions(self):
+
+        results = []
+
+        inhibitor_lvls, init_substrate_lvls, replicate_lvls = [
+            lvl.values for lvl in self.data.index.levels]
+
+        dframe = self.data.reset_index()
+
+        fitting_conditions = []
+        time_data = []
+        for inhibitor_lvl in inhibitor_lvls:
+            for init_substrate_lvl in init_substrate_lvls:
+                substrates = []
+                products = []
+                for replicate_lvl in replicate_lvls:
+                    entries = dframe.loc[(dframe[SpeciesTypes.INHIBITOR.value] == inhibitor_lvl) & (
+                        dframe['init_substrate'] == init_substrate_lvl) & (dframe["replicate"] == replicate_lvl)].T
+
+                    if not entries.empty:
+                        substrates.append(
+                            entries.loc[SpeciesTypes.SUBSTRATE.value].iloc[0])
+                        products.append(
+                            entries.loc[SpeciesTypes.PRODUCT.value].iloc[0])
+
+                if not entries.empty:
+
+                    mean_substrate = np.mean(substrates)
+                    mean_product = np.mean(products)
+                    time = entries.loc["time"].values
+
+                    enzyme = entries.loc[SpeciesTypes.ENZYME.value].iloc[0]
+                    inhibitor = entries.loc[SpeciesTypes.INHIBITOR.value].iloc[0]
+
+                    for model in self.models.values():
+                        if model.result.fit_success:
+                            dense_time = np.linspace(
+                                np.min(time), np.max(time), 100)
+                            datas = model.integrate(
+                                model._fit_result.params,
+                                [dense_time],
+                                [(mean_substrate, enzyme, mean_product, inhibitor)]
+                            )
+                            for data, t in zip(datas[0], dense_time):
+                                sub, enz, prod, inhib = data
+                                results.append({
+                                    "model": model.name,
+                                    f"{SpeciesTypes.SUBSTRATE.value} model": sub,
+                                    f"{SpeciesTypes.ENZYME.value} model": enz,
+                                    f"{SpeciesTypes.PRODUCT.value} model": prod,
+                                    f"{SpeciesTypes.INHIBITOR.value} model": inhib,
+                                    "time model": t,
+                                    "init_substrate": init_substrate_lvl,
+                                    "inhibitor": inhibitor_lvl,
+                                })
+
+        new_df = pd.DataFrame(results)
+        combined_df = pd.concat(
+            [self.data.reset_index(), new_df], ignore_index=True)
+
+        return combined_df
+
+    def _intergate_results(self):
+        entries = []
+        successfull_models = []
+        for model in self.models.values():
+            if model.result.fit_success:
+                successfull_models.append(model)
+
+                time_data, fitting_conditions = self._get_init_conditions()
+
+                for time, conditions in zip(time_data, fitting_conditions):
+                    dense_time = np.linspace(min(time), max(time), 100)
+
+                    datas = model.integrate(
+                        model._fit_result.params,
+                        dense_time,
+                        conditions,
+                    )
+
+        return datas
+
+    def visualize_fit(self, species: SpeciesTypes = None):
+
+        integration_time, integration_conditions = self._get_init_conditions()
+
+        plt = self.visualize_data(species)
+        return plt
 
     @classmethod
     def from_EnzymeML(
