@@ -883,9 +883,9 @@ class ParameterEstimator:
 
         new_df = pd.DataFrame(results).sort_index()
         combined_df = pd.concat(
-            [self.data.reset_index(), new_df], ignore_index=True).set_index([f"{SpeciesTypes.INHIBITOR.value}", "model", "init_substrate"]).sort_index()
+            [self.data.reset_index(), new_df], ignore_index=True).set_index([f"{SpeciesTypes.INHIBITOR.value}", "model", "init_substrate"])
 
-        return combined_df
+        return combined_df.sort_index(level=combined_df.index.names)
 
     def _style_parameters(self, model: KineticModel):
         param_name_map = dict(
@@ -973,6 +973,7 @@ class ParameterEstimator:
             for init_substrate_lvl, color in zip(init_substrate_levels, colors):
                 df_measurement_data = dframe.loc[inhibitor_lvl,
                                                  float("nan"), init_substrate_lvl]
+
                 fig.add_trace(go.Scatter(
                     x=df_measurement_data["time"].values,
                     y=df_measurement_data[visualized_species.value].values,
@@ -1084,8 +1085,6 @@ class ParameterEstimator:
                 steps=steps,
             )
         ]
-        print(len(annotations))
-        print(len(successful_models))
 
         fig.update_layout(
             sliders=sliders,
