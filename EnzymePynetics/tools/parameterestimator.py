@@ -1,5 +1,6 @@
 from ast import Raise, Sub
 import time
+from turtle import mode, position
 from typing import List, Dict, Literal, Union
 from matplotlib.pyplot import flag
 
@@ -242,6 +243,7 @@ class ParameterEstimator:
 
         fig.update_layout(
             legend=dict(title=f"Initial {self.substrate_name} ({self.substrate_unit})"))
+        fig.update_traces(customdata=["raw"])
 
         # Set axis labels with corresponding unit
         fig.update_xaxes(dict(title=f"time ({self.time_unit})"))
@@ -259,7 +261,6 @@ class ParameterEstimator:
             ylable = self.inhibitor_name
             unit = self.inhibitor_unit
 
-        ylable = self.substrate_name if species == SpeciesTypes.SUBSTRATE else self.product_name
         ylable = self.substrate_name if species == SpeciesTypes.SUBSTRATE else self.product_name
 
         fig.update_yaxes(dict(title=f"{ylable} ({unit})"))
@@ -816,247 +817,261 @@ class ParameterEstimator:
         df.fillna("-", inplace=True)
         return df.style.background_gradient(cmap="Blues")
 
-    def _restore_replicate_dims(
-        self, initial_substrate: List[float], data_array: np.ndarray
-    ):
-        unique_initial_substrate = np.unique(initial_substrate)
-        data_shape = data_array.shape
-        n_replicates = int(data_shape[0] / len(unique_initial_substrate))
+    def _get_visualization_data(self):
+        """Gets y0 tuples and respective time array for unique initial conditions in the data set"""
 
-        if np.all(self.subset_inhibitor == 0):
-            return data_array.reshape(len(unique_initial_substrate), n_replicates, -1)
+        inhibitor_lvls, init_substrate_lvls, replicate_lvls = [
+            lvl.values for lvl in self.data.index.levels]
 
-        else:
-            unique_inhibitor_concs = np.unique(self.subset_inhibitor)
-            n_replicates = int(
-                data_shape[0]
-                / len(unique_initial_substrate)
-                / len(unique_inhibitor_concs)
+        dframe = self.data.reset_index()
+
+        results = []
+
+        for inhibitor_lvl in inhibitor_lvls:
+            for init_substrate_lvl in init_substrate_lvls:
+                substrates = []
+                products = []
+                for replicate_lvl in replicate_lvls:
+                    entries = dframe.loc[(
+                        dframe[SpeciesTypes.INHIBITOR.value] == inhibitor_lvl) & (
+                        dframe['init_substrate'] == init_substrate_lvl) & (
+                        dframe["replicate"] == replicate_lvl
+                    )]
+
+                    if not entries.empty:
+                        substrates.append(
+                            entries[SpeciesTypes.SUBSTRATE.value].iloc[0])
+                        products.append(
+                            entries[SpeciesTypes.PRODUCT.value].iloc[0])
+                        enzyme = entries[SpeciesTypes.ENZYME.value].iloc[0]
+                        inhibitor = entries[SpeciesTypes.INHIBITOR.value].iloc[0]
+                        measurement_time = entries["time"].values
+
+                mean_substrate = np.mean(substrates)
+                mean_product = np.mean(products)
+
+                y0 = (mean_substrate, enzyme,
+                      mean_product, inhibitor)
+
+                for model in self.models.values():
+                    if model.result.fit_success:
+
+                        dense_time = np.linspace(
+                            min(measurement_time), max(measurement_time), 100)
+
+                        datas = model.integrate(
+                            model._fit_result.params,
+                            [dense_time],
+                            [y0]
+                        )
+
+                        for data, time in zip(datas[0], dense_time):
+                            sub, enz, prod, inhib = data
+
+                            results.append(
+                                {
+                                    "model": model.name,
+                                    f"{SpeciesTypes.SUBSTRATE.value}_simulated": sub,
+                                    f"{SpeciesTypes.ENZYME.value}_simulated": enz,
+                                    f"{SpeciesTypes.PRODUCT.value}_simulated": prod,
+                                    f"{SpeciesTypes.INHIBITOR.value}_simulated": inhib,
+                                    "time_simulated": time,
+                                    "init_substrate": init_substrate_lvl,
+                                    "inhibitor": inhibitor_lvl,
+                                }
+                            )
+
+        new_df = pd.DataFrame(results).sort_index()
+        combined_df = pd.concat(
+            [self.data.reset_index(), new_df], ignore_index=True).set_index([f"{SpeciesTypes.INHIBITOR.value}", "model", "init_substrate"]).sort_index()
+
+        return combined_df
+
+    def _style_parameters(self, model: KineticModel):
+        param_name_map = dict(
+            k_cat="<b><i>k</i><sub>cat</sub>:</b>",
+            Km="<b><i>K</i><sub>M</sub>:</b>",
+            K_ie="<b><i>K</i><sub>ie</sub>:</b>",
+            K_ic="<b><i>K</i><sub>ic</sub>:</b>",
+            K_iu="<b><i>K</i><sub>iu</sub>:</b>",
+        )
+        params = ""
+        for parameter in model.result.parameters:
+            params = (
+                params
+                + f"{param_name_map[parameter.name]} "
+                + f"{parameter.value:.3f} "
+                + f"{self._format_unit(parameter.unit)} \n\n"
             )
+        return params
 
-            return data_array.reshape(
-                len(unique_inhibitor_concs),
-                len(unique_initial_substrate),
-                n_replicates,
-                -1,
-            )
-
-    def visualize_subplots(
-        self, visualized_species: SpeciesTypes = None, save_path: str = None
-    ):
-        colors = matplotlib.colors.to_rgba_array(px.colors.qualitative.Plotly)
+    def visualize_fit(self, visualized_species: SpeciesTypes = None):
 
         # Select which species to plot
         if visualized_species is None:
             visualized_species = self._measured_species
+            visualized_species_name = self._measured_species_name
 
         if visualized_species == SpeciesTypes.SUBSTRATE.value:
-            measurement_data = self.subset_substrate
-            species_tuple = 0
-            visualized_species = self._measured_species
-        else:
-            measurement_data = self.subset_product
-            species_tuple = 2
+            visualized_species = SpeciesTypes.SUBSTRATE
+            visualized_species_name = self.substrate_name
 
-        # Get measured data for visualization
-        measurement_data, measurement_time = self._get_timecourse_data(
-            visualized_species)
+        if visualized_species == SpeciesTypes.PRODUCT.value:
+            visualized_species = SpeciesTypes.PRODUCT
+            visualized_species_name = self.product_name
 
-        init_substrates = []
-        init_enzymes = []
-        init_inhibitors = []
-        for measurement in self.data.measurements:
-            init_substrates.append(self._get_init_conc(
-                measurement, SpeciesTypes.SUBSTRATE))
-            init_enzymes.append(self._get_init_conc(
-                measurement, SpeciesTypes.ENZYME))
-            init_inhibitors.append(self._get_init_conc(
-                measurement, SpeciesTypes.INHIBITOR))
+        # Initialize figure
+        colors = px.colors.qualitative.Plotly
+        dframe = self._get_visualization_data()
 
-        # plot replicates
-        unique_initial_substrates = np.unique(init_substrates)
-        unique_inhibitors = np.unique(init_inhibitors)
-
-        # Reshape data and time array to contain inhibitor and replicate information
-        datas = self.group_lists(measurement_data, init_inhibitors)
-        times = self.group_lists(measurement_time, init_inhibitors)
-
-        # get measured species and substrate species
-        species = self._get_species(measurement, visualized_species)
-        substrate = self._get_species(measurement, SpeciesTypes.SUBSTRATE)
-        inhibitor = self._get_species(measurement, SpeciesTypes.INHIBITOR)
+        # Add labels for subplots, displaying different inhibitor concentrations
+        inhibitor_levels = dframe.index.get_level_values(0).unique().values
+        model_levels = dframe.index.get_level_values(1).unique().values
+        init_substrate_levels = dframe.index.get_level_values(
+            2).unique().values
 
         subplot_titles = []
-        for row, inhibitor_conc in enumerate(unique_inhibitors):
-            if inhibitor_conc == 0:
-                subplot_titles.append(f"without {inhibitor.name}")
-            else:
-                subplot_titles.append(
-                    f"{inhibitor_conc} {inhibitor.conc_unit} {inhibitor.name}"
-                )
+        if inhibitor_levels.size > 1:
+
+            for row, inhibitor_conc in enumerate(inhibitor_levels):
+                if inhibitor_conc == 0:
+                    subplot_titles.append(f"without {self.inhibitor_name}")
+                else:
+                    subplot_titles.append(
+                        f"{inhibitor_conc} {self._format_unit(self.inhibitor_unit)} {self.inhibitor_name}"
+                    )
 
         fig = make_subplots(
-            rows=len(datas),
-            cols=1,
-            shared_yaxes="all",
-            y_title=f"Initial {substrate.name} ({self._conc_unit})",
-            x_title=f"time ({self._time_unit})",
+            rows=inhibitor_levels.size, cols=1,
+            y_title=f"{visualized_species_name} ({self._format_unit(self.substrate_unit)})",
+            x_title=f"time ({self._format_unit(self.time_unit)})",
             subplot_titles=subplot_titles,
-            horizontal_spacing=0.05,
-            vertical_spacing=0.05,
+            vertical_spacing=0.05
         )
 
-        # Adjust style of subplot label
+        inhibitor_annotations = []
         for count, annotation in enumerate(fig.layout["annotations"]):
-            if inhibitor.name in annotation["text"]:
+            if annotation["y"] == 0:
+                x_annotation = annotation
+            elif annotation["x"] == 0:
+                y_annotation = annotation
+            else:
                 fig.layout["annotations"][count]["x"] = 0
                 fig.layout["annotations"][count]["font"]["size"] = 12
                 fig.layout["annotations"][count]["xanchor"] = "left"
+                inhibitor_annotations.append(fig.layout["annotations"][count])
 
-        for inhibitor_count, (inhibitor_data, inhibitor_time) in enumerate(
-            zip(datas, times)
-        ):
-            for data, time, init_sub, color in zip(
-                inhibitor_data, inhibitor_time, unique_initial_substrates, colors
-            ):
+        ####################
+        ### Add traces to figure ###
+        ####################
 
-                for replicate_count, (replicate_data, replicate_time) in enumerate(
-                    zip(data, time)
-                ):
-                    show_legend = (
-                        True if replicate_count == 0 and inhibitor_count == 0 else False
-                    )
-
-                    color[-1] = 1
-                    fig.add_trace(
-                        go.Scatter(
-                            x=replicate_time,
-                            y=replicate_data,
-                            name=f"{init_sub}",
-                            mode="markers",
-                            marker=dict(color=self._HEX_to_RGBA_string(color)),
-                            showlegend=show_legend,
-                            customdata=["replicates"],
-                            hoverinfo="skip",
-                            visible=False,
-                        ),
-                        col=1,
-                        row=inhibitor_count + 1,
-                    )
-
-                show_legend = True if inhibitor_count == 0 else False
-
-                mean = np.mean(data, axis=0)
-                std = np.std(data, axis=0)
-                color[-1] = 1
-                fig.add_trace(
-                    go.Scatter(
-                        x=time[0],
-                        y=mean,
-                        name=f"{init_sub}",
-                        mode="markers",
-                        marker=dict(color=self._HEX_to_RGBA_string(color)),
-                        customdata=["mean"],
-                        hoverinfo="skip",
-                        showlegend=show_legend,
-                        visible=True,
-                    ),
-                    col=1,
-                    row=inhibitor_count + 1,
-                )
-
-                color[-1] = 0.25  # change opacity of color
-                fig.add_trace(
-                    go.Scatter(
-                        name=f"{init_sub}",
-                        x=time[0],
-                        y=mean + std,
-                        mode="lines",
-                        line=dict(width=0),
-                        showlegend=False,
-                        customdata=["std"],
-                        visible=True,
-                    ),
-                    col=1,
-                    row=inhibitor_count + 1,
-                )
-                fig.add_trace(
-                    go.Scatter(
-                        name=f"{init_sub}",
-                        x=time[0],
-                        y=mean - std,
-                        line=dict(width=0),
-                        mode="lines",
-                        fillcolor=self._HEX_to_RGBA_string(color),
-                        fill="tonexty",
-                        showlegend=False,
-                        customdata=["std"],
-                        visible=True,
-                    ),
-                    col=1,
-                    row=inhibitor_count + 1,
-                )
-
-        ydata = [ys["y"] for ys in fig.__dict__["_data_objs"]]
-        xdata = [xs["x"] for xs in fig.__dict__["_data_objs"]]
-
-        # Integrate each successfully fitted model
-
-        successfull_models = []
+        annotations = []
         steps = []
-        for model in self.models.values():
-            if model.result.fit_success:
-                successfull_models.append(model)
 
-                means_y0s = model.y0
+        # Add measurement data
+        for row, inhibitor_lvl in enumerate(inhibitor_levels):
+            for init_substrate_lvl, color in zip(init_substrate_levels, colors):
+                df_measurement_data = dframe.loc[inhibitor_lvl,
+                                                 float("nan"), init_substrate_lvl]
+                fig.add_trace(go.Scatter(
+                    x=df_measurement_data["time"].values,
+                    y=df_measurement_data[visualized_species.value].values,
+                    name=f"{init_substrate_lvl}",
+                    mode="markers",
+                    marker=dict(color=self.hex_to_rgba(color)),
+                    customdata=["raw"],
+                    hoverinfo="skip",
+                    visible=True
+                ), row=row+1, col=1)
 
-                for inhibitor_count, (inhibitor_y0s, time) in enumerate(
-                    zip(means_y0s, times)
-                ):
-                    datas = model.integrate(
-                        model._fit_result.params,
-                        time[:, 0, :],
-                        inhibitor_y0s,
-                    )
+        annotations.append(
+            go.layout.Annotation(
+                font=dict(color="black", size=10),
+                x=0,
+                y=0,
+                showarrow=False,
+                text=f"",
+                textangle=0,
+                xref="x",
+                yref="paper",
+                xanchor="left",
+            )
+        )
 
-                    for data, t, color, init_sub in zip(
-                        datas[:, :, species_tuple],
-                        time[:, 0, :],
-                        colors,
-                        unique_initial_substrates,
-                    ):
-                        color[-1] = 1
-                        fig.add_trace(
-                            go.Scatter(
-                                x=t,
-                                y=data,
-                                name=model.name,
-                                marker=dict(
-                                    color=self._HEX_to_RGBA_string(color)),
-                                customdata=[model.name],
-                                showlegend=False,
-                                hoverinfo="name",
-                                visible=False,
-                            ),
-                            col=1,
-                            row=inhibitor_count + 1,
+        # Add fitted models
+        successful_models = [model for model in self.models.values(
+        ) if model.result.fit_success == True]
+        successful_models.sort(
+            key=lambda model: model.result.AIC)
+
+        for row, inhibitor_lvl in enumerate(inhibitor_levels):
+            for model in successful_models:
+                for init_substrate_lvl, color in zip(init_substrate_levels, colors):
+
+                    df_subset = dframe.loc[inhibitor_lvl,
+                                           model.name, init_substrate_lvl]
+                    fig.add_trace(go.Scatter(
+                        x=df_subset["time_simulated"].values,
+                        y=df_subset[f"{visualized_species.value}_simulated"].values,
+                        name=f"{model.name}",
+                        mode="lines",
+                        marker=dict(color=self.hex_to_rgba(color)),
+                        customdata=[f"{model.name}"],
+                        hoverinfo="skip",
+                        showlegend=False,
+                        visible=False
+                    ), row=row+1, col=1)
+
+        steps.append(
+            dict(
+                method="update",
+                args=[
+                    dict(
+                        visible=self._visibility_mask(
+                            visible_traces=["raw"], fig_data=fig.data
                         )
-        for model in successfull_models:
-            steps.append(
-                dict(
-                    method="update",
-                    args=[
-                        {
-                            "visible": self._visibility_mask(
-                                visible_traces=["mean", "std", model.name],
-                                fig_data=fig.data,
-                            )
-                        },
-                        {"title": f"Data + Model"},
-                    ],
-                    label=f"{model.name}",
+                    ),
+                    dict(title=f"", annotations=[
+                         annotations[0]] + [y_annotation] + [x_annotation] + inhibitor_annotations),
+                ],
+                label=f"-",
+            )
+        )
+
+        label_pos = -0.13 if inhibitor_levels.size > 1 else -0.4
+
+        for model in successful_models:
+            annotations.append(
+                go.layout.Annotation(
+                    font=dict(color="black", size=10),
+                    x=0,
+                    y=label_pos,
+                    showarrow=False,
+                    text=f"<b>AIC:</b> {round(model.result.AIC)}\n\n {self._style_parameters(model)}",
+                    textangle=0,
+                    xref="paper",
+                    yref="paper",
+                    xanchor="left",
                 )
             )
+
+        for model, annotation in zip(successful_models, annotations[1:]):
+
+            step = dict(
+                method="update",
+                args=[
+                    dict(
+                        visible=self._visibility_mask(
+                            visible_traces=["raw", model.name], fig_data=fig.data
+                        )
+                    ),
+                    dict(title=f"",
+                         annotations=[annotation] + [y_annotation] + [x_annotation] + inhibitor_annotations),
+                ],
+                label=f"{model.name}",
+            )
+
+            steps.append(step)
 
         sliders = [
             dict(
@@ -1069,6 +1084,8 @@ class ParameterEstimator:
                 steps=steps,
             )
         ]
+        print(len(annotations))
+        print(len(successful_models))
 
         fig.update_layout(
             sliders=sliders,
@@ -1079,318 +1096,26 @@ class ParameterEstimator:
                     x=0.7,
                     y=1.3,
                     showactive=True,
-                    # buttons=buttons,
                 )
             ],
             # yaxis_range=[-0.05 * np.nanmax(ydata), 1.05 * np.nanmax(ydata)],
+            # xaxis_range=[-0.05 * np.nanmax(xdata), 1.05 * np.nanmax(xdata)],
         )
 
-        # Add title, legend...
+        fig.update_layout(height=400 + len(inhibitor_levels) * 150)
+
+        names = set()
+        fig.for_each_trace(
+            lambda trace:
+                trace.update(showlegend=False)
+                if (trace.name in names) else names.add(trace.name))
+
         fig.update_layout(
             showlegend=True,
-            title="Measured data",
-            yaxis_title=f"{species.name} ({species.conc_unit})",
-            xaxis_title=f"time ({self._time_unit})",
             hovermode="closest",
-            legend_title_text=f"Initial {substrate.name} ({self._conc_unit})",
+            legend_title_text=f"Initial {self.substrate_name} ({self._format_unit(self.substrate_unit)})",
             hoverlabel_namelength=-1,
         )
-
-        fig.update_layout(height=400 + len(unique_inhibitors) * 150)
-
-        return fig
-
-    def _get_timecourse_data(self, species_type: SpeciesTypes) -> List[List[List[float]]]:
-        """Gets measurement data of a species for the data set.
-        Returns List[List[List]] representing measurements[replicates[timecourse]] along with 
-        time information with the same shape"""
-
-        data = []
-        time = []
-        for measurement in self.data.measurements:
-            species = self._get_species(measurement, species_type)
-
-            replicates = []
-            subset_time = []
-            for replicate in species.data:
-                replicates.append(replicate.values)
-                subset_time.append(replicate.time)
-
-            data.append(replicates)
-            time.append(subset_time)
-
-        return data, time
-
-    def _get_timecourse_inhibitors(self, species_type: SpeciesTypes) -> List[List[List[float]]]:
-        """Gets measurement data of a species for the data set.
-        Returns List[List[List]] representing measurements[replicates[timecourse]] along with 
-        time information with the same shape"""
-
-        inhibitors = []
-        old_inhib_conc = 0
-        for measurement in self.data.measurements:
-            data = []
-            inhib_conc = self._get_init_conc(
-                measurement, SpeciesTypes.INHIBITOR)
-            species = self._get_species(measurement, species_type)
-            if inhib_conc == old_inhib_conc:
-                replicates = []
-                for replicate in species.data:
-                    replicates.append(replicate.values)
-                data.append(replicates)
-            inhibitors.append(data)
-            old_inhib_conc = inhib_conc
-
-        return inhibitors
-
-    def visualize_model_overview(
-        self, visualized_species: SpeciesTypes = None, save_path: str = None
-    ):
-        fig = go.Figure()
-        colors = matplotlib.colors.to_rgba_array(px.colors.qualitative.T10_r)
-
-        # Select which species to plot
-        if visualized_species is None:
-            visualized_species = self._measured_species
-
-        # Get measured data for visualization
-        measurement_data, measurement_time = self._get_timecourse_data(
-            visualized_species)
-
-        init_substrates = []
-        init_enzymes = []
-        init_inhibitors = []
-        for measurement in self.data.measurements:
-            init_substrates.append(self._get_init_conc(
-                measurement, SpeciesTypes.SUBSTRATE))
-            init_enzymes.append(self._get_init_conc(
-                measurement, SpeciesTypes.ENZYME))
-            init_inhibitors.append(self._get_init_conc(
-                measurement, SpeciesTypes.INHIBITOR))
-
-        # plot replicates
-
-        for i, (data, time, init_sub) in enumerate(
-            zip(measurement_data, measurement_time, init_substrates)
-        ):
-            for j, (replicate_data, replicate_time) in enumerate(zip(data, time)):
-                show_legend = True if j == 0 else False
-                fig.add_trace(
-                    go.Scatter(
-                        x=replicate_time,
-                        y=replicate_data,
-                        name=f"{init_sub}",
-                        mode="markers",
-                        marker=dict(color=self._HEX_to_RGBA_string(colors[i])),
-                        showlegend=show_legend,
-                        customdata=["replicates"],
-                        hoverinfo="skip",
-                        visible=False,
-                    )
-                )
-
-        # plot means
-        if any(len(meas) > 1 for meas in measurement_data):
-
-            for color, replicate_data, init_sub, time in zip(
-                colors, measurement_data, init_substrates, measurement_time
-            ):
-                mean = np.mean(replicate_data, axis=0)
-                std = np.std(replicate_data, axis=0)
-                fig.add_trace(
-                    go.Scatter(
-                        x=time[0],
-                        y=mean,
-                        name=f"{init_sub}",
-                        mode="markers",
-                        marker=dict(color=self._HEX_to_RGBA_string(color)),
-                        customdata=["mean"],
-                        hoverinfo="skip",
-                        visible=True,
-                    )
-                )
-
-                color[-1] = 0.25  # change opacity of color
-                fig.add_trace(
-                    go.Scatter(
-                        name=f"{init_sub}",
-                        x=time[0],
-                        y=mean + std,
-                        mode="lines",
-                        line=dict(width=0),
-                        showlegend=False,
-                        customdata=["std"],
-                    )
-                )
-                fig.add_trace(
-                    go.Scatter(
-                        name=f"{init_sub}",
-                        x=time[0],
-                        y=mean - std,
-                        line=dict(width=0),
-                        mode="lines",
-                        fillcolor=self._HEX_to_RGBA_string(color),
-                        fill="tonexty",
-                        showlegend=False,
-                        customdata=["std"],
-                    )
-                )
-
-        # Integrate each successfully fitted model
-        successful_models = []
-        steps = []
-        annotations = []
-
-        ydata = [ys["y"] for ys in fig.__dict__["_data_objs"]]
-        xdata = [xs["x"] for xs in fig.__dict__["_data_objs"]]
-
-        for model_name in self.result_dict.index:
-            model = self.models[model_name]
-            if model.result.fit_success:
-                successful_models.append(model.name)
-                mean_y0s = np.mean(
-                    self._restore_replicate_dims(
-                        self.subset_initial_substrate, model.y0
-                    ),
-                    axis=1,
-                )
-                integration_data = model.integrate(
-                    model._fit_result.params,
-                    self.subset_time,
-                    mean_y0s,
-                )
-
-                for data, time, color, init_sub in zip(
-                    integration_data[:, :, 0],
-                    measurement_time,
-                    colors,
-                    init_substrates,
-                ):
-                    color[-1] = 1
-                    fig.add_trace(
-                        go.Scatter(
-                            x=time[0],
-                            y=data,
-                            mode="lines",
-                            name=model.name,
-                            marker=dict(color=self._HEX_to_RGBA_string(color)),
-                            customdata=[f"{model.name}"],
-                            showlegend=False,
-                            hoverinfo="name",
-                            visible=False,
-                        )
-                    )
-                param_name_map = dict(
-                    k_cat="<b><i>k</i><sub>cat</sub>:</b>",
-                    Km="<b><i>K</i><sub>M</sub>:</b>",
-                    K_ie="<b><i>K</i><sub>ie</sub>:</b>",
-                    K_ic="<b><i>K</i><sub>ic</sub>:</b>",
-                    K_iu="<b><i>K</i><sub>iu</sub>:</b>",
-                )
-                params = ""
-                for parameter in model.result.parameters:
-                    params = (
-                        params
-                        + f"{param_name_map[parameter.name]} "
-                        + f"{parameter.value:.3f} "
-                        + f"{self._format_unit(parameter.unit)} \n\n"
-                    )
-                annotations.append(
-                    go.layout.Annotation(
-                        font=dict(color="black", size=10),
-                        x=-0.05 * np.nanmax(xdata),
-                        y=-0.55,
-                        showarrow=False,
-                        text=f"<b>AIC:</b> {round(model.result.AIC)}\n\n {params}",
-                        textangle=0,
-                        xref="x",
-                        yref="paper",
-                        xanchor="left",
-                    )
-                )
-
-        empty_annotation = go.layout.Annotation(
-            font=dict(color="white"),
-            x=0,
-            y=-0.55,
-            showarrow=False,
-            text=f"",
-            textangle=0,
-            xref="x",
-            yref="paper",
-            xanchor="left",
-        )
-
-        steps.append(
-            dict(
-                method="update",
-                args=[
-                    dict(
-                        visible=self._visibility_mask(
-                            visible_traces=["mean", "std"], fig_data=fig.data
-                        )
-                    ),
-                    dict(title=f"Measured data",
-                         annotations=[empty_annotation]),
-                ],
-                label="",
-            )
-        )
-        for model, annotation in zip(successful_models, annotations):
-            step = dict(
-                method="update",
-                args=[
-                    dict(
-                        visible=self._visibility_mask(
-                            visible_traces=["mean", "std", model], fig_data=fig.data
-                        )
-                    ),
-                    dict(title=f"Data + Model", annotations=[annotation]),
-                ],
-                label=f"{model}",
-            )
-
-            steps.append(step)
-
-        sliders = [
-            dict(
-                active=0,
-                currentvalue=dict(prefix="", font=dict(color="black")),
-                tickcolor="white",
-                tickwidth=0,
-                font=dict(color="white"),
-                pad={"t": 50},
-                steps=steps,
-            )
-        ]
-
-        fig.update_layout(
-            sliders=sliders,
-            updatemenus=[
-                dict(
-                    type="buttons",
-                    direction="right",
-                    x=0.7,
-                    y=1.3,
-                    showactive=True,
-                )
-            ],
-            yaxis_range=[-0.05 * np.nanmax(ydata), 1.05 * np.nanmax(ydata)],
-            xaxis_range=[-0.05 * np.nanmax(xdata), 1.05 * np.nanmax(xdata)],
-        )
-
-        # Add title, legend...
-        # species = self._get_species(visualized_species)
-        # substrate = self._get_species("substrate")
-        # fig.update_layout(
-        #     showlegend=True,
-        #     title="Measured data",
-        #     yaxis_title=f"{species.name} ({self._format_unit(species.conc_unit)})",
-        #     xaxis_title=f"time ({self._format_unit(self._time_unit)})",
-        #     hovermode="closest",
-        #     legend_title_text=f"Initial {substrate.name} <br>({self._format_unit(self._conc_unit)})</br>",
-        #     hoverlabel_namelength=-1,
-        # )
 
         config = {
             "toImageButtonOptions": {
@@ -1403,95 +1128,6 @@ class ParameterEstimator:
         }
 
         return fig.show(config=config)
-
-    def _get_init_conditions(self):
-
-        results = []
-
-        inhibitor_lvls, init_substrate_lvls, replicate_lvls = [
-            lvl.values for lvl in self.data.index.levels]
-
-        dframe = self.data.reset_index()
-
-        fitting_conditions = []
-        time_data = []
-        for inhibitor_lvl in inhibitor_lvls:
-            for init_substrate_lvl in init_substrate_lvls:
-                substrates = []
-                products = []
-                for replicate_lvl in replicate_lvls:
-                    entries = dframe.loc[(dframe[SpeciesTypes.INHIBITOR.value] == inhibitor_lvl) & (
-                        dframe['init_substrate'] == init_substrate_lvl) & (dframe["replicate"] == replicate_lvl)].T
-
-                    if not entries.empty:
-                        substrates.append(
-                            entries.loc[SpeciesTypes.SUBSTRATE.value].iloc[0])
-                        products.append(
-                            entries.loc[SpeciesTypes.PRODUCT.value].iloc[0])
-
-                if not entries.empty:
-
-                    mean_substrate = np.mean(substrates)
-                    mean_product = np.mean(products)
-                    time = entries.loc["time"].values
-
-                    enzyme = entries.loc[SpeciesTypes.ENZYME.value].iloc[0]
-                    inhibitor = entries.loc[SpeciesTypes.INHIBITOR.value].iloc[0]
-
-                    for model in self.models.values():
-                        if model.result.fit_success:
-                            dense_time = np.linspace(
-                                np.min(time), np.max(time), 100)
-                            datas = model.integrate(
-                                model._fit_result.params,
-                                [dense_time],
-                                [(mean_substrate, enzyme, mean_product, inhibitor)]
-                            )
-                            for data, t in zip(datas[0], dense_time):
-                                sub, enz, prod, inhib = data
-                                results.append({
-                                    "model": model.name,
-                                    f"{SpeciesTypes.SUBSTRATE.value} model": sub,
-                                    f"{SpeciesTypes.ENZYME.value} model": enz,
-                                    f"{SpeciesTypes.PRODUCT.value} model": prod,
-                                    f"{SpeciesTypes.INHIBITOR.value} model": inhib,
-                                    "time model": t,
-                                    "init_substrate": init_substrate_lvl,
-                                    "inhibitor": inhibitor_lvl,
-                                })
-
-        new_df = pd.DataFrame(results)
-        combined_df = pd.concat(
-            [self.data.reset_index(), new_df], ignore_index=True)
-
-        return combined_df
-
-    def _intergate_results(self):
-        entries = []
-        successfull_models = []
-        for model in self.models.values():
-            if model.result.fit_success:
-                successfull_models.append(model)
-
-                time_data, fitting_conditions = self._get_init_conditions()
-
-                for time, conditions in zip(time_data, fitting_conditions):
-                    dense_time = np.linspace(min(time), max(time), 100)
-
-                    datas = model.integrate(
-                        model._fit_result.params,
-                        dense_time,
-                        conditions,
-                    )
-
-        return datas
-
-    def visualize_fit(self, species: SpeciesTypes = None):
-
-        integration_time, integration_conditions = self._get_init_conditions()
-
-        plt = self.visualize_data(species)
-        return plt
 
     @classmethod
     def from_EnzymeML(
@@ -1735,3 +1371,8 @@ class ParameterEstimator:
             new_arr = arr[:n]
             new_tuple += (new_arr,)
         return new_tuple
+
+    @staticmethod
+    def hex_to_rgba(hex: str) -> str:
+        rgb = tuple(int(hex.strip("#")[i:i+2], 16) for i in (0, 2, 4))
+        return f"rgba{rgb + (255,)}"
