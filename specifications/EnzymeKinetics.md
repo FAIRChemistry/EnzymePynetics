@@ -20,7 +20,7 @@ Base class, dealing with measurement data of an enzyme kinetics assay.
   - Description: Temperature unit.
 - __pH__
   - Type: float
-  - Description: pH of the reaction
+  - Description: pH of the reaction.
 - __measurements*__
   - Type: Measurement
   - Description: Measurement data for a given initial substrate concentration.
