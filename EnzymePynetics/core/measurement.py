@@ -1,75 +1,90 @@
 import sdRDM
 
-from typing import Optional, Union
-from typing import List
-from typing import Optional
-from pydantic import PrivateAttr
-from pydantic import Field
+from typing import List, Optional
+from pydantic import Field, PrivateAttr
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
+
+
+from .species import Species
 from .concentrationtypes import ConcentrationTypes
 from .series import Series
+from .timetypes import TimeTypes
+from .speciestypes import SpeciesTypes
 
 
 @forge_signature
 class Measurement(sdRDM.DataModel):
+
     """A Measurement object contains information about the applied enzyme concentration and one or multiple time-course concentration measurements. Additionally, the initial substrate concentration should be specified. This is neccessary to derive the substrate concentration for the modeling process. If an inhibitor was applied to the measurement, its concentration and the respective conetration unit can be specified to account for inhibition in kinetic modeling."""
 
-    id: str = Field(
+    id: Optional[str] = Field(
         description="Unique identifier of the given object.",
         default_factory=IDGenerator("measurementINDEX"),
         xml="@id",
     )
 
-    initial_substrate_conc: float = Field(
-        ..., description="Initial substrate concentration of the measurement."
-    )
-
-    enzyme_conc: Optional[float] = Field(
-        description="Enzyme concentration in the reaction.", default=None
-    )
-
-    data: List[Series] = Field(
-        description="One or multiple time-course concentration data arrays.",
+    species: List[Species] = Field(
+        description="Reactants of the reaction.",
         default_factory=ListPlus,
+        multiple=True,
     )
 
-    inhibitor_conc: Optional[float] = Field(
-        description="Inhibitor concentration, if applied to the reaction.", default=None
+    temperature: Optional[float] = Field(
+        default=None,
+        description="Temperature of the reaction.",
     )
 
-    inhibitor_conc_unit: Optional[ConcentrationTypes] = Field(
-        description="Inhibitor concentration in the reaction, if applied.", default=None
+    temperature_unit: Optional[str] = Field(
+        default=None,
+        description="Temperature unit.",
+    )
+
+    pH: Optional[float] = Field(
+        default=None,
+        description="pH of the reaction",
     )
 
     __repo__: Optional[str] = PrivateAttr(
-        default="git://github.com/haeussma/EnzymePynetics.git"
+        default="https://github.com/haeussma/EnzymePynetics.git"
     )
-
     __commit__: Optional[str] = PrivateAttr(
-        default="ed5434ded95927236c50e289a250e6ab8aaaaec1"
+        default="6a90650b3f766682b42468d29cce19ed34de348a"
     )
 
-    def add_to_data(
-        self, values: List[float], test: Optional[str] = None, id: Optional[str] = None
+    def add_to_species(
+        self,
+        name: Optional[str] = None,
+        conc_unit: Optional[ConcentrationTypes] = None,
+        time_unit: Optional[TimeTypes] = None,
+        initial_conc: Optional[float] = None,
+        species_type: Optional[SpeciesTypes] = None,
+        data: List[Series] = ListPlus(),
+        id: Optional[str] = None,
     ) -> None:
         """
-        Adds an instance of 'Series' to the attribute 'data'.
+        This method adds an object of type 'Species' to attribute species
 
         Args:
-
-
-            id (str): Unique identifier of the 'Series' object. Defaults to 'None'.
-
-
-            values (List[float]): Time-course data of an individual reaction.
-
-
-            test (Optional[str]): Test field. Defaults to None
+            id (str): Unique identifier of the 'Species' object. Defaults to 'None'.
+            name (): name of the reactant.. Defaults to None
+            conc_unit (): Concentration unit of the measurement data.. Defaults to None
+            time_unit (): Time data unit.. Defaults to None
+            initial_conc (): Initial concentration of the reactant.. Defaults to None
+            species_type (): Define the role of the species in the reaction.. Defaults to None
+            data (): One or multiple time-course measurement data arrays.. Defaults to ListPlus()
         """
 
-        params = {"values": values, "test": test}
+        params = {
+            "name": name,
+            "conc_unit": conc_unit,
+            "time_unit": time_unit,
+            "initial_conc": initial_conc,
+            "species_type": species_type,
+            "data": data,
+        }
+
         if id is not None:
             params["id"] = id
-        data = [Series(**params)]
-        self.data = self.data + data
+
+        self.species.append(Species(**params))

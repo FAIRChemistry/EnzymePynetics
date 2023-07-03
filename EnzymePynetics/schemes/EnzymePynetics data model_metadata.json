@@ -1,0 +1,123 @@
+{
+  "docstring": "The following data model describes (meta-)data from an enzyme kinetics experiment in a structured way. It constists out of multiple ```measurements```, describing one or multiple measurements at different initial substrate and/or enzyme concentrations. If and inhibitor was applied to the reaction, its concentration can be speciefied as well.",
+  "enums": [
+    "ReactantTypes",
+    "ReactantTypes",
+    "ConcentrationTypes",
+    "ConcentrationTypes",
+    "TimeTypes"
+  ],
+  "external": {},
+  "EnzymeKinetics": {
+    "attributes": {
+      "title": {
+        "description": "Title of the kinetic experiment."
+      },
+      "kinetic_models": {
+        "description": "Kinetic moodels which were used for parameter estimation.",
+        "multiple": "True"
+      },
+      "measurements": {
+        "description": "Measurement data for a given initial substrate concentration.",
+        "multiple": "True"
+      }
+    },
+    "docstring": "Base class, dealing with measurement data of an enzyme kinetics assay.\n"
+  },
+  "Species": {
+    "attributes": {
+      "name": {
+        "description": "name of the reactant."
+      },
+      "conc_unit": {
+        "description": "Concentration unit of the measurement data."
+      },
+      "initial_conc": {
+        "description": "Initial concentration of the reactant."
+      },
+      "reactant_type": {
+        "description": "Define whether \"substrate\" or \"product\" concentration was measured."
+      },
+      "data": {
+        "description": "One or multiple time-course measurement data arrays.",
+        "multiple": "True"
+      }
+    },
+    "docstring": null
+  },
+  "Measurement": {
+    "attributes": {
+      "species": {
+        "description": "Reactants of the reaction.",
+        "multiple": "True"
+      },
+      "enzyme_conc": {
+        "description": "Enzyme concentration in the reaction."
+      },
+      "temperature": {
+        "description": "Temperature of the reaction."
+      },
+      "temperature_unit": {
+        "description": "Temperature unit."
+      },
+      "pH": {
+        "description": "pH of the reaction"
+      },
+      "time": {
+        "description": "Time array corresponding to time-course data.",
+        "multiple": "True"
+      },
+      "time_unit": {
+        "description": "Time data unit."
+      }
+    },
+    "docstring": "A Measurement object contains information about the applied enzyme concentration and one or multiple time-course concentration measurements. Additionally, the initial substrate concentration should be specified. This is neccessary to derive the substrate concentration for the modeling process. If an inhibitor was applied to the measurement, its concentration and the respective conetration unit can be specified to account for inhibition in kinetic modeling.\n"
+  },
+  "KineticModel": {
+    "attributes": {
+      "name": {
+        "description": "Name of the kinetic model."
+      },
+      "equation": {
+        "description": "Equation of the kinetic model."
+      },
+      "parameters": {
+        "description": "Kinetic parameters of the model.",
+        "multiple": "True"
+      },
+      "AIC": {
+        "description": "Akaike information criterion."
+      },
+      "BIC": {
+        "description": "Bayesian information criterion."
+      },
+      "RMSD": {
+        "description": "Root mean square deviation between model and measurement data."
+      }
+    },
+    "docstring": "Description of a kinetic model\n"
+  },
+  "Parameter": {
+    "attributes": {
+      "name": {
+        "description": "Name of the kinetic parameter"
+      },
+      "value": {
+        "description": "Value of the kinetic parameter."
+      },
+      "standard_deviation": {
+        "description": "Standard deviation of the kinetic parameter."
+      }
+    },
+    "docstring": "Defines a kinetic parameter.\n"
+  },
+  "Series": {
+    "attributes": {
+      "values": {
+        "description": "Time-course data of an individual reaction.",
+        "multiple": "True"
+      }
+    },
+    "docstring": "Time-course data of an individual reaction."
+  }
+}

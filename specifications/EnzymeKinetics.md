@@ -1,102 +1,168 @@
-# Enzyme kinetics data model
+# EnzymePynetics data model
 
 The following data model describes (meta-)data from an enzyme kinetics experiment in a structured way. It constists out of multiple ```measurements```, describing one or multiple measurements at different initial substrate and/or enzyme concentrations. If and inhibitor was applied to the reaction, its concentration can be speciefied as well.
 
-### EnzymeKineticsExperiment
+## Objects
+
+### EnzymeKinetics
 
 Base class, dealing with measurement data of an enzyme kinetics assay.
 
-- __title__
+- title
   - Type: string
-  - Description: Title of the kinetic experiment
-- __reactant_name__
-  - Type: string
-  - Description: Name of the measured reactant.
-- __temperature__
-  - Type: float
-  - Description: Temperature of the reaction.
-- __temperature_unit__
-  - Type: string
-  - Description: Temperature unit.
-- __pH__
-  - Type: float
-  - Description: pH of the reaction.
-- __measurements*__
+  - Description: Title of the kinetic experiment.
+- model_results
+  - Type: ModelResult
+  - Description: Fitted kinetic models which were used for parameter estimation.
+  - Multiple: True
+- measurements
   - Type: Measurement
   - Description: Measurement data for a given initial substrate concentration.
   - Multiple: True
-- __stoichiometry__
-  - Type: StoichiometryTypes
-  - Description: Define whether "substrate" or "product" concentration was measured.
-- __data_conc_unit*__
+
+### Species
+
+- name
+  - Type: string
+  - Description: name of the reactant.
+- conc_unit
   - Type: ConcentrationTypes
-  - Description: Molar concentration unit of the measured data.
-- __time*__
-  - Type: float
-  - Description: Time array corresponding to time-course data.
-  - Multiple: True
-- __time_unit*__
+  - Description: Concentration unit of the measurement data.
+- time_unit
   - Type: TimeTypes
   - Description: Time data unit.
+- initial_conc
+  - Type: float
+  - Description: Initial concentration of the reactant.
+- species_type
+  - Type: SpeciesTypes
+  - Description: Define the role of the species in the reaction.
+- data
+  - Type: Series
+  - Description: One or multiple time-course measurement data arrays.
+  - Multiple: True
 
 ### Measurement
 
 A Measurement object contains information about the applied enzyme concentration and one or multiple time-course concentration measurements. Additionally, the initial substrate concentration should be specified. This is neccessary to derive the substrate concentration for the modeling process. If an inhibitor was applied to the measurement, its concentration and the respective conetration unit can be specified to account for inhibition in kinetic modeling.
 
-- __initial_substrate_conc*__
-  - Type: float
-  - Description: Initial substrate concentration of the measurement.
-- __enzyme_conc__
-  - Type: float
-  - Description: Enzyme concentration in the reaction.
-- __data*__
-  - Type: Series
-  - Description: One or multiple time-course concentration data arrays.
+- species
+  - Type: Species
+  - Description: Reactants of the reaction.
   - Multiple: True
-- __inhibitor_conc__
+- temperature
   - Type: float
-  - Description: Inhibitor concentration, if applied to the reaction.
-- __inhibitor_conc_unit__
-  - Type: ConcentrationTypes
-  - Description: Inhibitor concentration in the reaction, if applied.
+  - Description: Temperature of the reaction.
+- temperature_unit
+  - Type: string
+  - Description: Temperature unit.
+- pH
+  - Type: float
+  - Description: pH of the reaction
+
+### ModelResult
+
+Description of a kinetic model
+
+- name
+  - Type: string
+  - Description: Name of the kinetic model.
+- equation
+  - Type: string
+  - Description: Equation of the kinetic model.
+- parameters
+  - Type: Parameter
+  - Description: Kinetic parameters of the model.
+  - Multiple: True
+- fit_success
+  - Type: bool
+  - Description: Whether or not model fitting was possible.
+- AIC
+  - Type: float
+  - Description: Akaike information criterion.
+- BIC
+  - Type: float
+  - Description: Bayesian information criterion.
+- RMSD
+  - Type: float
+  - Description: Root mean square deviation between model and measurement data.
+
+### Parameter
+
+Defines a kinetic parameter.
+
+- name
+  - Type: string
+  - Description: Name of the kinetic parameter.
+- value
+  - Type: float
+  - Description: Value of the kinetic parameter.
+- unit
+  - Type: string
+  - Description: Unit of the parameter.
+- standard_deviation
+  - Type: float
+  - Description: 1 sigma standard deviation of the kinetic parameter.
+- correlations
+  - Type: Correlation
+  - Multiple: True
+  - Descritpion: Correlation of parameter to other parameters of a model.
+- upper_limit
+  - Type: float
+  - Description: Upper limit for parameter value.
+- lower_limit
+  - Type: float
+  - Description: lower limit for parameter value.
+
+### Correlation
+
+- parameter
+  - Type: string
+  - Description: Name of the parameter.
+- value
+  - Type: float
+  - Description: Correlation value between -1 and 1.
 
 ### Series
 
 Time-course data of an individual reaction.
 
-- __values__
+- values
   - Type: float
   - Description: Time-course data of an individual reaction.
   - Multiple: True
-- __test__
-  - Type: string
-  - Description: Test field
+- time
+  - Type: float
+  - Description: Time array corresponding to time-course data.
+  - Multiple: True
 
-#### StoichiometryTypes
+## Enumerations
 
-Measurement data can eighter be substrate or product.
+### SpeciesTypes
+
+Possible roles of a species in a reaction.
 
 ```python
 SUBSTRATE = "substrate"
 PRODUCT = "product"
+INHIBITOR = "inhibitor"
+ENZYME = "enzyme"
 ```
 
-#### ConcentrationTypes
+### ConcentrationTypes
 
 ```python
-MOLAR = "mole / l"
-MILLIMOLAR = "mmole / l"
-MICROMOLAR = "umole / l"
-NANAMOLAR = "nmole / l"
+MOLAR = "mol / l"
+MILLIMOLAR = "mmol / l"
+MICROMOLAR = "umol / l"
+NANAMOLAR = "nmol / l"
 GRAMLITER = "g / l"
 MILLIGRAMLITER = "mg / l"
 MICROGRAMLITER = "ug / l"
-NANGRAMLITER = "ng / l"
+NANOGRAMLITER = "ng / l"
 ```
 
-#### TimeTypes
-
-Allowed time types.
+### TimeTypes
 
 ```python
 S = "s"

@@ -1,17 +1,29 @@
-from .concentrationtypes import ConcentrationTypes
-from .enzymekineticsexperiment import EnzymeKineticsExperiment
+from .enzymekinetics import EnzymeKinetics
+from .species import Species
 from .measurement import Measurement
+from .modelresult import ModelResult
+from .parameter import Parameter
+from .correlation import Correlation
 from .series import Series
-from .stoichiometrytypes import StoichiometryTypes
+from .speciestypes import SpeciesTypes
+from .concentrationtypes import ConcentrationTypes
 from .timetypes import TimeTypes
 
+<<<<<<< HEAD
 __doc__ = "The following data model describes (meta-)data from an enzyme kinetics experiment in a structured way. It constists out of multiple ```measurements```, describing one or multiple measurements at different initial substrate andor enzyme concentrations. If and inhibitor was applied to the reaction, its concentration can be speciefied as well."
+=======
+__doc__ = ""
+>>>>>>> dev
 
 __all__ = [
-    "ConcentrationTypes",
-    "EnzymeKineticsExperiment",
+    "EnzymeKinetics",
+    "Species",
     "Measurement",
+    "ModelResult",
+    "Parameter",
+    "Correlation",
     "Series",
-    "StoichiometryTypes",
+    "SpeciesTypes",
+    "ConcentrationTypes",
     "TimeTypes",
 ]
