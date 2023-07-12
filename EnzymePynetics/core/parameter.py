@@ -11,7 +11,6 @@ from .correlation import Correlation
 
 @forge_signature
 class Parameter(sdRDM.DataModel):
-
     """Defines a kinetic parameter."""
 
     id: Optional[str] = Field(
@@ -60,7 +59,7 @@ class Parameter(sdRDM.DataModel):
         default="https://github.com/haeussma/EnzymePynetics.git"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="6a90650b3f766682b42468d29cce19ed34de348a"
+        default="de7db67cfa26a2116c3dfd86376b03ccadf2cacf"
     )
 
     def add_to_correlations(
