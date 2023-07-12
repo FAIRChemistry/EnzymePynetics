@@ -82,7 +82,6 @@ class KineticModel:
         Returns:
             result (np.ndarray): integrated model over given time.
         """
-        [print(t) for t in time]
 
         result = np.array([odeint(func=self.model, y0=y, t=t, args=(
             parameters, self.enzyme_inactivation)) for y, t in zip(y0, time)])
