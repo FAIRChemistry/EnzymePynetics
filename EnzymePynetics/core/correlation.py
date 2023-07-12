@@ -7,7 +7,6 @@ from sdRDM.base.utils import forge_signature, IDGenerator
 
 @forge_signature
 class Correlation(sdRDM.DataModel):
-
     """"""
 
     id: Optional[str] = Field(
@@ -30,5 +29,5 @@ class Correlation(sdRDM.DataModel):
         default="https://github.com/haeussma/EnzymePynetics.git"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="6a90650b3f766682b42468d29cce19ed34de348a"
+        default="de7db67cfa26a2116c3dfd86376b03ccadf2cacf"
     )
