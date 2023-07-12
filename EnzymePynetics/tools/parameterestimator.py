@@ -411,7 +411,6 @@ class ParameterEstimator:
         return kcat
 
     def _calculate_Km(self, substrate, time):
-        # print(self._calculate_rates(substrate, time))
         rates = self._calculate_rates(substrate, time)
         return np.nanmax(self._calculate_rates(substrate, time) / 2)
 
