@@ -60,7 +60,7 @@ class ModelResult(sdRDM.DataModel):
         default="https://github.com/haeussma/EnzymePynetics.git"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="a983be85ca104537ce45032cce77edfd1251102a"
+        default="d202d2f203d2b1a3661d48c40c3b1bc91ad26f43"
     )
 
     def add_to_parameters(
