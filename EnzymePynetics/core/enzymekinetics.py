@@ -7,9 +7,9 @@ from sdRDM.base.utils import forge_signature, IDGenerator
 
 
 from .modelresult import ModelResult
-from .measurement import Measurement
-from .species import Species
 from .parameter import Parameter
+from .species import Species
+from .measurement import Measurement
 
 
 @forge_signature
@@ -43,7 +43,7 @@ class EnzymeKinetics(sdRDM.DataModel):
         default="https://github.com/haeussma/EnzymePynetics.git"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="de7db67cfa26a2116c3dfd86376b03ccadf2cacf"
+        default="a983be85ca104537ce45032cce77edfd1251102a"
     )
 
     def add_to_model_results(
