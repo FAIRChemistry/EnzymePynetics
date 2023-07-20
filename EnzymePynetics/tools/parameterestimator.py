@@ -115,7 +115,7 @@ class ParameterEstimator:
             inhibitor_species=np.all(inhibitor == 0),
             init_kcat=self._calculate_kcat(substrate, enzyme, fitting_time),
             init_Km=np.nanmax(self._calculate_rates(
-                substrate, fitting_time) / 2)
+                substrate, fitting_time) / 2)*100
         )
 
         self._run_minimization(display_output, substrate, fitting_time)
@@ -602,8 +602,8 @@ class ParameterEstimator:
                 uncompetitive_product_inhibition_inactivation.name: uncompetitive_product_inhibition_inactivation,
                 noncompetitive_product_inhibition.name: noncompetitive_product_inhibition,
                 noncompetitive_product_inhibition_inactivation.name: noncompetitive_product_inhibition_inactivation,
-                substrate_inhibition.name: substrate_inhibition,
-                substrate_inhibition_inactivation.name: substrate_inhibition_inactivation,
+                #substrate_inhibition.name: substrate_inhibition,
+                #substrate_inhibition_inactivation.name: substrate_inhibition_inactivation,
             }
 
             return model_dict
@@ -1113,6 +1113,7 @@ class ParameterEstimator:
             hovermode="closest",
             legend_title_text=f"Initial {self.substrate_name} ({self._format_unit(self.substrate_unit)})",
             hoverlabel_namelength=-1,
+            template="simple_white"
         )
 
         config = {
@@ -1124,6 +1125,9 @@ class ParameterEstimator:
                 "scale": 1,  # Multiply title/legend/axis/canvas sizes by this factor
             }
         }
+
+        fig.update_xaxes(showgrid=False)
+        fig.update_yaxes(showgrid=False)
 
         return fig.show(config=config)
 

@@ -40,7 +40,7 @@ class KineticModel:
             params (list): Parameter keys.
 
         Returns:
-            Parameters: lmfit parameters with initil values and bounds.
+            Parameters: lmfit parameters with initial values and bounds.
         """
 
         parameters = Parameters()

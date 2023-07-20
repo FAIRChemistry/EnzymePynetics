@@ -210,9 +210,6 @@ def integrated_MM_model(cS,
     return -1/(k_cat*cE)*(K_m * log(cS/cS0) + (cS-cS0)) + t_0
 
 
-# External inhibitor + substrate inhibition
-
-
 def competitive_inhibition_with_substrate_inhibition_model(w0: tuple, t, params, flag_enzyme_inactivation: bool) -> tuple:
     cS, cE, cP, cI = w0
 
