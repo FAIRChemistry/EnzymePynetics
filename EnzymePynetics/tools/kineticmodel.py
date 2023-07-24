@@ -16,6 +16,7 @@ class KineticModel:
         self,
         name: str,
         model: Callable,
+        model_string: str,
         params: list,
         kcat_initial: float,
         Km_initial: float,
@@ -24,6 +25,7 @@ class KineticModel:
     ) -> None:
         self.name = name
         self.model = model
+        self.model_string = model_string
         self.params = params
         self.enzyme_inactivation = enzyme_inactivation
         self.y0 = y0
