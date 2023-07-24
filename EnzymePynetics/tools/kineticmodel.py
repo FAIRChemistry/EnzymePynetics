@@ -5,6 +5,7 @@ from typing import Dict, Callable, Tuple
 from numpy import isin, log, exp
 from scipy.integrate import odeint
 import numpy as np
+import sympy as sp
 
 from EnzymePynetics.core.modelresult import ModelResult
 from EnzymePynetics.core.parameter import Parameter
@@ -15,25 +16,46 @@ class KineticModel:
     def __init__(
         self,
         name: str,
-        model: Callable,
-        model_string: str,
+        substrate_rate_law: str,
+        enzyme_rate_law: str,
         params: list,
         kcat_initial: float,
         Km_initial: float,
         y0: List[tuple],
-        enzyme_inactivation: bool,
     ) -> None:
         self.name = name
-        self.model = model
-        self.model_string = model_string
+        self.substrate_rate_law = substrate_rate_law
+        self.enzyme_rate_law = enzyme_rate_law
         self.params = params
-        self.enzyme_inactivation = enzyme_inactivation
         self.y0 = y0
         self.kcat_initial = kcat_initial
         self.Km_initial = Km_initial
         self.parameters = self._set_parameters(params)
         self._fit_result: MinimizerResult = None
         self.result: ModelResult = None
+
+    @staticmethod
+    def model(w0, t, params, substrate_rate_law: str, enzyme_rate_law: str = None):
+        species_keys = ["substrate", "enzyme", "product", "inhibitor"]
+        observables_dict = dict(zip(species_keys, w0))
+
+        params_dict = {}
+        for param in params:
+            params_dict[param] = params[param].value
+
+        for observable in observables_dict:
+            params_dict[observable] = observables_dict[observable]
+
+        dS = sp.sympify(substrate_rate_law).subs(params_dict)
+        if enzyme_rate_law:
+            dE = sp.sympify(enzyme_rate_law).subs(params_dict)
+        else:
+            dE = 0
+
+        dP = -dS
+        dI = 0
+
+        return (dS, dE, dP, dI)
 
     def _set_parameters(self, params: list) -> Parameters:
         """Initializes lmfit parameters, based on provided initial parameter guesses.
@@ -54,7 +76,7 @@ class KineticModel:
             max=self.kcat_initial * 100,
         )
         parameters.add(
-            "Km",
+            "K_m",
             value=self.Km_initial,
             min=self.Km_initial / 100,
             max=self.Km_initial * 10000,
@@ -64,10 +86,8 @@ class KineticModel:
             parameters.add("K_iu", value=0.1, min=0.0001, max=1000)
         if "K_ic" in params:
             parameters.add("K_ic", value=0.1, min=0.0001, max=1000)
-        if self.enzyme_inactivation:
-            parameters.add("K_ie", value=0.01, min=0.0001, max=0.9999)
-        if "k_inact" in params:
-            parameters.add("k_inact", value=0.01, min=0.0001, max=0.9999)
+        if self.enzyme_rate_law:
+            parameters.add("k_ie", value=0.01, min=0.0001, max=0.9999)
 
         return parameters
 
@@ -86,7 +106,7 @@ class KineticModel:
         """
 
         result = np.array([odeint(func=self.model, y0=y, t=t, args=(
-            parameters, self.enzyme_inactivation)) for y, t in zip(y0, time)])
+            parameters, self.substrate_rate_law, self.enzyme_rate_law)) for y, t in zip(y0, time)])
         return result
 
     def residuals(
@@ -155,7 +175,7 @@ class KineticModel:
         # Write lmfit results to ModelResult
         model_result = ModelResult()
         model_result.name = self.name
-        model_result.equation = "#TODO"
+        model_result.equation = 
         model_result.fit_success = lmfit_result.success
 
         if model_result.fit_success:

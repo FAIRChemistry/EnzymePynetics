@@ -21,7 +21,6 @@ from IPython.display import display
 import plotly.express as px
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
-import matplotlib.colors
 
 
 class ParameterEstimator:
@@ -482,6 +481,7 @@ class ParameterEstimator:
 
         irreversible_Michaelis_Menten_inactivation = KineticModel(
             name="irreversible Michaelis Menten with enzyme inactivation",
+            model_string="",
             params=[],
             y0=y0,
             kcat_initial=init_kcat,
@@ -602,8 +602,8 @@ class ParameterEstimator:
                 uncompetitive_product_inhibition_inactivation.name: uncompetitive_product_inhibition_inactivation,
                 noncompetitive_product_inhibition.name: noncompetitive_product_inhibition,
                 noncompetitive_product_inhibition_inactivation.name: noncompetitive_product_inhibition_inactivation,
-                #substrate_inhibition.name: substrate_inhibition,
-                #substrate_inhibition_inactivation.name: substrate_inhibition_inactivation,
+                # substrate_inhibition.name: substrate_inhibition,
+                # substrate_inhibition_inactivation.name: substrate_inhibition_inactivation,
             }
 
             return model_dict
