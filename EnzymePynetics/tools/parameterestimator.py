@@ -481,23 +481,21 @@ class ParameterEstimator:
 
         irreversible_Michaelis_Menten_inactivation = KineticModel(
             name="irreversible Michaelis Menten with enzyme inactivation",
-            model_string="",
-            params=[],
+            substrate_rate_law="-k_cat * enzyme * substrate / (K_m + substrate)",
+            enzyme_rate_law="-k_ie * enzyme",
+            params=["k_cat", "K_m", "k_ie"],
             y0=y0,
             kcat_initial=init_kcat,
             Km_initial=init_Km,
-            model=irreversible_model,
-            enzyme_inactivation=True,
         )
 
         irreversible_Michaelis_Menten = KineticModel(
             name="irreversible Michaelis Menten",
-            params=[],
+            substrate_rate_law="-k_cat * enzyme * substrate / (K_m + substrate)",
+            params=["k_cat", "K_m"],
             y0=y0,
             kcat_initial=init_kcat,
             Km_initial=init_Km,
-            model=irreversible_model,
-            enzyme_inactivation=False,
         )
 
         if only_irrev_MM:
@@ -513,59 +511,56 @@ class ParameterEstimator:
 
             competitive_product_inhibition = KineticModel(
                 name="competitive product inhibition",
-                params=["K_ic"],
+                substrate_rate_law="-k_cat * enzyme * substrate / (K_m * (1+(product / K_ic)) + substrate)",
+                params=["k_cat", "K_m", "K_ic"],
                 y0=y0,
                 kcat_initial=init_kcat,
                 Km_initial=init_Km,
-                model=competitive_product_inhibition_model,
-                enzyme_inactivation=False,
             )
             competitive_product_inhibition_inactivation = KineticModel(
                 name="competitive product inhibition with enzyme inactivation",
-                params=["K_ic"],
+                substrate_rate_law="-k_cat * enzyme * substrate / (K_m * (1+(product / K_ic)) + substrate)",
+                enzyme_rate_law="-k_ie * enzyme",
+                params=["k_cat", "K_m", "K_ic", "k_ie"],
                 y0=y0,
                 kcat_initial=init_kcat,
                 Km_initial=init_Km,
-                model=competitive_product_inhibition_model,
-                enzyme_inactivation=True,
             )
 
             uncompetitive_product_inhibition = KineticModel(
                 name="uncompetitive product inhibition",
-                params=["K_iu"],
+                substrate_rate_law="-k_cat * enzyme * substrate / (substrate * (1+(product / K_iu)) + K_m)",
+                params=["k_cat", "K_m", "k_i", "K_iu"],
                 y0=y0,
                 kcat_initial=init_kcat,
                 Km_initial=init_Km,
-                model=uncompetitive_product_inhibition_model,
-                enzyme_inactivation=False,
             )
             uncompetitive_product_inhibition_inactivation = KineticModel(
                 name="uncompetitive product inhibition with enzyme inactivation",
-                params=["K_iu"],
+                substrate_rate_law="-k_cat * enzyme * substrate / (substrate * (1+(product / K_iu)) + K_m)",
+                enzyme_rate_law="-k_ie * enzyme",
+                params=["k_cat", "K_m", "k_i", "K_iu"],
                 y0=y0,
                 kcat_initial=init_kcat,
                 Km_initial=init_Km,
-                model=uncompetitive_product_inhibition_model,
-                enzyme_inactivation=True,
             )
 
             noncompetitive_product_inhibition = KineticModel(
                 name="non-competitive product inhibition",
-                params=["K_iu", "K_ic"],
+                substrate_rate_law="-k_cat * enzyme * substrate / (K_m * (1+(product/K_ic)) + (1+(product/K_iu)) * substrate)",
+                params=["k_cat", "K_m", "K_iu", "K_ic"],
                 y0=y0,
                 kcat_initial=init_kcat,
                 Km_initial=init_Km,
-                model=noncompetitive_product_inhibition_model,
-                enzyme_inactivation=False,
             )
             noncompetitive_product_inhibition_inactivation = KineticModel(
                 name="non-competitive product inhibition with enzyme inactivation",
-                params=["K_iu", "K_ic"],
+                substrate_rate_law="-k_cat * enzyme * substrate / (K_m * (1+(product/K_ic)) + (1+(product/K_iu)) * substrate)",
+                enzyme_rate_law="-k_ie * enzyme",
+                params=["k_cat", "K_m", "K_iu", "K_ic", "k_ie"],
                 y0=y0,
                 kcat_initial=init_kcat,
                 Km_initial=init_Km,
-                model=noncompetitive_product_inhibition_model,
-                enzyme_inactivation=True,
             )
 
             # Substrate inhibition models
@@ -574,21 +569,20 @@ class ParameterEstimator:
 
             substrate_inhibition = KineticModel(
                 name="substrate inhibition",
-                params=["K_iu"],
+                substrate_rate_law="-k_cat * enzyme * substrate / (Km + ((1+(substrate/K_iu))*substrate))"
+                params=["k_cat", "K_m", "K_iu"],
                 y0=y0,
                 kcat_initial=init_kcat,
                 Km_initial=init_Km,
-                model=substrate_inhibition_model,
-                enzyme_inactivation=False,
             )
             substrate_inhibition_inactivation = KineticModel(
                 name="substrate inhibition with enzyme inactivation",
-                params=["K_iu"],
+                substrate_rate_law="-k_cat * enzyme * substrate / (Km + ((1+(substrate/K_iu))*substrate))"
+                enzyme_rate_law="-k_ie * enzyme",
+                params=["k_cat", "K_m", "K_iu", "k_ie"],
                 y0=y0,
                 kcat_initial=init_kcat,
                 Km_initial=init_Km,
-                model=substrate_inhibition_model,
-                enzyme_inactivation=True,
             )
 
             model_dict = {
@@ -602,8 +596,8 @@ class ParameterEstimator:
                 uncompetitive_product_inhibition_inactivation.name: uncompetitive_product_inhibition_inactivation,
                 noncompetitive_product_inhibition.name: noncompetitive_product_inhibition,
                 noncompetitive_product_inhibition_inactivation.name: noncompetitive_product_inhibition_inactivation,
-                # substrate_inhibition.name: substrate_inhibition,
-                # substrate_inhibition_inactivation.name: substrate_inhibition_inactivation,
+                substrate_inhibition.name: substrate_inhibition,
+                substrate_inhibition_inactivation.name: substrate_inhibition_inactivation,
             }
 
             return model_dict
