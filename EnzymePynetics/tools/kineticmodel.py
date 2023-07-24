@@ -175,8 +175,10 @@ class KineticModel:
         # Write lmfit results to ModelResult
         model_result = ModelResult()
         model_result.name = self.name
-        model_result.equation = 
         model_result.fit_success = lmfit_result.success
+        model_result.equations.append(self.substrate_rate_law)
+        if self.enzyme_rate_law:
+            model_result.equations.append(self.enzyme_rate_law)
 
         if model_result.fit_success:
             model_result.AIC = lmfit_result.aic
