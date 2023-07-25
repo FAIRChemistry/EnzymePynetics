@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Callable, Tuple
 from lmfit import Parameters, minimize
 from lmfit.minimizer import MinimizerResult
 from typing import Dict, Callable, Tuple
@@ -17,17 +17,16 @@ class KineticModel:
         self,
         name: str,
         substrate_rate_law: str,
-        enzyme_rate_law: str,
         params: list,
         kcat_initial: float,
         Km_initial: float,
-        y0: List[tuple],
+        enzyme_rate_law: str = None,
+
     ) -> None:
         self.name = name
         self.substrate_rate_law = substrate_rate_law
         self.enzyme_rate_law = enzyme_rate_law
         self.params = params
-        self.y0 = y0
         self.kcat_initial = kcat_initial
         self.Km_initial = Km_initial
         self.parameters = self._set_parameters(params)
@@ -35,27 +34,17 @@ class KineticModel:
         self.result: ModelResult = None
 
     @staticmethod
-    def model(w0, t, params, substrate_rate_law: str, enzyme_rate_law: str = None):
-        species_keys = ["substrate", "enzyme", "product", "inhibitor"]
-        observables_dict = dict(zip(species_keys, w0))
+    def lambdify_rate_law(rate_law: str) -> Tuple[Callable, List[str]]:
 
-        params_dict = {}
-        for param in params:
-            params_dict[param] = params[param].value
+        # local_sympy_dict necessary, that 'product' in the rate-law is treated as
+        # a symbol instead of a function
+        local_sympy_dict = {'product': sp.Symbol('product')}
+        expr_substrate = sp.parse_expr(rate_law, local_sympy_dict)
+        free_symbols = list(expr_substrate.free_symbols)
 
-        for observable in observables_dict:
-            params_dict[observable] = observables_dict[observable]
+        func_substrate = sp.lambdify(free_symbols, expr_substrate)
 
-        dS = sp.sympify(substrate_rate_law).subs(params_dict)
-        if enzyme_rate_law:
-            dE = sp.sympify(enzyme_rate_law).subs(params_dict)
-        else:
-            dE = 0
-
-        dP = -dS
-        dI = 0
-
-        return (dS, dE, dP, dI)
+        return func_substrate
 
     def _set_parameters(self, params: list) -> Parameters:
         """Initializes lmfit parameters, based on provided initial parameter guesses.
@@ -90,6 +79,33 @@ class KineticModel:
             parameters.add("k_ie", value=0.01, min=0.0001, max=0.9999)
 
         return parameters
+
+    @staticmethod
+    def model(w0, t, params, substrate_eq: Callable, enzyme_eq: Callable = None):
+        species_keys = ["substrate", "enzyme", "product", "inhibitor"]
+        observables_dict = dict(zip(species_keys, w0))
+
+        params_dict = params.valuesdict()
+
+        combined_dict = observables_dict | params_dict
+
+        subtrate_eq_vars = substrate_eq.__code__.co_varnames
+        substrate_dict = {k: combined_dict[k] for k in subtrate_eq_vars}
+
+        d_substrate = substrate_eq(**substrate_dict)
+
+        if enzyme_eq:
+            enzyme_eq_vars = enzyme_eq.__code__.co_varnames
+            enzyme_dict = {k: combined_dict[k] for k in enzyme_eq_vars}
+
+            d_enzyme = enzyme_eq(**enzyme_dict)
+        else:
+            dE = 0
+
+        d_product = -d_substrate
+        d_inhibitor = 0
+
+        return (d_substrate, d_enzyme, d_product, d_inhibitor)
 
     def integrate(
         self, parameters: Parameters, time: list, y0: tuple
@@ -128,24 +144,16 @@ class KineticModel:
             residuals (np.ndarray): List of substrate residuals.
         """
 
-        y0s = np.array(y0s)
         model = self.integrate(parameters, time, y0s)
         residuals = model[:, :, 0] - ydata  # fitting to substrate data
         return residuals.flatten()
 
-    def fit(self, ydata: np.ndarray, time: np.ndarray) -> MinimizerResult:
-        """Fit model to substrate data.
+    def fit(self, ydata: np.ndarray, time: np.ndarray, y0s: np.ndarray) -> MinimizerResult:
+        """Fit model to substrate data"""
 
-        Args:
-            ydata (ndarray): Experimental substrate data
-            time (ndarray): Time array corresponding to measurement data
-
-        Returns:
-            MinimizerResult: least-squares minimization result.
-        """
-
-        fit_result: MinimizerResult = minimize(
-            self.residuals, self.parameters, args=(time, self.y0, ydata)
+        # y0s = np.array(y0s) y0s needs to be checked if it is ndarray?
+        fit_result = minimize(
+            self.residuals, self.parameters, args=(time, y0s, ydata)
         )
         self._fit_result = fit_result
         self.result = self._get_model_results(fit_result)
