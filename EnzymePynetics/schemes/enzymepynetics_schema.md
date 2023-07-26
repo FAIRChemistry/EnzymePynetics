@@ -34,7 +34,7 @@ classDiagram
     
     class ModelResult {
         +string name
-        +string equation
+        +string[0..*] equations
         +Parameter[0..*] parameters
         +bool fit_success
         +float AIC

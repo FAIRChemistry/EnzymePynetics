@@ -1,10 +1,10 @@
-from typing import List
+from ast import Call
+from typing import List, Callable, Tuple
 from lmfit import Parameters, minimize
 from lmfit.minimizer import MinimizerResult
-from typing import Dict, Callable, Tuple
-from numpy import isin, log, exp
 from scipy.integrate import odeint
 import numpy as np
+import sympy as sp
 
 from EnzymePynetics.core.modelresult import ModelResult
 from EnzymePynetics.core.parameter import Parameter
@@ -15,23 +15,43 @@ class KineticModel:
     def __init__(
         self,
         name: str,
-        model: Callable,
+        substrate_rate_law: str,
         params: list,
         kcat_initial: float,
         Km_initial: float,
-        y0: List[tuple],
-        enzyme_inactivation: bool,
+        enzyme_rate_law: str = None,
     ) -> None:
         self.name = name
-        self.model = model
+        self.substrate_rate_law = substrate_rate_law
+        self.enzyme_rate_law = enzyme_rate_law
         self.params = params
-        self.enzyme_inactivation = enzyme_inactivation
-        self.y0 = y0
         self.kcat_initial = kcat_initial
         self.Km_initial = Km_initial
-        self.parameters = self._set_parameters(params)
+        self.substrate_callable: Callable = self._get_callable(
+            substrate_rate_law)
+        self.enzyme_callable: Callable = self._get_callable(enzyme_rate_law)
         self._fit_result: MinimizerResult = None
         self.result: ModelResult = None
+        self.parameters = self._set_parameters(params)
+
+    def _get_callable(self, equation: str) -> Callable:
+
+        if isinstance(equation, str):
+            # local_sympy_dict ensures that 'product' in the string expression is treated as
+            # a symbol instead of a function
+            local_sympy_dict = {'product': sp.Symbol('product')}
+            expr_substrate = sp.parse_expr(equation, local_sympy_dict)
+            free_symbols = list(expr_substrate.free_symbols)
+
+            return sp.lambdify(free_symbols, expr_substrate)
+
+        elif equation is None:
+            return None
+
+        else:
+            raise TypeError(
+                f"Equation of type {type(equation)} cannot be interpreted as string."
+            )
 
     def _set_parameters(self, params: list) -> Parameters:
         """Initializes lmfit parameters, based on provided initial parameter guesses.
@@ -52,7 +72,7 @@ class KineticModel:
             max=self.kcat_initial * 100,
         )
         parameters.add(
-            "Km",
+            "K_m",
             value=self.Km_initial,
             min=self.Km_initial / 100,
             max=self.Km_initial * 10000,
@@ -62,12 +82,35 @@ class KineticModel:
             parameters.add("K_iu", value=0.1, min=0.0001, max=1000)
         if "K_ic" in params:
             parameters.add("K_ic", value=0.1, min=0.0001, max=1000)
-        if self.enzyme_inactivation:
-            parameters.add("K_ie", value=0.01, min=0.0001, max=0.9999)
-        if "k_inact" in params:
-            parameters.add("k_inact", value=0.01, min=0.0001, max=0.9999)
+        if self.enzyme_rate_law:
+            parameters.add("k_ie", value=0.01, min=0.0001, max=0.9999)
 
         return parameters
+
+    @staticmethod
+    def model(w0, t, params, substrate_eq: Callable, enzyme_eq: Callable = None):
+        species_keys = ["substrate", "enzyme", "product", "inhibitor"]
+        observables_dict = dict(zip(species_keys, w0))
+
+        params_dict = params.valuesdict()
+
+        combined_dict = observables_dict | params_dict
+        subtrate_eq_vars = substrate_eq.__code__.co_varnames
+        substrate_dict = {k: combined_dict[k] for k in subtrate_eq_vars}
+
+        d_substrate = substrate_eq(**substrate_dict)
+
+        if enzyme_eq:
+            enzyme_eq_vars = enzyme_eq.__code__.co_varnames
+            enzyme_dict = {k: combined_dict[k] for k in enzyme_eq_vars}
+            d_enzyme = enzyme_eq(**enzyme_dict)
+        else:
+            d_enzyme = 0
+
+        d_product = -d_substrate
+        d_inhibitor = 0
+
+        return (d_substrate, d_enzyme, d_product, d_inhibitor)
 
     def integrate(
         self, parameters: Parameters, time: list, y0: tuple
@@ -84,7 +127,7 @@ class KineticModel:
         """
 
         result = np.array([odeint(func=self.model, y0=y, t=t, args=(
-            parameters, self.enzyme_inactivation)) for y, t in zip(y0, time)])
+            parameters, self.substrate_callable, self.enzyme_callable)) for y, t in zip(y0, time)])
         return result
 
     def residuals(
@@ -106,24 +149,16 @@ class KineticModel:
             residuals (np.ndarray): List of substrate residuals.
         """
 
-        y0s = np.array(y0s)
         model = self.integrate(parameters, time, y0s)
         residuals = model[:, :, 0] - ydata  # fitting to substrate data
         return residuals.flatten()
 
-    def fit(self, ydata: np.ndarray, time: np.ndarray) -> MinimizerResult:
-        """Fit model to substrate data.
+    def fit(self, ydata: np.ndarray, time: np.ndarray, y0s: np.ndarray) -> MinimizerResult:
+        """Fit model to substrate data"""
 
-        Args:
-            ydata (ndarray): Experimental substrate data
-            time (ndarray): Time array corresponding to measurement data
-
-        Returns:
-            MinimizerResult: least-squares minimization result.
-        """
-
-        fit_result: MinimizerResult = minimize(
-            self.residuals, self.parameters, args=(time, self.y0, ydata)
+        # y0s = np.array(y0s) y0s needs to be checked if it is ndarray?
+        fit_result = minimize(
+            self.residuals, self.parameters, args=(time, y0s, ydata)
         )
         self._fit_result = fit_result
         self.result = self._get_model_results(fit_result)
@@ -153,8 +188,10 @@ class KineticModel:
         # Write lmfit results to ModelResult
         model_result = ModelResult()
         model_result.name = self.name
-        model_result.equation = "#TODO"
         model_result.fit_success = lmfit_result.success
+        model_result.equations.append(self.substrate_rate_law)
+        if self.enzyme_rate_law:
+            model_result.equations.append(self.enzyme_rate_law)
 
         if model_result.fit_success:
             model_result.AIC = lmfit_result.aic

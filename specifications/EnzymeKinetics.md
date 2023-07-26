@@ -67,9 +67,10 @@ Description of a kinetic model
 - name
   - Type: string
   - Description: Name of the kinetic model.
-- equation
+- equations
   - Type: string
   - Description: Equation of the kinetic model.
+  - Multiple: True
 - parameters
   - Type: Parameter
   - Description: Kinetic parameters of the model.

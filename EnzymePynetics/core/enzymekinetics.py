@@ -6,10 +6,10 @@ from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
 
 
-from .parameter import Parameter
-from .modelresult import ModelResult
 from .measurement import Measurement
+from .parameter import Parameter
 from .species import Species
+from .modelresult import ModelResult
 
 
 @forge_signature
@@ -43,13 +43,13 @@ class EnzymeKinetics(sdRDM.DataModel):
         default="https://github.com/haeussma/EnzymePynetics.git"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="d202d2f203d2b1a3661d48c40c3b1bc91ad26f43"
+        default="c211e419b4a2a6cee01c06dbcec0b37866833918"
     )
 
     def add_to_model_results(
         self,
         name: Optional[str] = None,
-        equation: Optional[str] = None,
+        equations: List[str] = ListPlus(),
         parameters: List[Parameter] = ListPlus(),
         fit_success: Optional[bool] = None,
         AIC: Optional[float] = None,
@@ -63,7 +63,7 @@ class EnzymeKinetics(sdRDM.DataModel):
         Args:
             id (str): Unique identifier of the 'ModelResult' object. Defaults to 'None'.
             name (): Name of the kinetic model.. Defaults to None
-            equation (): Equation of the kinetic model.. Defaults to None
+            equations (): Equation of the kinetic model.. Defaults to ListPlus()
             parameters (): Kinetic parameters of the model.. Defaults to ListPlus()
             fit_success (): Whether or not model fitting was possible.. Defaults to None
             AIC (): Akaike information criterion.. Defaults to None
@@ -73,7 +73,7 @@ class EnzymeKinetics(sdRDM.DataModel):
 
         params = {
             "name": name,
-            "equation": equation,
+            "equations": equations,
             "parameters": parameters,
             "fit_success": fit_success,
             "AIC": AIC,
