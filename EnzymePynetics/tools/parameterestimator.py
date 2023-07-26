@@ -105,11 +105,10 @@ class ParameterEstimator:
         fitting_time, fitting_data = self._prepare_fitting_data()
         substrate, enzyme, product, inhibitor = fitting_data
 
-        y0s = fitting_data[:, :, 0]
+        y0s = fitting_data[:, :, 0].T
 
         # Initialize kinetics models
         self.models = self._initialize_models(
-            y0s=y0s,
             only_irrev_MM=only_irrev_MM,
             inhibitor_species=np.all(inhibitor == 0),
             init_kcat=self._calculate_kcat(substrate, enzyme, fitting_time),
@@ -117,7 +116,7 @@ class ParameterEstimator:
                 substrate, fitting_time) / 2)*100
         )
 
-        self._run_minimization(display_output, substrate, fitting_time)
+        self._run_minimization(display_output, substrate, fitting_time, y0s)
 
         # Set units in ModelResults object
         for model_name, model in self.models.items():
@@ -126,7 +125,7 @@ class ParameterEstimator:
                     self.models[model_name].result.parameters[
                         p
                     ].unit = f"1 / {self.time_unit}"
-                elif parameter.name == "Km":
+                elif parameter.name == "K_m":
                     self.models[model_name].result.parameters[
                         p
                     ].unit = self.substrate_unit
@@ -469,22 +468,17 @@ class ParameterEstimator:
         return self.models[self.result_dict.index[0]].result.params
 
     def _initialize_models(
-        self, y0s, init_Km: float, init_kcat: float, inhibitor_species: bool, only_irrev_MM: bool = False
+        self, init_Km: float, init_kcat: float, inhibitor_species: bool, only_irrev_MM: bool = False
     ) -> Dict[str, KineticModel]:
         """Initializer for all kinetic models. If an inhibitor is provided, inhibition models are initialized. If no inhibitor is specified,
         inhibitory models for substrate and product inhibition are initialized additionally to the irreversible Michaelis Menten model.
         """
-
-        substrate, enzyme, product, inhibitor = y0s
-
-        y0 = np.array([substrate, enzyme, product, inhibitor]).T
 
         irreversible_Michaelis_Menten_inactivation = KineticModel(
             name="irreversible Michaelis Menten with enzyme inactivation",
             substrate_rate_law="-k_cat * enzyme * substrate / (K_m + substrate)",
             enzyme_rate_law="-k_ie * enzyme",
             params=["k_cat", "K_m", "k_ie"],
-            y0=y0,
             kcat_initial=init_kcat,
             Km_initial=init_Km,
         )
@@ -493,7 +487,6 @@ class ParameterEstimator:
             name="irreversible Michaelis Menten",
             substrate_rate_law="-k_cat * enzyme * substrate / (K_m + substrate)",
             params=["k_cat", "K_m"],
-            y0=y0,
             kcat_initial=init_kcat,
             Km_initial=init_Km,
         )
@@ -507,80 +500,68 @@ class ParameterEstimator:
         if inhibitor_species:
             # Product inhibition models
 
-            y0 = np.array([substrate, enzyme, product, inhibitor]).T
-
             competitive_product_inhibition = KineticModel(
                 name="competitive product inhibition",
-                substrate_rate_law="-k_cat * enzyme * substrate / (K_m * (1+(prod / K_ic)) + substrate)",
+                substrate_rate_law="-k_cat * enzyme * substrate / (K_m * (1+(product / K_ic)) + substrate)",
                 params=["k_cat", "K_m", "K_ic"],
-                y0=y0,
                 kcat_initial=init_kcat,
                 Km_initial=init_Km,
             )
             competitive_product_inhibition_inactivation = KineticModel(
                 name="competitive product inhibition with enzyme inactivation",
-                substrate_rate_law="-k_cat * enzyme * substrate / (K_m * (1+(prod / K_ic)) + substrate)",
+                substrate_rate_law="-k_cat * enzyme * substrate / (K_m * (1+(product / K_ic)) + substrate)",
                 enzyme_rate_law="-k_ie * enzyme",
                 params=["k_cat", "K_m", "K_ic", "k_ie"],
-                y0=y0,
                 kcat_initial=init_kcat,
                 Km_initial=init_Km,
             )
 
             uncompetitive_product_inhibition = KineticModel(
                 name="uncompetitive product inhibition",
-                substrate_rate_law="-k_cat * enzyme * substrate / (substrate * (1+(prod / K_iu)) + K_m)",
+                substrate_rate_law="-k_cat * enzyme * substrate / (substrate * (1+(product / K_iu)) + K_m)",
                 params=["k_cat", "K_m", "K_iu"],
-                y0=y0,
                 kcat_initial=init_kcat,
                 Km_initial=init_Km,
             )
             uncompetitive_product_inhibition_inactivation = KineticModel(
                 name="uncompetitive product inhibition with enzyme inactivation",
-                substrate_rate_law="-k_cat * enzyme * substrate / (substrate * (1+(prod / K_iu)) + K_m)",
+                substrate_rate_law="-k_cat * enzyme * substrate / (substrate * (1+(product / K_iu)) + K_m)",
                 enzyme_rate_law="-k_ie * enzyme",
                 params=["k_cat", "K_m", "k_ie", "K_iu"],
-                y0=y0,
                 kcat_initial=init_kcat,
                 Km_initial=init_Km,
             )
 
             noncompetitive_product_inhibition = KineticModel(
                 name="non-competitive product inhibition",
-                substrate_rate_law="-k_cat * enzyme * substrate / (K_m * (1+(prod/K_ic)) + (1+(prod/K_iu)) * substrate)",
+                substrate_rate_law="-k_cat * enzyme * substrate / (K_m * (1+(product/K_ic)) + (1+(product/K_iu)) * substrate)",
                 params=["k_cat", "K_m", "K_iu", "K_ic"],
-                y0=y0,
                 kcat_initial=init_kcat,
                 Km_initial=init_Km,
             )
             noncompetitive_product_inhibition_inactivation = KineticModel(
                 name="non-competitive product inhibition with enzyme inactivation",
-                substrate_rate_law="-k_cat * enzyme * substrate / (K_m * (1+(prod/K_ic)) + (1+(prod/K_iu)) * substrate)",
+                substrate_rate_law="-k_cat * enzyme * substrate / (K_m * (1+(product/K_ic)) + (1+(product/K_iu)) * substrate)",
                 enzyme_rate_law="-k_ie * enzyme",
                 params=["k_cat", "K_m", "K_iu", "K_ic", "k_ie"],
-                y0=y0,
                 kcat_initial=init_kcat,
                 Km_initial=init_Km,
             )
 
             # Substrate inhibition models
 
-            y0 = np.array([substrate, enzyme, product, substrate]).T
-
             substrate_inhibition = KineticModel(
                 name="substrate inhibition",
-                substrate_rate_law="-k_cat * enzyme * substrate / (Km + ((1+(substrate/K_iu))*substrate))",
+                substrate_rate_law="-k_cat * enzyme * substrate / (K_m + ((1+(substrate/K_iu))*substrate))",
                 params=["k_cat", "K_m", "K_iu"],
-                y0=y0,
                 kcat_initial=init_kcat,
                 Km_initial=init_Km,
             )
             substrate_inhibition_inactivation = KineticModel(
                 name="substrate inhibition with enzyme inactivation",
-                substrate_rate_law="-k_cat * enzyme * substrate / (Km + ((1+(substrate/K_iu))*substrate))",
+                substrate_rate_law="-k_cat * enzyme * substrate / (K_m + ((1+(substrate/K_iu))*substrate))",
                 enzyme_rate_law="-k_ie * enzyme",
                 params=["k_cat", "K_m", "K_iu", "k_ie"],
-                y0=y0,
                 kcat_initial=init_kcat,
                 Km_initial=init_Km,
             )
@@ -603,13 +584,10 @@ class ParameterEstimator:
             return model_dict
 
         else:
-            y0 = np.array([substrate, enzyme, product, inhibitor]).T
-
             competitive_inhibition = KineticModel(
                 name="competitive inhibition",
                 substrate_rate_law="-k_cat * enzyme * substrate / (K_m*(1+(inhibitor / K_ic))+substrate)",
                 params=["k_cat", "K_m", "k_ic"],
-                y0=y0,
                 kcat_initial=init_kcat,
                 Km_initial=init_Km,
             )
@@ -618,7 +596,6 @@ class ParameterEstimator:
                 substrate_rate_law="-k_cat * enzyme * substrate / (K_m*(1+(inhibitor / K_ic))+substrate)",
                 enzyme_rate_law="-k_ie * enzyme",
                 params=["k_cat", "K_m", "k_ic", "k_ie"],
-                y0=y0,
                 kcat_initial=init_kcat,
                 Km_initial=init_Km,
             )
@@ -627,7 +604,6 @@ class ParameterEstimator:
                 name="uncompetitive inhibition",
                 substrate_rate_law="-k_cat * enzyme * substrate / (substrate*(1+(inhibitor / K_iu)) + K_m)",
                 params=["k_cat", "K_m", "K_iu"],
-                y0=y0,
                 kcat_initial=init_kcat,
                 Km_initial=init_Km,
                 model=uncompetitive_inhibition_model,
@@ -638,7 +614,6 @@ class ParameterEstimator:
                 substrate_rate_law="-k_cat * enzyme * substrate / (substrate*(1+(inhibitor / K_iu)) + K_m)",
                 enzyme_rate_law="-k_ie * enzyme",
                 params=["k_cat", "K_m", "k_ie", "K_iu"],
-                y0=y0,
                 kcat_initial=init_kcat,
                 Km_initial=init_Km,
             )
@@ -647,7 +622,6 @@ class ParameterEstimator:
                 name="non-competitive inhibition",
                 substrate_rate_law="-k_cat * enzyme * substrate / (K_m * (1+(inhibitor/K_ic)) + (1+(inhibitor/K_iu)) * substrate)",
                 params=["k_cat", "K_m", "K_iu", "K_ic"],
-                y0=y0,
                 kcat_initial=init_kcat,
                 Km_initial=init_Km,
             )
@@ -656,7 +630,6 @@ class ParameterEstimator:
                 substrate_rate_law="-k_cat * enzyme * substrate / (K_m * (1+(inhibitor/K_ic)) + (1+(inhibitor/K_iu)) * substrate)",
                 enzyme_rate_law="-k_ie * enzyme",
                 params=["k_cat", "K_m", "K_iu", "K_ic", "k_ie"],
-                y0=y0,
                 kcat_initial=init_kcat,
                 Km_initial=init_Km,
 
@@ -666,7 +639,6 @@ class ParameterEstimator:
                 name="partially competitive inhibition",
                 substrate_rate_law="-k_cat * enzyme * substrate / (K_m * ((1+(inhibitor/K_ic)) / (1+(inhibitor/K_iu))) + substrate)",
                 params=["k_cat", "K_m", "K_iu", "K_ic"],
-                y0=y0,
                 kcat_initial=init_kcat,
                 Km_initial=init_Km,
             )
@@ -675,7 +647,6 @@ class ParameterEstimator:
                 substrate_rate_law="-k_cat * enzyme * substrate / (K_m * ((1+(inhibitor/K_ic)) / (1+(inhibitor/K_iu))) + substrate)",
                 enzyme_rate_law="-k_ie * enzyme",
                 params=["k_cat", "K_m", "K_iu", "K_ic", "k_ie"],
-                y0=y0,
                 kcat_initial=init_kcat,
                 Km_initial=init_Km,
             )
@@ -684,7 +655,6 @@ class ParameterEstimator:
                 name="competitive inhibition with uncompetitive substrate inhibition",
                 substrate_rate_law="-k_cat * enzyme * substrate / (K_m * (1+(substrate / K_ic)) + ((1+(substrate/K_iu))*substrate))",
                 params=["k_cat", "K_m", "K_iu", "K_ic"],
-                y0=y0,
                 kcat_initial=init_kcat,
                 Km_initial=init_Km,
                 model=competitive_inhibition_with_substrate_inhibition_model,
@@ -695,7 +665,6 @@ class ParameterEstimator:
                 substrate_rate_law="-k_cat * enzyme * substrate / (K_m * (1+(substrate / K_ic)) + ((1+(substrate/K_iu))*substrate))",
                 enzyme_rate_law="-k_ie * enzyme",
                 params=["k_cat", "K_m", "K_iu", "K_ic", "k_ie"],
-                y0=y0,
                 kcat_initial=init_kcat,
                 Km_initial=init_Km,
             )
@@ -715,7 +684,7 @@ class ParameterEstimator:
                 partially_competitive_inhibition_inactivation.name: partially_competitive_inhibition_inactivation,
             }
 
-    def _run_minimization(self, display_output: bool, substrate, time):
+    def _run_minimization(self, display_output: bool, substrate, time, y0s):
         """Performs non-linear least-squared minimization to fit the data to the kinetic
         models by adjusting the kinetic parameters of the models.
 
@@ -729,7 +698,9 @@ class ParameterEstimator:
             if display_output:
                 print(f" - {kineticmodel.name} model")
 
-            kineticmodel.fit(substrate, time)
+            print(kineticmodel.substrate_rate_law)
+
+            kineticmodel.fit(substrate, time, y0s)
             if display_output:
                 print(
                     f" -- Fitting succeeded: {kineticmodel.result.fit_success}")
@@ -746,10 +717,10 @@ class ParameterEstimator:
 
         parameter_mapper = {
             "k_cat": f"kcat [1/{self.time_unit}]",
-            "Km": f"Km [{self.substrate_unit}]",
+            "K_m": f"K_m [{self.substrate_unit}]",
             "K_ic": f"Ki competitive [{inhibitor_unit}]",
             "K_iu": f"Ki uncompetitive [{inhibitor_unit}]",
-            "K_ie": f"ki time-dep enzyme-inactiv. [1/{self.time_unit}]",
+            "k_ie": f"ki time-dep enzyme-inactiv. [1/{self.time_unit}]",
         }
 
         result_dict = {}
@@ -782,7 +753,7 @@ class ParameterEstimator:
                     if parameter.name == "k_cat":
                         kcat = parameter.value
                         kcat_stderr = parameter.standard_deviation
-                    if parameter.name == "Km":
+                    if parameter.name == "K_m":
                         Km = parameter.value
                         Km_stderr = parameter.standard_deviation
 

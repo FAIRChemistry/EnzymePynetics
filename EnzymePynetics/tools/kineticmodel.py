@@ -127,7 +127,7 @@ class KineticModel:
         """
 
         result = np.array([odeint(func=self.model, y0=y, t=t, args=(
-            parameters, self.substrate_rate_law, self.enzyme_rate_law)) for y, t in zip(y0, time)])
+            parameters, self.substrate_callable, self.enzyme_callable)) for y, t in zip(y0, time)])
         return result
 
     def residuals(
