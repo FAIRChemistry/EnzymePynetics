@@ -1,8 +1,7 @@
+from ast import Call
 from typing import List, Callable, Tuple
 from lmfit import Parameters, minimize
 from lmfit.minimizer import MinimizerResult
-from typing import Dict, Callable, Tuple
-from numpy import isin, log, exp
 from scipy.integrate import odeint
 import numpy as np
 import sympy as sp
@@ -21,7 +20,6 @@ class KineticModel:
         kcat_initial: float,
         Km_initial: float,
         enzyme_rate_law: str = None,
-
     ) -> None:
         self.name = name
         self.substrate_rate_law = substrate_rate_law
@@ -29,22 +27,31 @@ class KineticModel:
         self.params = params
         self.kcat_initial = kcat_initial
         self.Km_initial = Km_initial
-        self.parameters = self._set_parameters(params)
+        self.substrate_callable: Callable = self._get_callable(
+            substrate_rate_law)
+        self.enzyme_callable: Callable = self._get_callable(enzyme_rate_law)
         self._fit_result: MinimizerResult = None
         self.result: ModelResult = None
+        self.parameters = self._set_parameters(params)
 
-    @staticmethod
-    def lambdify_rate_law(rate_law: str) -> Tuple[Callable, List[str]]:
+    def _get_callable(self, equation: str) -> Callable:
 
-        # local_sympy_dict necessary, that 'product' in the rate-law is treated as
-        # a symbol instead of a function
-        local_sympy_dict = {'product': sp.Symbol('product')}
-        expr_substrate = sp.parse_expr(rate_law, local_sympy_dict)
-        free_symbols = list(expr_substrate.free_symbols)
+        if isinstance(equation, str):
+            # local_sympy_dict ensures that 'product' in the string expression is treated as
+            # a symbol instead of a function
+            local_sympy_dict = {'product': sp.Symbol('product')}
+            expr_substrate = sp.parse_expr(equation, local_sympy_dict)
+            free_symbols = list(expr_substrate.free_symbols)
 
-        func_substrate = sp.lambdify(free_symbols, expr_substrate)
+            return sp.lambdify(free_symbols, expr_substrate)
 
-        return func_substrate
+        elif equation is None:
+            return None
+
+        else:
+            raise TypeError(
+                f"Equation of type {type(equation)} cannot be interpreted as string."
+            )
 
     def _set_parameters(self, params: list) -> Parameters:
         """Initializes lmfit parameters, based on provided initial parameter guesses.
@@ -88,7 +95,6 @@ class KineticModel:
         params_dict = params.valuesdict()
 
         combined_dict = observables_dict | params_dict
-
         subtrate_eq_vars = substrate_eq.__code__.co_varnames
         substrate_dict = {k: combined_dict[k] for k in subtrate_eq_vars}
 
@@ -97,10 +103,9 @@ class KineticModel:
         if enzyme_eq:
             enzyme_eq_vars = enzyme_eq.__code__.co_varnames
             enzyme_dict = {k: combined_dict[k] for k in enzyme_eq_vars}
-
             d_enzyme = enzyme_eq(**enzyme_dict)
         else:
-            dE = 0
+            d_enzyme = 0
 
         d_product = -d_substrate
         d_inhibitor = 0
