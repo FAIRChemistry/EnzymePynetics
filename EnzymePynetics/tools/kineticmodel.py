@@ -9,6 +9,7 @@ import sympy as sp
 from EnzymePynetics.core.modelresult import ModelResult
 from EnzymePynetics.core.parameter import Parameter
 from EnzymePynetics.core.correlation import Correlation
+from EnzymePynetics.enums.params import Params
 
 
 class KineticModel:
@@ -66,24 +67,25 @@ class KineticModel:
         parameters = Parameters()
 
         parameters.add(
-            "k_cat",
+            name=Params.k_cat.value,
             value=self.kcat_initial,
             min=self.kcat_initial / 100,
             max=self.kcat_initial * 100,
         )
         parameters.add(
-            "K_m",
+            name=Params.K_m.value,
             value=self.Km_initial,
-            min=self.Km_initial / 100,
-            max=self.Km_initial * 10000,
+            min=self.Km_initial / 50,
+            max=self.Km_initial * 50,
         )
 
-        if "K_iu" in params:
-            parameters.add("K_iu", value=0.1, min=0.0001, max=1000)
-        if "K_ic" in params:
-            parameters.add("K_ic", value=0.1, min=0.0001, max=1000)
+        if Params.K_iu.value in params:
+            parameters.add(Params.K_iu.value, value=0.1, min=0.0001, max=1000)
+        if Params.K_ic.value in params:
+            parameters.add(Params.K_ic.value, value=0.1, min=0.0001, max=1000)
         if self.enzyme_rate_law:
-            parameters.add("k_ie", value=0.01, min=0.0001, max=0.9999)
+            parameters.add(Params.k_ie.value, value=0.01,
+                           min=0.0001, max=0.9999)
 
         return parameters
 
@@ -158,7 +160,8 @@ class KineticModel:
 
         # y0s = np.array(y0s) y0s needs to be checked if it is ndarray?
         fit_result = minimize(
-            self.residuals, self.parameters, args=(time, y0s, ydata)
+            self.residuals, self.parameters, args=(
+                time, y0s, ydata), nan_policy="omit"
         )
         self._fit_result = fit_result
         self.result = self._get_model_results(fit_result)
@@ -202,10 +205,13 @@ class KineticModel:
             parameters = []
             for key, value in lmfit_result.params.items():
                 correlations = []
-                for corr_key, corr_value in value.correl.items():
-                    correlations.append(
-                        Correlation(parameter=corr_key, value=corr_value)
-                    )
+                try:
+                    for corr_key, corr_value in value.correl.items():
+                        correlations.append(
+                            Correlation(parameter=corr_key, value=corr_value)
+                        )
+                except AttributeError:
+                    pass
 
                 parameters.append(
                     Parameter(
