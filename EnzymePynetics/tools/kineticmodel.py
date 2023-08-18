@@ -69,14 +69,14 @@ class KineticModel:
         parameters.add(
             name=Params.k_cat.value,
             value=self.kcat_initial,
-            min=self.kcat_initial / 100,
-            max=self.kcat_initial * 100,
+            min=self.kcat_initial / 50,
+            max=self.kcat_initial * 50,
         )
         parameters.add(
             name=Params.K_m.value,
             value=self.Km_initial,
-            min=self.Km_initial / 50,
-            max=self.Km_initial * 50,
+            min=self.Km_initial * 0.5,
+            max=self.Km_initial * 5000,
         )
 
         if Params.K_iu.value in params:
@@ -85,7 +85,7 @@ class KineticModel:
             parameters.add(Params.K_ic.value, value=0.1, min=0.0001, max=1000)
         if self.enzyme_rate_law:
             parameters.add(Params.k_ie.value, value=0.01,
-                           min=0.0001, max=0.9999)
+                           min=0.00001, max=0.9999)
 
         return parameters
 
