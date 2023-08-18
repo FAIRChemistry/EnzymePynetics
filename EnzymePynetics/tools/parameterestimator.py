@@ -1,10 +1,6 @@
-from ast import Raise, Sub
-import time
-from turtle import mode, position
-from typing import List, Dict, Literal, Union
-from matplotlib.pyplot import flag
-
+from typing import List, Dict, Union
 from pyenzyme import EnzymeMLDocument
+
 from EnzymePynetics.core.enzymekinetics import EnzymeKinetics
 from EnzymePynetics.core.speciestypes import SpeciesTypes
 from EnzymePynetics.core.series import Series
@@ -12,6 +8,7 @@ from EnzymePynetics.core.measurement import Measurement
 from EnzymePynetics.core.species import Species
 from EnzymePynetics.tools.kineticmodel import KineticModel
 from EnzymePynetics.tools.rate_equations import *
+from EnzymePynetics.enums.params import Params
 
 import numpy as np
 import pandas as pd
@@ -107,13 +104,15 @@ class ParameterEstimator:
 
         y0s = fitting_data[:, :, 0].T
 
+        # init_substrate = self.data["init_substrate"]
+        max_init_substrate = self.data.index.get_level_values(1).max()
+
         # Initialize kinetics models
         self.models = self._initialize_models(
             only_irrev_MM=only_irrev_MM,
             inhibitor_species=np.all(inhibitor == 0),
             init_kcat=self._calculate_kcat(substrate, enzyme, fitting_time),
-            init_Km=np.nanmax(self._calculate_rates(
-                substrate, fitting_time) / 2)*100
+            init_Km=max_init_substrate / 2
         )
 
         self._run_minimization(display_output, substrate, fitting_time, y0s)
@@ -121,11 +120,11 @@ class ParameterEstimator:
         # Set units in ModelResults object
         for model_name, model in self.models.items():
             for p, parameter in enumerate(model.result.parameters):
-                if parameter.name == "k_cat" or parameter.name == "K_ie":
+                if parameter.name == Params.k_cat.value or parameter.name == Params.k_ie.value:
                     self.models[model_name].result.parameters[
                         p
                     ].unit = f"1 / {self.time_unit}"
-                elif parameter.name == "K_m":
+                elif parameter.name == Params.K_m.value:
                     self.models[model_name].result.parameters[
                         p
                     ].unit = self.substrate_unit
@@ -203,8 +202,6 @@ class ParameterEstimator:
         ).sort_index()
 
         return dframe
-
-        # return dframe
 
     def _get_species_name(self, kinetic_data: EnzymeKinetics, species: SpeciesTypes):
         """Returns the name of a species, if species is not defined,
@@ -405,7 +402,10 @@ class ParameterEstimator:
 
     def _calculate_kcat(self, substrate, enzyme, time) -> float:
         rates = self._calculate_rates(substrate, time)
-        kcat = np.nanmax(rates / enzyme[:, :rates.shape[-1]])
+        rates_normalized = rates / enzyme[:, :rates.shape[-1]]
+        rates_normalized[rates_normalized == np.inf] = np.nan
+        kcat = np.nanmax(rates_normalized)
+
         return kcat
 
     def _calculate_Km(self, substrate, time):
@@ -716,11 +716,11 @@ class ParameterEstimator:
             inhibitor_unit = self.inhibitor_unit
 
         parameter_mapper = {
-            "k_cat": f"kcat [1/{self.time_unit}]",
-            "K_m": f"K_m [{self.substrate_unit}]",
-            "K_ic": f"Ki competitive [{inhibitor_unit}]",
-            "K_iu": f"Ki uncompetitive [{inhibitor_unit}]",
-            "k_ie": f"ki time-dep enzyme-inactiv. [1/{self.time_unit}]",
+            Params.k_cat.value: f"k_cat [1/{self.time_unit}]",
+            Params.K_m.value: f"K_m [{self.substrate_unit}]",
+            Params.K_ic.value: f"competitive inhib. [{inhibitor_unit}]",
+            Params.K_iu.value: f"uncompetitive inhib. [{inhibitor_unit}]",
+            Params.k_ie.value: f"time-dep. enzyme-inactiv. [1/{self.time_unit}]",
         }
 
         result_dict = {}
@@ -741,7 +741,7 @@ class ParameterEstimator:
                     except TypeError:
                         percentual_stderr = float("nan")
 
-                    if name.startswith("Ki time-dep"):
+                    if name.startswith("time-dep."):
                         parameter_dict[
                             name
                         ] = f"{value:.4f} +/- {percentual_stderr:.2f}%"
@@ -750,10 +750,10 @@ class ParameterEstimator:
                             name
                         ] = f"{value:.4f} +/- {percentual_stderr:.2f}%"
 
-                    if parameter.name == "k_cat":
+                    if parameter.name == Params.k_cat.value:
                         kcat = parameter.value
                         kcat_stderr = parameter.standard_deviation
-                    if parameter.name == "K_m":
+                    if parameter.name == Params.K_m.value:
                         Km = parameter.value
                         Km_stderr = parameter.standard_deviation
 
@@ -769,7 +769,7 @@ class ParameterEstimator:
                     percentual_kcat_Km_stderr = kcat_Km_stderr / kcat_Km * 100
 
                 parameter_dict[
-                    f"kcat / Km [1/{self.time_unit} * 1/{self.substrate_unit}]"
+                    f"k_cat / K_m [1/{self.time_unit} * 1/{self.substrate_unit}]"
                 ] = f"{kcat_Km:.3f} +/- {percentual_kcat_Km_stderr:.2f}%"
 
                 result_dict[model.name] = {
@@ -851,13 +851,13 @@ class ParameterEstimator:
         return combined_df.sort_index(level=combined_df.index.names)
 
     def _style_parameters(self, model: KineticModel):
-        param_name_map = dict(
-            k_cat="<b><i>k</i><sub>cat</sub>:</b>",
-            Km="<b><i>K</i><sub>M</sub>:</b>",
-            K_ie="<b><i>K</i><sub>ie</sub>:</b>",
-            K_ic="<b><i>K</i><sub>ic</sub>:</b>",
-            K_iu="<b><i>K</i><sub>iu</sub>:</b>",
-        )
+        param_name_map = {
+            Params.k_cat.value: "<b><i>k</i><sub>cat</sub>:</b>",
+            Params.K_m.value: "<b><i>K</i><sub>M</sub>:</b>",
+            Params.k_ie.value: "<b><i>K</i><sub>ie</sub>:</b>",
+            Params.K_ic.value: "<b><i>K</i><sub>ic</sub>:</b>",
+            Params.K_iu.value: "<b><i>K</i><sub>iu</sub>:</b>",
+        }
         params = ""
         for parameter in model.result.parameters:
             params = (
@@ -1215,7 +1215,7 @@ class ParameterEstimator:
             )
 
         enzyme_kinetics = EnzymeKinetics(
-            name=enzmldoc.name, measurements=measurements)
+            title=enzmldoc.name, measurements=measurements)
 
         return cls(data=enzyme_kinetics, measured_species=measured_species_type)
 
@@ -1227,6 +1227,9 @@ class ParameterEstimator:
     @staticmethod
     def _get_species(measurement: Measurement, species_type: SpeciesTypes) -> Species:
         """Returns the respective species of a measurement"""
+
+        if isinstance(species_type, str):
+            species_type = SpeciesTypes(species_type).name
 
         return next(species for species in measurement.species
                     if species.species_type == species_type.value)
@@ -1329,14 +1332,6 @@ class ParameterEstimator:
         raise ValueError(
             "Measured species not defined."
         )
-
-    # staticmethod
-    def get_first_n_elements(tup, time):
-        new_tuple = ()
-        for arr in tup:
-            new_arr = arr[:n]
-            new_tuple += (new_arr,)
-        return new_tuple
 
     @staticmethod
     def hex_to_rgba(hex: str) -> str:
