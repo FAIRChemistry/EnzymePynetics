@@ -1,6 +1,6 @@
 # EnzymePynetics data model
 
-The following data model describes (meta-)data from an enzyme kinetics experiment in a structured way. It constists out of multiple ```measurements```, describing one or multiple measurements at different initial substrate and/or enzyme concentrations. If and inhibitor was applied to the reaction, its concentration can be speciefied as well.
+The following data model describes (meta-)data from an enzyme kinetics experiment in a structured way. It consists out of multiple ```measurements```, describing one or multiple measurements at different initial substrate and/or enzyme concentrations. If and inhibitor was applied to the reaction, its concentration can be specified as well.
 
 ## Objects
 
@@ -44,7 +44,7 @@ Base class, dealing with measurement data of an enzyme kinetics assay.
 
 ### Measurement
 
-A Measurement object contains information about the applied enzyme concentration and one or multiple time-course concentration measurements. Additionally, the initial substrate concentration should be specified. This is neccessary to derive the substrate concentration for the modeling process. If an inhibitor was applied to the measurement, its concentration and the respective conetration unit can be specified to account for inhibition in kinetic modeling.
+A Measurement object contains information about the applied enzyme concentration and one or multiple time-course concentration measurements. Additionally, the initial substrate concentration should be specified. This is necessary to derive the substrate concentration for the modeling process. If an inhibitor was applied to the measurement, its concentration and the respective concentration unit can be specified to account for inhibition in kinetic modeling.
 
 - species
   - Type: Species
