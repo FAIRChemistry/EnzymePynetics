@@ -9,6 +9,7 @@ from EnzymePynetics.core.species import Species
 from EnzymePynetics.tools.kineticmodel import KineticModel
 from EnzymePynetics.tools.rate_equations import *
 from EnzymePynetics.enums.params import Params
+from EnzymePynetics.tools.modeltopyezyme import _add_results
 
 import numpy as np
 import pandas as pd
@@ -1094,6 +1095,13 @@ class ParameterEstimator:
         fig.update_yaxes(showgrid=False)
 
         return fig.show(config=config)
+
+    def to_pyenzyme(
+            self,
+            enzmldoc: EnzymeMLDocument,
+            kinetic_model: KineticModel = None
+    ):
+        return _add_results(self, kinetic_model, enzmldoc)
 
     @classmethod
     def from_EnzymeML(
