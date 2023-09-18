@@ -1,8 +1,8 @@
 from .estimator import Estimator
+from .reactant import Reactant
+from .protein import Protein
 from .vessel import Vessel
 from .abstractspecies import AbstractSpecies
-from .protein import Protein
-from .reactant import Reactant
 from .reaction import Reaction
 from .reactionelement import ReactionElement
 from .kineticmodel import KineticModel
@@ -19,8 +19,6 @@ __all__ = [
     "Estimator",
     "Vessel",
     "AbstractSpecies",
-    "Protein",
-    "Reactant",
     "Reaction",
     "ReactionElement",
     "KineticModel",
@@ -30,4 +28,6 @@ __all__ = [
     "Replicate",
     "SBOTerm",
     "DataTypes",
+    "Reactant",
+    "Protein",
 ]
