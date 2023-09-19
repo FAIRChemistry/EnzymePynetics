@@ -23,25 +23,20 @@ import plotly.graph_objects as go
 
 class ParameterEstimator:
     def __init__(self, data: EnzymeKinetics, measured_species: SpeciesTypes = None):
-
         # Identify measured species (Substrate or Product)
         if measured_species:
             self._measured_species = measured_species
         else:
-            self._measured_species = self._get_measured_species(
-                data.measurements)
+            self._measured_species = self._get_measured_species(data.measurements)
 
         # Get names of all species
-        self.substrate_name = self._get_species_name(
-            data, SpeciesTypes.SUBSTRATE)
-        self.product_name = self._get_species_name(
-            data, SpeciesTypes.PRODUCT)
-        self.enzyme_name = self._get_species_name(
-            data, SpeciesTypes.ENZYME)
-        self.inhibitor_name = self._get_species_name(
-            data, SpeciesTypes.INHIBITOR)
+        self.substrate_name = self._get_species_name(data, SpeciesTypes.SUBSTRATE)
+        self.product_name = self._get_species_name(data, SpeciesTypes.PRODUCT)
+        self.enzyme_name = self._get_species_name(data, SpeciesTypes.ENZYME)
+        self.inhibitor_name = self._get_species_name(data, SpeciesTypes.INHIBITOR)
         self.measured_species_name = self._get_species_name(
-            data, self._measured_species)
+            data, self._measured_species
+        )
 
         # Get and verify units of all species
         (
@@ -49,9 +44,8 @@ class ParameterEstimator:
             self.product_unit,
             self.enzyme_unit,
             self.inhibitor_unit,
-            self.time_unit
-        ) = self._get_units(
-            data)
+            self.time_unit,
+        ) = self._get_units(data)
 
         # Get measurement data
         self.data = self._create_dataframe(data)
@@ -113,7 +107,7 @@ class ParameterEstimator:
             only_irrev_MM=only_irrev_MM,
             inhibitor_species=np.all(inhibitor == 0),
             init_kcat=self._calculate_kcat(substrate, enzyme, fitting_time),
-            init_Km=max_init_substrate / 2
+            init_Km=max_init_substrate / 2,
         )
 
         self._run_minimization(display_output, substrate, fitting_time, y0s)
@@ -121,7 +115,10 @@ class ParameterEstimator:
         # Set units in ModelResults object
         for model_name, model in self.models.items():
             for p, parameter in enumerate(model.result.parameters):
-                if parameter.name == Params.k_cat.value or parameter.name == Params.k_ie.value:
+                if (
+                    parameter.name == Params.k_cat.value
+                    or parameter.name == Params.k_ie.value
+                ):
                     self.models[model_name].result.parameters[
                         p
                     ].unit = f"1 / {self.time_unit}"
@@ -148,7 +145,9 @@ class ParameterEstimator:
 
         return self.models[model].result.params
 
-    def _get_init_conc(self, measurement: Measurement, species_type: SpeciesTypes) -> float:
+    def _get_init_conc(
+        self, measurement: Measurement, species_type: SpeciesTypes
+    ) -> float:
         """Extracts the initial concentration of a species for a given measurement"""
 
         try:
@@ -168,16 +167,12 @@ class ParameterEstimator:
 
         # Extract data of measured species and measurement conditions
         for measurement in kinetic_data.measurements:
-
-            measured_species = self._get_species(
-                measurement, self._measured_species)
+            measured_species = self._get_species(measurement, self._measured_species)
             self._measured_species_name = measured_species.name
 
-            inhibitor = self._get_init_conc(
-                measurement, SpeciesTypes.INHIBITOR)
+            inhibitor = self._get_init_conc(measurement, SpeciesTypes.INHIBITOR)
 
-            init_substrate = self._get_init_conc(
-                measurement, SpeciesTypes.SUBSTRATE)
+            init_substrate = self._get_init_conc(measurement, SpeciesTypes.SUBSTRATE)
             enzyme = self._get_init_conc(measurement, SpeciesTypes.ENZYME)
 
             for replicate_id, replicate in enumerate(measured_species.data):
@@ -194,12 +189,10 @@ class ParameterEstimator:
                     )
         dframe = pd.DataFrame.from_dict(entries)
 
-        dframe = self._calculate_missing_species(
-            dframe, self._measured_species)
+        dframe = self._calculate_missing_species(dframe, self._measured_species)
 
         dframe = dframe.set_index(
-            [SpeciesTypes.INHIBITOR.value, "init_substrate",
-                "replicate"]
+            [SpeciesTypes.INHIBITOR.value, "init_substrate", "replicate"]
         ).sort_index()
 
         return dframe
@@ -231,14 +224,17 @@ class ParameterEstimator:
 
         dframe = self.data.sort_index().reset_index()
 
-        fig = px.scatter(data_frame=dframe,
-                         y=species.value,
-                         x="time",
-                         color=dframe["init_substrate"].astype(str),
-                         animation_frame=SpeciesTypes.INHIBITOR.value)
+        fig = px.scatter(
+            data_frame=dframe,
+            y=species.value,
+            x="time",
+            color=dframe["init_substrate"].astype(str),
+            animation_frame=SpeciesTypes.INHIBITOR.value,
+        )
 
         fig.update_layout(
-            legend=dict(title=f"Initial {self.substrate_name} ({self.substrate_unit})"))
+            legend=dict(title=f"Initial {self.substrate_name} ({self.substrate_unit})")
+        )
         fig.update_traces(customdata=["raw"])
 
         # Set axis labels with corresponding unit
@@ -257,14 +253,25 @@ class ParameterEstimator:
             ylable = self.inhibitor_name
             unit = self.inhibitor_unit
 
-        ylable = self.substrate_name if species == SpeciesTypes.SUBSTRATE else self.product_name
+        ylable = (
+            self.substrate_name
+            if species == SpeciesTypes.SUBSTRATE
+            else self.product_name
+        )
 
         fig.update_yaxes(dict(title=f"{ylable} ({unit})"))
 
         # Set slider label
         fig.update_layout(
-            sliders=[dict(currentvalue=dict(prefix=f"{self.inhibitor_name} ",
-                                            suffix=f" {self.inhibitor_unit}"))])
+            sliders=[
+                dict(
+                    currentvalue=dict(
+                        prefix=f"{self.inhibitor_name} ",
+                        suffix=f" {self.inhibitor_unit}",
+                    )
+                )
+            ]
+        )
 
         return fig
 
@@ -273,8 +280,10 @@ class ParameterEstimator:
 
         # Substrate unit
         try:
-            substrate_units = [self._get_species(
-                meas, SpeciesTypes.SUBSTRATE).conc_unit for meas in data.measurements]
+            substrate_units = [
+                self._get_species(meas, SpeciesTypes.SUBSTRATE).conc_unit
+                for meas in data.measurements
+            ]
 
             if self.all_equal(substrate_units):
                 substrate_unit = substrate_units[0]
@@ -292,8 +301,10 @@ class ParameterEstimator:
 
         # Product unit
         try:
-            product_units = [self._get_species(
-                meas, SpeciesTypes.PRODUCT).conc_unit for meas in data.measurements]
+            product_units = [
+                self._get_species(meas, SpeciesTypes.PRODUCT).conc_unit
+                for meas in data.measurements
+            ]
 
             if self.all_equal(product_units):
                 product_unit = product_units[0]
@@ -313,8 +324,10 @@ class ParameterEstimator:
 
         # Enzyme unit
         try:
-            enzyme_units = [self._get_species(
-                meas, SpeciesTypes.ENZYME).conc_unit for meas in data.measurements]
+            enzyme_units = [
+                self._get_species(meas, SpeciesTypes.ENZYME).conc_unit
+                for meas in data.measurements
+            ]
             if self.all_equal(enzyme_units):
                 enzyme_unit = enzyme_units[0]
             else:
@@ -331,8 +344,10 @@ class ParameterEstimator:
 
         # Inhibitor unit
         try:
-            inhibitor_units = [self._get_species(
-                meas, SpeciesTypes.INHIBITOR).conc_unit for meas in data.measurements]
+            inhibitor_units = [
+                self._get_species(meas, SpeciesTypes.INHIBITOR).conc_unit
+                for meas in data.measurements
+            ]
             if self.all_equal(inhibitor_units):
                 inhibitor_unit = inhibitor_units[0]
             else:
@@ -365,7 +380,8 @@ class ParameterEstimator:
         Returns tuple(time_array, measurement_arrays)"""
 
         inhibitor_lvls, init_substrate_lvls, replicate_lvls = [
-            lvl.values for lvl in self.data.index.levels]
+            lvl.values for lvl in self.data.index.levels
+        ]
 
         dframe = self.data.reset_index()
 
@@ -374,8 +390,11 @@ class ParameterEstimator:
         for inhibitor_lvl in inhibitor_lvls:
             for init_substrate_lvl in init_substrate_lvls:
                 for replicate_lvl in replicate_lvls:
-                    entries = dframe.loc[(dframe[SpeciesTypes.INHIBITOR.value] == inhibitor_lvl) & (
-                        dframe['init_substrate'] == init_substrate_lvl) & (dframe['replicate'] == replicate_lvl)].T
+                    entries = dframe.loc[
+                        (dframe[SpeciesTypes.INHIBITOR.value] == inhibitor_lvl)
+                        & (dframe["init_substrate"] == init_substrate_lvl)
+                        & (dframe["replicate"] == replicate_lvl)
+                    ].T
 
                     if not entries.empty:
                         time = entries.loc["time"].values
@@ -384,13 +403,13 @@ class ParameterEstimator:
                         inhibitor = entries.loc[SpeciesTypes.INHIBITOR.value].values
                         product = entries.loc[SpeciesTypes.PRODUCT.value].values
 
-                        fitting_data.append(
-                            [substrate, enzyme, product, inhibitor])
+                        fitting_data.append([substrate, enzyme, product, inhibitor])
                         time_data.append(time)
 
         time_data = np.array(time_data)
         fitting_data = np.array(fitting_data).swapaxes(
-            0, 1)  # Substrate, Enzyme, Product, Inhibitor
+            0, 1
+        )  # Substrate, Enzyme, Product, Inhibitor
 
         return (time_data, fitting_data)
 
@@ -403,7 +422,7 @@ class ParameterEstimator:
 
     def _calculate_kcat(self, substrate, enzyme, time) -> float:
         rates = self._calculate_rates(substrate, time)
-        rates_normalized = rates / enzyme[:, :rates.shape[-1]]
+        rates_normalized = rates / enzyme[:, : rates.shape[-1]]
         rates_normalized[rates_normalized == np.inf] = np.nan
         kcat = np.nanmax(rates_normalized)
 
@@ -469,7 +488,11 @@ class ParameterEstimator:
         return self.models[self.result_dict.index[0]].result.params
 
     def _initialize_models(
-        self, init_Km: float, init_kcat: float, inhibitor_species: bool, only_irrev_MM: bool = False
+        self,
+        init_Km: float,
+        init_kcat: float,
+        inhibitor_species: bool,
+        only_irrev_MM: bool = False,
     ) -> Dict[str, KineticModel]:
         """Initializer for all kinetic models. If an inhibitor is provided, inhibition models are initialized. If no inhibitor is specified,
         inhibitory models for substrate and product inhibition are initialized additionally to the irreversible Michaelis Menten model.
@@ -633,7 +656,6 @@ class ParameterEstimator:
                 params=["k_cat", "K_m", "K_iu", "K_ic", "k_ie"],
                 kcat_initial=init_kcat,
                 Km_initial=init_Km,
-
             )
 
             partially_competitive_inhibition = KineticModel(
@@ -703,8 +725,7 @@ class ParameterEstimator:
 
             kineticmodel.fit(substrate, time, y0s)
             if display_output:
-                print(
-                    f" -- Fitting succeeded: {kineticmodel.result.fit_success}")
+                print(f" -- Fitting succeeded: {kineticmodel.result.fit_success}")
 
     def _result_overview(self, inhibitor) -> pd.DataFrame:
         """
@@ -773,11 +794,9 @@ class ParameterEstimator:
                     f"k_cat / K_m [1/{self.time_unit} * 1/{self.substrate_unit}]"
                 ] = f"{kcat_Km:.3f} +/- {percentual_kcat_Km_stderr:.2f}%"
 
-                result_dict[model.name] = {
-                    "AIC": aic, "RMSD": rmsd, **parameter_dict}
+                result_dict[model.name] = {"AIC": aic, "RMSD": rmsd, **parameter_dict}
 
-        df = pd.DataFrame.from_dict(result_dict).T.sort_values(
-            "AIC", ascending=True)
+        df = pd.DataFrame.from_dict(result_dict).T.sort_values("AIC", ascending=True)
         df.fillna("-", inplace=True)
         return df.style.background_gradient(cmap="Blues")
 
@@ -785,7 +804,8 @@ class ParameterEstimator:
         """Gets y0 tuples and respective time array for unique initial conditions in the data set"""
 
         inhibitor_lvls, init_substrate_lvls, replicate_lvls = [
-            lvl.values for lvl in self.data.index.levels]
+            lvl.values for lvl in self.data.index.levels
+        ]
 
         dframe = self.data.reset_index()
 
@@ -796,17 +816,15 @@ class ParameterEstimator:
                 substrates = []
                 products = []
                 for replicate_lvl in replicate_lvls:
-                    entries = dframe.loc[(
-                        dframe[SpeciesTypes.INHIBITOR.value] == inhibitor_lvl) & (
-                        dframe['init_substrate'] == init_substrate_lvl) & (
-                        dframe["replicate"] == replicate_lvl
-                    )]
+                    entries = dframe.loc[
+                        (dframe[SpeciesTypes.INHIBITOR.value] == inhibitor_lvl)
+                        & (dframe["init_substrate"] == init_substrate_lvl)
+                        & (dframe["replicate"] == replicate_lvl)
+                    ]
 
                     if not entries.empty:
-                        substrates.append(
-                            entries[SpeciesTypes.SUBSTRATE.value].iloc[0])
-                        products.append(
-                            entries[SpeciesTypes.PRODUCT.value].iloc[0])
+                        substrates.append(entries[SpeciesTypes.SUBSTRATE.value].iloc[0])
+                        products.append(entries[SpeciesTypes.PRODUCT.value].iloc[0])
                         enzyme = entries[SpeciesTypes.ENZYME.value].iloc[0]
                         inhibitor = entries[SpeciesTypes.INHIBITOR.value].iloc[0]
                         measurement_time = entries["time"].values
@@ -814,19 +832,16 @@ class ParameterEstimator:
                 mean_substrate = np.mean(substrates)
                 mean_product = np.mean(products)
 
-                y0 = (mean_substrate, enzyme,
-                      mean_product, inhibitor)
+                y0 = (mean_substrate, enzyme, mean_product, inhibitor)
 
                 for model in self.models.values():
                     if model.result.fit_success:
-
                         dense_time = np.linspace(
-                            min(measurement_time), max(measurement_time), 100)
+                            min(measurement_time), max(measurement_time), 100
+                        )
 
                         datas = model.integrate(
-                            model._fit_result.params,
-                            [dense_time],
-                            [y0]
+                            model._fit_result.params, [dense_time], [y0]
                         )
 
                         for data, time in zip(datas[0], dense_time):
@@ -847,7 +862,8 @@ class ParameterEstimator:
 
         new_df = pd.DataFrame(results).sort_index()
         combined_df = pd.concat(
-            [self.data.reset_index(), new_df], ignore_index=True).set_index([f"{SpeciesTypes.INHIBITOR.value}", "model", "init_substrate"])
+            [self.data.reset_index(), new_df], ignore_index=True
+        ).set_index([f"{SpeciesTypes.INHIBITOR.value}", "model", "init_substrate"])
 
         return combined_df.sort_index(level=combined_df.index.names)
 
@@ -870,7 +886,6 @@ class ParameterEstimator:
         return params
 
     def visualize_fit(self, visualized_species: SpeciesTypes = None):
-
         # Select which species to plot
         if visualized_species is None:
             visualized_species = self._measured_species
@@ -891,12 +906,10 @@ class ParameterEstimator:
         # Add labels for subplots, displaying different inhibitor concentrations
         inhibitor_levels = dframe.index.get_level_values(0).unique().values
         model_levels = dframe.index.get_level_values(1).unique().values
-        init_substrate_levels = dframe.index.get_level_values(
-            2).unique().values
+        init_substrate_levels = dframe.index.get_level_values(2).unique().values
 
         subplot_titles = []
         if inhibitor_levels.size > 1:
-
             for row, inhibitor_conc in enumerate(inhibitor_levels):
                 if inhibitor_conc == 0:
                     subplot_titles.append(f"without {self.inhibitor_name}")
@@ -906,11 +919,12 @@ class ParameterEstimator:
                     )
 
         fig = make_subplots(
-            rows=inhibitor_levels.size, cols=1,
+            rows=inhibitor_levels.size,
+            cols=1,
             y_title=f"{visualized_species_name} ({self._format_unit(self.substrate_unit)})",
             x_title=f"time ({self._format_unit(self.time_unit)})",
             subplot_titles=subplot_titles,
-            vertical_spacing=0.05
+            vertical_spacing=0.05,
         )
 
         inhibitor_annotations = []
@@ -935,19 +949,24 @@ class ParameterEstimator:
         # Add measurement data
         for row, inhibitor_lvl in enumerate(inhibitor_levels):
             for init_substrate_lvl, color in zip(init_substrate_levels, colors):
-                df_measurement_data = dframe.loc[inhibitor_lvl,
-                                                 float("nan"), init_substrate_lvl]
+                df_measurement_data = dframe.loc[
+                    inhibitor_lvl, float("nan"), init_substrate_lvl
+                ]
 
-                fig.add_trace(go.Scatter(
-                    x=df_measurement_data["time"].values,
-                    y=df_measurement_data[visualized_species.value].values,
-                    name=f"{init_substrate_lvl}",
-                    mode="markers",
-                    marker=dict(color=self.hex_to_rgba(color)),
-                    customdata=["raw"],
-                    hoverinfo="skip",
-                    visible=True
-                ), row=row+1, col=1)
+                fig.add_trace(
+                    go.Scatter(
+                        x=df_measurement_data["time"].values,
+                        y=df_measurement_data[visualized_species.value].values,
+                        name=f"{init_substrate_lvl}",
+                        mode="markers",
+                        marker=dict(color=self.hex_to_rgba(color)),
+                        customdata=["raw"],
+                        hoverinfo="skip",
+                        visible=True,
+                    ),
+                    row=row + 1,
+                    col=1,
+                )
 
         annotations.append(
             go.layout.Annotation(
@@ -964,28 +983,32 @@ class ParameterEstimator:
         )
 
         # Add fitted models
-        successful_models = [model for model in self.models.values(
-        ) if model.result.fit_success == True]
-        successful_models.sort(
-            key=lambda model: model.result.AIC)
+        successful_models = [
+            model for model in self.models.values() if model.result.fit_success == True
+        ]
+        successful_models.sort(key=lambda model: model.result.AIC)
 
         for row, inhibitor_lvl in enumerate(inhibitor_levels):
             for model in successful_models:
                 for init_substrate_lvl, color in zip(init_substrate_levels, colors):
-
-                    df_subset = dframe.loc[inhibitor_lvl,
-                                           model.name, init_substrate_lvl]
-                    fig.add_trace(go.Scatter(
-                        x=df_subset["time_simulated"].values,
-                        y=df_subset[f"{visualized_species.value}_simulated"].values,
-                        name=f"{model.name}",
-                        mode="lines",
-                        marker=dict(color=self.hex_to_rgba(color)),
-                        customdata=[f"{model.name}"],
-                        hoverinfo="skip",
-                        showlegend=False,
-                        visible=False
-                    ), row=row+1, col=1)
+                    df_subset = dframe.loc[
+                        inhibitor_lvl, model.name, init_substrate_lvl
+                    ]
+                    fig.add_trace(
+                        go.Scatter(
+                            x=df_subset["time_simulated"].values,
+                            y=df_subset[f"{visualized_species.value}_simulated"].values,
+                            name=f"{model.name}",
+                            mode="lines",
+                            marker=dict(color=self.hex_to_rgba(color)),
+                            customdata=[f"{model.name}"],
+                            hoverinfo="skip",
+                            showlegend=False,
+                            visible=False,
+                        ),
+                        row=row + 1,
+                        col=1,
+                    )
 
         steps.append(
             dict(
@@ -996,8 +1019,13 @@ class ParameterEstimator:
                             visible_traces=["raw"], fig_data=fig.data
                         )
                     ),
-                    dict(title=f"", annotations=[
-                         annotations[0]] + [y_annotation] + [x_annotation] + inhibitor_annotations),
+                    dict(
+                        title=f"",
+                        annotations=[annotations[0]]
+                        + [y_annotation]
+                        + [x_annotation]
+                        + inhibitor_annotations,
+                    ),
                 ],
                 label=f"-",
             )
@@ -1021,7 +1049,6 @@ class ParameterEstimator:
             )
 
         for model, annotation in zip(successful_models, annotations[1:]):
-
             step = dict(
                 method="update",
                 args=[
@@ -1030,8 +1057,13 @@ class ParameterEstimator:
                             visible_traces=["raw", model.name], fig_data=fig.data
                         )
                     ),
-                    dict(title=f"",
-                         annotations=[annotation] + [y_annotation] + [x_annotation] + inhibitor_annotations),
+                    dict(
+                        title=f"",
+                        annotations=[annotation]
+                        + [y_annotation]
+                        + [x_annotation]
+                        + inhibitor_annotations,
+                    ),
                 ],
                 label=f"{model.name}",
             )
@@ -1069,16 +1101,17 @@ class ParameterEstimator:
 
         names = set()
         fig.for_each_trace(
-            lambda trace:
-                trace.update(showlegend=False)
-                if (trace.name in names) else names.add(trace.name))
+            lambda trace: trace.update(showlegend=False)
+            if (trace.name in names)
+            else names.add(trace.name)
+        )
 
         fig.update_layout(
             showlegend=True,
             hovermode="closest",
             legend_title_text=f"Initial {self.substrate_name} ({self._format_unit(self.substrate_unit)})",
             hoverlabel_namelength=-1,
-            template="simple_white"
+            template="simple_white",
         )
 
         config = {
@@ -1097,9 +1130,7 @@ class ParameterEstimator:
         return fig.show(config=config)
 
     def to_pyenzyme(
-            self,
-            enzmldoc: EnzymeMLDocument,
-            kinetic_model: KineticModel = None
+        self, enzmldoc: EnzymeMLDocument, kinetic_model: KineticModel = None
     ):
         return _add_results(self, kinetic_model, enzmldoc)
 
@@ -1153,12 +1184,12 @@ class ParameterEstimator:
                 initial_conc=substrate.init_conc,
                 conc_unit=get_unit(substrate.unit),
                 species_type=SpeciesTypes.SUBSTRATE,
-                time_unit=[
-                    rep.time_unit for rep in measured_species.replicates][0]
+                time_unit=[rep.time_unit for rep in measured_species.replicates][0],
             )
 
             replicates = [
-                Series(values=rep.data, time=rep.time) for rep in measured_species.replicates
+                Series(values=rep.data, time=rep.time)
+                for rep in measured_species.replicates
             ]
             if len(replicates) == 0:
                 raise ValueError(
@@ -1190,7 +1221,7 @@ class ParameterEstimator:
                 name=enzmldoc.getProtein(protein_id).name,
                 initial_conc=enzyme.init_conc,
                 species_type=SpeciesTypes.ENZYME,
-                conc_unit=get_unit(enzyme.unit)
+                conc_unit=get_unit(enzyme.unit),
             )
 
             species = [substrate_species, enzyme_species, product_species]
@@ -1222,8 +1253,7 @@ class ParameterEstimator:
                 )
             )
 
-        enzyme_kinetics = EnzymeKinetics(
-            title=enzmldoc.name, measurements=measurements)
+        enzyme_kinetics = EnzymeKinetics(title=enzmldoc.name, measurements=measurements)
 
         return cls(data=enzyme_kinetics, measured_species=measured_species_type)
 
@@ -1239,12 +1269,15 @@ class ParameterEstimator:
         if isinstance(species_type, str):
             species_type = SpeciesTypes(species_type).name
 
-        return next(species for species in measurement.species
-                    if species.species_type == species_type.value)
+        return next(
+            species
+            for species in measurement.species
+            if species.species_type == species_type.value
+        )
 
     @staticmethod
     def _repeat_value(time_array, species_array):
-        """Repeats initial conditions of a species for n measurements, according to time axis of 
+        """Repeats initial conditions of a species for n measurements, according to time axis of
         respective measurement."""
 
         for idx, time in enumerate(time_array):
@@ -1321,27 +1354,29 @@ class ParameterEstimator:
             return measured_species[0]
 
     @staticmethod
-    def _calculate_missing_species(dframe: pd.DataFrame, measured_species: SpeciesTypes) -> pd.DataFrame:
+    def _calculate_missing_species(
+        dframe: pd.DataFrame, measured_species: SpeciesTypes
+    ) -> pd.DataFrame:
         """Calculates missing species (e.g. substrate if product was measured)
         and adds it to the ```DataFrame```."""
 
         if measured_species is SpeciesTypes.SUBSTRATE:
-            dframe[SpeciesTypes.PRODUCT.value] = dframe["init_substrate"] - \
-                dframe[SpeciesTypes.SUBSTRATE.value]
+            dframe[SpeciesTypes.PRODUCT.value] = (
+                dframe["init_substrate"] - dframe[SpeciesTypes.SUBSTRATE.value]
+            )
 
             return dframe
 
         if measured_species is SpeciesTypes.PRODUCT:
-            dframe[SpeciesTypes.SUBSTRATE.value] = dframe["init_substrate"] - \
-                dframe[SpeciesTypes.PRODUCT.value]
+            dframe[SpeciesTypes.SUBSTRATE.value] = (
+                dframe["init_substrate"] - dframe[SpeciesTypes.PRODUCT.value]
+            )
 
             return dframe
 
-        raise ValueError(
-            "Measured species not defined."
-        )
+        raise ValueError("Measured species not defined.")
 
     @staticmethod
     def hex_to_rgba(hex: str) -> str:
-        rgb = tuple(int(hex.strip("#")[i:i+2], 16) for i in (0, 2, 4))
+        rgb = tuple(int(hex.strip("#")[i : i + 2], 16) for i in (0, 2, 4))
         return f"rgba{rgb + (255,)}"

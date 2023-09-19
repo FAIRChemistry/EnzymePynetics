@@ -238,6 +238,12 @@ class Estimator(sdRDM.DataModel):
             self.reactions.append(new_reaction)
 
             return new_reaction
+        
+    def _validate_units(self):
+        if not self.substrate_unit == self.product_unit:
+            raise ValueError("Substrate and product have different units.")
+        
+    def 
 
     def add_model(
         self,
@@ -283,71 +289,6 @@ class Estimator(sdRDM.DataModel):
 
             return new_model
 
-    def _initialize_data(self):
-        init_substrates = []
-        substrate_data = []
-        product_data = []
-        enzyme_data = []
-        inhibitor_data = []
-        time_data = []
-
-        observed_measururements = self._get_measurements_replicates()
-
-        print(observed_measururements)
-
-        for obs_measurement, measurements in zip(
-            observed_measururements, self.measurements
-        ):
-            for data in measurements.species:
-                # Substrate
-                if data.species_id == self.substrate.id:
-                    init_substrates.append(data.init_conc)
-
-                if not data.species_id == self.measured_reactant.id:
-                    continue
-
-                for replicate in data.replicates:
-                    substrate_data.append(replicate.data)
-
-                # Product
-                if data.species_id == self.product.id:
-                    for replicate in data.replicates:
-                        product_data.append(replicate.data)
-
-    def _handle_substrate_product_data(self):
-        substrate_data = []
-        product_data = []
-
-        measurement_replicates = self._get_measurements_replicates()
-
-        # init_substrates = []
-        init_substrates = []
-        for n_replicates, measurement in zip(measurement_replicates, self.measurements):
-            for data in measurement.species:
-                if not data.species_id == self.substrate.id:
-                    continue
-                init_substrates.append([data.init_conc] * n_replicates)
-
-        self.init_substrate_data = np.array(init_substrates).flatten()
-
-        if self.measured_reactant_role == SBOTerm.SUBSTRATE:
-            for measurement in self.measurements:
-                for data in measurement.species:
-                    if data.species_id == self.substrate.id:
-                        for replicate in data.replicates:
-                            substrate_data.append(replicate.data)
-
-    def _get_measurements_replicates(self) -> List[List[float]]:
-        measurements = []
-        for measurement in self.measurements:
-            for data in measurement.species:
-                if not data.species_id == self.measured_reactant.id:
-                    continue
-
-                measurements.append(len(data.replicates))
-
-        return measurements
-
     def _validate_equation(self, equation: str) -> None:
         lhs, rhs = equation.split("=")
 
@@ -381,24 +322,6 @@ class Estimator(sdRDM.DataModel):
                 f"Allowed species are: {SPECIES_ROLES}",
                 f"Allowed parameters are: {[param.name for param in PARAMS]}",
             )
-
-    def _extract_parameters(self, equation: str) -> List[KineticParameter]:
-        # local_sympy_dict ensures that 'product' in the string expression is treated as
-        # a symbol instead of a function
-        sympy_dict = {"product": sp.Symbol("product")}
-        expr_substrate = sp.parse_expr(equation, sympy_dict)
-        free_symbols = list(expr_substrate.free_symbols)
-        param_names = [
-            symbol.name
-            for symbol in free_symbols
-            if symbol.name.lower() not in SPECIES_ROLES
-        ]
-
-        for param_name in param_names:
-            if param_name not in [param.name for param in PARAMS]:
-                raise ValueError(
-                    f"Parameter '{param_name}' is not a valid parameter: ({[param.name for param in PARAMS]})"
-                )
 
     def add_to_measurements(
         self,
@@ -482,6 +405,29 @@ class Estimator(sdRDM.DataModel):
         return self.measurements[0].temperature_unit
 
     @property
+    def substrate_unit(self):
+        return self._get_consisten_unit(self.substrate)
+
+    @property
+    def product_unit(self):
+        return self._get_consisten_unit(self.product)
+
+    @property
+    def enzyme_unit(self):
+        return self._get_consisten_unit(self.enzyme)
+
+    @property
+    def inhibitor_unit(self):
+        return self._get_consisten_unit(self.inhibitor)
+
+    def _get_consisten_unit(self, species: AbstractSpecies) -> None:
+        units = [measurement.unit for measurement in self._get_species_data(species)]
+        if not all([unit == units[0] for unit in units]):
+            raise ValueError("Measurements have inconsistent substrate units.")
+
+        return units[0]
+
+    @property
     def reactants(self):
         return [species for species in self.species if species.constant == False]
 
@@ -559,24 +505,22 @@ class Estimator(sdRDM.DataModel):
     @property
     def substrate_data(self):
         if self.measured_reactant_role == SBOTerm.SUBSTRATE:
-            return self._get_measurement_data(self.substrate)
+            return self._get_measured_data(self.substrate)
         else:
             return self._calculate_missing_reactant(self.product)
 
     @property
     def product_data(self):
         if self.measured_reactant_role == SBOTerm.PRODUCT:
-            return self._get_measurement_data(self.product)
+            return self._get_measured_data(self.product)
         else:
             return self._calculate_missing_reactant(self.substrate)
 
-    def _get_measurement_data(self, reactant: Reactant):
+    def _get_measured_data(self, reactant: Reactant):
         measurement_data = []
-        for measurement in self.measurements:
-            for data in measurement.species:
-                if data.species_id == reactant.id:
-                    for replicate in data.replicates:
-                        measurement_data.append(replicate.data)
+        for measurement in self._get_species_data(reactant):
+            for replicate in measurement.replicates:
+                measurement_data.append(replicate.data)
 
         return np.array(measurement_data).reshape(sum(self._measurement_replicates), -1)
 
@@ -657,6 +601,38 @@ class Estimator(sdRDM.DataModel):
         for species in self.species:
             if species.id == species_id:
                 return species
+
+    def _get_substrate_rates(self):
+        substrsate_rates = np.diff(self.substrate_data)
+        time_rates = np.diff(self.time_data)
+
+        return np.abs(substrsate_rates / time_rates)
+
+    @property
+    def _init_kcat(self):
+        substrate_rates = self._get_substrate_rates()
+        normalized_rates = (
+            substrate_rates / self.enzyme_data[:, : substrate_rates.shape[1]]
+        )
+
+        return np.nanmax(normalized_rates)
+
+    @property
+    def _init_km(self):
+        return max(self.init_substrate_data) / 2
+
+    @property
+    def substrate_unit(self):
+        for measurment in self.measurements:
+            for species in measurment.species:
+                if species.species_id == self.substrate.id:
+                    return species.unit
+
+    def _get_species_data(self, species: AbstractSpecies) -> MeasurementData:
+        for measurment in self.measurements:
+            for data in measurment.species:
+                if data.species_id == species.id:
+                    yield data
 
     @classmethod
     def from_enzymeml(

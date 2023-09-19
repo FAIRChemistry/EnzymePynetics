@@ -28,19 +28,17 @@ class KineticModel:
         self.params = params
         self.kcat_initial = kcat_initial
         self.Km_initial = Km_initial
-        self.substrate_callable: Callable = self._get_callable(
-            substrate_rate_law)
+        self.substrate_callable: Callable = self._get_callable(substrate_rate_law)
         self.enzyme_callable: Callable = self._get_callable(enzyme_rate_law)
         self._fit_result: MinimizerResult = None
         self.result: ModelResult = None
         self.parameters = self._set_parameters(params)
 
     def _get_callable(self, equation: str) -> Callable:
-
         if isinstance(equation, str):
             # local_sympy_dict ensures that 'product' in the string expression is treated as
             # a symbol instead of a function
-            local_sympy_dict = {'product': sp.Symbol('product')}
+            local_sympy_dict = {"product": sp.Symbol("product")}
             expr_substrate = sp.parse_expr(equation, local_sympy_dict)
             free_symbols = list(expr_substrate.free_symbols)
 
@@ -84,8 +82,7 @@ class KineticModel:
         if Params.K_ic.value in params:
             parameters.add(Params.K_ic.value, value=0.1, min=0.0001, max=1000)
         if self.enzyme_rate_law:
-            parameters.add(Params.k_ie.value, value=0.01,
-                           min=0.00001, max=0.9999)
+            parameters.add(Params.k_ie.value, value=0.01, min=0.00001, max=0.9999)
 
         return parameters
 
@@ -114,9 +111,7 @@ class KineticModel:
 
         return (d_substrate, d_enzyme, d_product, d_inhibitor)
 
-    def integrate(
-        self, parameters: Parameters, time: list, y0: tuple
-    ) -> np.ndarray:
+    def integrate(self, parameters: Parameters, time: list, y0: tuple) -> np.ndarray:
         """Integrates model based on parameters for a given time array and initial conditions.
 
         Args:
@@ -128,8 +123,17 @@ class KineticModel:
             result (np.ndarray): integrated model over given time.
         """
 
-        result = np.array([odeint(func=self.model, y0=y, t=t, args=(
-            parameters, self.substrate_callable, self.enzyme_callable)) for y, t in zip(y0, time)])
+        result = np.array(
+            [
+                odeint(
+                    func=self.model,
+                    y0=y,
+                    t=t,
+                    args=(parameters, self.substrate_callable, self.enzyme_callable),
+                )
+                for y, t in zip(y0, time)
+            ]
+        )
         return result
 
     def residuals(
@@ -155,13 +159,14 @@ class KineticModel:
         residuals = model[:, :, 0] - ydata  # fitting to substrate data
         return residuals.flatten()
 
-    def fit(self, ydata: np.ndarray, time: np.ndarray, y0s: np.ndarray) -> MinimizerResult:
+    def fit(
+        self, ydata: np.ndarray, time: np.ndarray, y0s: np.ndarray
+    ) -> MinimizerResult:
         """Fit model to substrate data"""
 
         # y0s = np.array(y0s) y0s needs to be checked if it is ndarray?
         fit_result = minimize(
-            self.residuals, self.parameters, args=(
-                time, y0s, ydata), nan_policy="omit"
+            self.residuals, self.parameters, args=(time, y0s, ydata), nan_policy="omit"
         )
         self._fit_result = fit_result
         self.result = self._get_model_results(fit_result)

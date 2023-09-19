@@ -1,4 +1,5 @@
 import sdRDM
+import sympy as sp
 
 from typing import List, Optional
 from pydantic import Field
@@ -92,3 +93,21 @@ class KineticModel(sdRDM.DataModel):
         self.parameters.append(KineticParameter(**params))
 
         return self.parameters[-1]
+
+    def _set_bounds():
+        pass
+
+    @property
+    def function(self) -> callable:
+        rate_expression = self.equation.split("=")[1]
+        fun = sp.parse_expr(rate_expression, {"product": sp.Symbol("product")})
+
+        return sp.lambdify(list(fun.free_symbols), fun)
+
+    @property
+    def eq_species(self):
+        pass
+
+    @property
+    def eq_parameters(self):
+        pass
