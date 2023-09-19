@@ -12,12 +12,11 @@ DataTypes = EnzymeML.enums.DataTypes
 
 
 def parse_enzymeml(
-    cls: "Estimator",
-    enzymeml: "EnzymeML"
+    cls: "Estimator", enzymeml: "EnzymeML.EnzymeMLDocument", measured_reactant: Reactant
 ) -> "Estimator":
-
-    if isinstance(enzymeml, str):
+    if isinstance(enzymeml, str) and isinstance(measured_reactant, str):
         enzymeml, _ = DataModel.parse(enzymeml)
+        measured_reactant = get_measured_species(enzymeml, measured_reactant)
 
     species = []
     for reactant in enzymeml.reactants:
@@ -28,6 +27,34 @@ def parse_enzymeml(
 
     return cls(
         name=enzymeml.name,
+        measured_reactant=measured_reactant,
         measurements=enzymeml.measurements,
         species=species,
+    )
+
+
+def get_measured_species(
+    enzymeml: "EnzymeML.EnzymeMLDocument", measured_reactant: str
+) -> Reactant:
+    """Checks if 'measured_reactant' is a valid reactant.name in
+    the 'EnzymeML.EnzymeMLDocument'.
+
+    Args:
+        enzymeml (EnzymeML.EnzymeMLDocument): EnzymeML document
+        measured_reactant (str): Reactant measured in the experiment
+
+    Raises:
+        ValueError: If Reactant not found in EnzymeML document
+
+    Returns:
+        Reactant: Reactant object
+    """
+
+    for species in enzymeml.reactants:
+        if species.name.lower().strip() == measured_reactant.lower().strip():
+            return species
+
+    raise ValueError(
+        f"'{measured_reactant}' not found in EnzymeML document.",
+        f"Available reactants: {[reactant.name for reactant in enzymeml.reactants]}",
     )

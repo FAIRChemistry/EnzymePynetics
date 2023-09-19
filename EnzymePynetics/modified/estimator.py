@@ -1,11 +1,14 @@
+import time
+import numpy as np
 import sdRDM
 import sympy as sp
 
 from typing import List, Optional, Union
-from pydantic import Field
+from pydantic import Field, PrivateAttr
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
 
+from EnzymePynetics.core import measurement
 
 from .abstractspecies import AbstractSpecies
 from .protein import Protein
@@ -17,12 +20,11 @@ from .sboterm import SBOTerm
 from .kineticmodel import KineticModel
 from .measurementdata import MeasurementData
 from .kineticparameter import KineticParameter
-from EnzymePynetics.models import K_CAT, K_M, K_IC, K_IU
 from EnzymePynetics.ioutils import parse_enzymeml
+from EnzymePynetics.models.parameters import PARAMS
 
 
 SPECIES_ROLES = ["substrate", "product", "enzyme", "inhibitor"]
-PARAMETERS = [K_CAT, K_M, K_IC, K_IU]
 
 
 @forge_signature
@@ -39,6 +41,11 @@ class Estimator(sdRDM.DataModel):
     name: Optional[str] = Field(
         default=None,
         description="Title of the kinetic experiment",
+    )
+
+    measured_reactant: Reactant = Field(
+        default=None,
+        description="Reactant that is measured in the experiment",
     )
 
     species: List[AbstractSpecies] = Field(
@@ -76,8 +83,10 @@ class Estimator(sdRDM.DataModel):
         """
 
         if any([species.id == new_species.id for species in self.species]):
-            self.species = [new_species if species.id ==
-                            new_species.id else species for species in self.species]
+            self.species = [
+                new_species if species.id == new_species.id else species
+                for species in self.species
+            ]
 
             return new_species
 
@@ -86,15 +95,7 @@ class Estimator(sdRDM.DataModel):
 
             return new_species
 
-    def add_protein(
-            self,
-            id: str,
-            name: str,
-            constant: bool,
-            sequence: str,
-            **kwargs
-    ):
-
+    def add_protein(self, id: str, name: str, constant: bool, sequence: str, **kwargs):
         # define abstract Vessel object
         vessel = self._define_dummy_vessel()
 
@@ -104,19 +105,12 @@ class Estimator(sdRDM.DataModel):
             "constant": constant,
             "sequence": sequence,
             "vessel_id": vessel.id,
-            **kwargs
+            **kwargs,
         }
 
         return self._add_to_species(Protein(**params))
 
-    def add_reactant(
-            self,
-            id: str,
-            name: str,
-            constant: bool,
-            **kwargs
-    ):
-
+    def add_reactant(self, id: str, name: str, constant: bool, **kwargs):
         # define abstract Vessel object
         vessel = self._define_dummy_vessel()
 
@@ -125,7 +119,7 @@ class Estimator(sdRDM.DataModel):
             "name": name,
             "constant": constant,
             "vessel_id": vessel.id,
-            **kwargs
+            **kwargs,
         }
 
         return self._add_to_species(Reactant(**params))
@@ -169,7 +163,7 @@ class Estimator(sdRDM.DataModel):
                 ReactionElement(
                     species_id=educt.id,
                     constant=educt.constant,
-                    ontology=SBOTerm.SUBSTRATE
+                    ontology=SBOTerm.SUBSTRATE,
                 )
             ]
         else:
@@ -180,7 +174,7 @@ class Estimator(sdRDM.DataModel):
                 ReactionElement(
                     species_id=product.id,
                     constant=product.constant,
-                    ontology=SBOTerm.PRODUCT
+                    ontology=SBOTerm.PRODUCT,
                 )
             ]
         else:
@@ -197,19 +191,18 @@ class Estimator(sdRDM.DataModel):
                 ReactionElement(
                     species_id=enzyme.id,
                     constant=enzyme.constant,
-                    ontology=SBOTerm.CATALYST
+                    ontology=SBOTerm.CATALYST,
                 )
             )
         else:
-            raise ValueError(
-                "No protein defined as enzyme. Use 'add_protein' first.")
+            raise ValueError("No protein defined as enzyme. Use 'add_protein' first.")
 
         if inhibitor:
             modifiers.append(
                 ReactionElement(
                     species_id=inhibitor.id,
                     constant=inhibitor.constant,
-                    ontology=SBOTerm.INHIBITOR
+                    ontology=SBOTerm.INHIBITOR,
                 )
             )
 
@@ -234,8 +227,10 @@ class Estimator(sdRDM.DataModel):
         new_reaction = Reaction(**params)
 
         if any([reaction.id == new_reaction.id for reaction in self.reactions]):
-            self.reactions = [new_reaction if reaction.id ==
-                              new_reaction.id else reaction for reaction in self.reactions]
+            self.reactions = [
+                new_reaction if reaction.id == new_reaction.id else reaction
+                for reaction in self.reactions
+            ]
 
             return new_reaction
 
@@ -246,11 +241,11 @@ class Estimator(sdRDM.DataModel):
 
     def add_model(
         self,
+        id: str,
         name: str,
         equation: str,
         parameters: List[KineticParameter] = ListPlus(),
         ontology: Optional[SBOTerm] = None,
-        id: Optional[str] = None,
     ) -> None:
         """
         This method adds an object of type 'KineticModel' to attribute models
@@ -263,61 +258,147 @@ class Estimator(sdRDM.DataModel):
             ontology (): Type of the estimated parameter.. Defaults to None
         """
 
-        if not parameters:
-            self._extract_parameters(equation)
+        self._validate_equation(equation)
 
         params = {
+            "id": id,
             "name": name,
             "equation": equation,
             "parameters": parameters,
             "ontology": ontology,
         }
 
-        if id is not None:
-            params["id"] = id
+        new_model = KineticModel(**params)
 
-        self.models.append(KineticModel(**params))
+        if any([model.id == new_model.id for model in self.models]):
+            self.models = [
+                new_model if model.id == new_model.id else model
+                for model in self.models
+            ]
 
-        return self.models[-1]
+            return new_model
 
-    def _extract_parameters(self, equation: str) -> List[KineticParameter]:
+        else:
+            self.models.append(new_model)
+
+            return new_model
+
+    def _initialize_data(self):
+        init_substrates = []
+        substrate_data = []
+        product_data = []
+        enzyme_data = []
+        inhibitor_data = []
+        time_data = []
+
+        observed_measururements = self._get_measurements_replicates()
+
+        print(observed_measururements)
+
+        for obs_measurement, measurements in zip(
+            observed_measururements, self.measurements
+        ):
+            for data in measurements.species:
+                # Substrate
+                if data.species_id == self.substrate.id:
+                    init_substrates.append(data.init_conc)
+
+                if not data.species_id == self.measured_reactant.id:
+                    continue
+
+                for replicate in data.replicates:
+                    substrate_data.append(replicate.data)
+
+                # Product
+                if data.species_id == self.product.id:
+                    for replicate in data.replicates:
+                        product_data.append(replicate.data)
+
+    def _handle_substrate_product_data(self):
+        substrate_data = []
+        product_data = []
+
+        measurement_replicates = self._get_measurements_replicates()
+
+        # init_substrates = []
+        init_substrates = []
+        for n_replicates, measurement in zip(measurement_replicates, self.measurements):
+            for data in measurement.species:
+                if not data.species_id == self.substrate.id:
+                    continue
+                init_substrates.append([data.init_conc] * n_replicates)
+
+        self.init_substrate_data = np.array(init_substrates).flatten()
+
+        if self.measured_reactant_role == SBOTerm.SUBSTRATE:
+            for measurement in self.measurements:
+                for data in measurement.species:
+                    if data.species_id == self.substrate.id:
+                        for replicate in data.replicates:
+                            substrate_data.append(replicate.data)
+
+    def _get_measurements_replicates(self) -> List[List[float]]:
+        measurements = []
+        for measurement in self.measurements:
+            for data in measurement.species:
+                if not data.species_id == self.measured_reactant.id:
+                    continue
+
+                measurements.append(len(data.replicates))
+
+        return measurements
+
+    def _validate_equation(self, equation: str) -> None:
+        lhs, rhs = equation.split("=")
 
         # local_sympy_dict ensures that 'product' in the string expression is treated as
         # a symbol instead of a function
-        sympy_dict = {'product': sp.Symbol('product')}
+        sympy_dict = {"product": sp.Symbol("product")}
+        expr_lhs = sp.parse_expr(lhs, sympy_dict)
+        expr_rhs = sp.parse_expr(rhs, sympy_dict)
+        free_symbols_lhs = list(expr_lhs.free_symbols)
+        free_symbols_rhs = list(expr_rhs.free_symbols)
+
+        if free_symbols_lhs[0].name not in SPECIES_ROLES:
+            raise ValueError(
+                f"Left hand side of equation '{equation}' must be one of {SPECIES_ROLES}"
+            )
+
+        params = []
+        observables = []
+        unknowns = []
+        for symbol in free_symbols_rhs:
+            if symbol.name in SPECIES_ROLES:
+                observables.append(symbol.name)
+            elif symbol.name in [param.name for param in PARAMS]:
+                params.append(symbol.name)
+            else:
+                unknowns.append(symbol.name)
+
+        if len(unknowns) > 0:
+            raise ValueError(
+                f"Equation '{equation}' contains unknown symbols: {unknowns}",
+                f"Allowed species are: {SPECIES_ROLES}",
+                f"Allowed parameters are: {[param.name for param in PARAMS]}",
+            )
+
+    def _extract_parameters(self, equation: str) -> List[KineticParameter]:
+        # local_sympy_dict ensures that 'product' in the string expression is treated as
+        # a symbol instead of a function
+        sympy_dict = {"product": sp.Symbol("product")}
         expr_substrate = sp.parse_expr(equation, sympy_dict)
         free_symbols = list(expr_substrate.free_symbols)
         param_names = [
-            symbol.name for symbol in free_symbols if symbol.name.lower() not in SPECIES_ROLES]
-
-        for param_name in param_names:
-            if param_name not in [param.name for param in PARAMETERS]:
-                raise ValueError(
-                    f"Parameter '{param_name}' is not a valid parameter: ({PARAMETERS})"
-                )
-
-        parameters = []
-        for parameter in re.findall(r"([a-zA-Z]+)", equation):
-            if parameter not in parameters:
-                parameters.append(parameter)
-
-        # define abstract Vessel object
-        vessel = self._define_dummy_vessel()
-
-        # define parameters
-        parameters = [
-            KineticParameter(
-                name=parameter,
-                value=1.0,
-                unit="",
-                constant=False,
-                is_global=False,
-                vessel_id=vessel.id,
-            )
-            for parameter in parameters
+            symbol.name
+            for symbol in free_symbols
+            if symbol.name.lower() not in SPECIES_ROLES
         ]
 
-        return parameters
+        for param_name in param_names:
+            if param_name not in [param.name for param in PARAMS]:
+                raise ValueError(
+                    f"Parameter '{param_name}' is not a valid parameter: ({[param.name for param in PARAMS]})"
+                )
 
     def add_to_measurements(
         self,
@@ -369,22 +450,35 @@ class Estimator(sdRDM.DataModel):
 
     @property
     def ph(self):
-        if not all([measurement.ph == self.measurements[0].ph for measurement in self.measurements]):
+        if not all(
+            [
+                measurement.ph == self.measurements[0].ph
+                for measurement in self.measurements
+            ]
+        ):
             raise ValueError("Measurements have inconsistent pH values.")
         return self.measurements[0].ph
 
     @property
     def temperature(self):
-        if not all([measurement.temperature == self.measurements[0].temperature for measurement in self.measurements]):
-            raise ValueError(
-                "Measurements have inconsistent temperature values.")
+        if not all(
+            [
+                measurement.temperature == self.measurements[0].temperature
+                for measurement in self.measurements
+            ]
+        ):
+            raise ValueError("Measurements have inconsistent temperature values.")
         return self.measurements[0].temperature
 
     @property
     def temperature_unit(self):
-        if not all([measurement.temperature_unit == self.measurements[0].temperature_unit for measurement in self.measurements]):
-            raise ValueError(
-                "Measurements have inconsistent temperature unit values.")
+        if not all(
+            [
+                measurement.temperature_unit == self.measurements[0].temperature_unit
+                for measurement in self.measurements
+            ]
+        ):
+            raise ValueError("Measurements have inconsistent temperature unit values.")
         return self.measurements[0].temperature_unit
 
     @property
@@ -397,9 +491,177 @@ class Estimator(sdRDM.DataModel):
 
     @property
     def enzymes(self):
-        return [species for species in self.species if species.ontology == SBOTerm.CATALYST.value]
+        return [
+            species
+            for species in self.species
+            if species.ontology == SBOTerm.CATALYST.value
+        ]
+
+    @property
+    def substrate_models(self):
+        return [
+            model
+            for model in self.models
+            if model.equation.startswith(SPECIES_ROLES[0])
+        ]
+
+    @property
+    def enzyme_models(self):
+        return [
+            model
+            for model in self.models
+            if model.equation.startswith(SPECIES_ROLES[2])
+        ]
+
+    @property
+    def measured_reactant_role(self) -> SBOTerm:
+        for reaction in self.reactions:
+            for educt in reaction.educts:
+                if educt.species_id == self.measured_reactant.id:
+                    return SBOTerm(educt.ontology)
+
+            for product in reaction.products:
+                if product.species_id == self.measured_reactant.id:
+                    return SBOTerm(product.ontology)
+
+        raise ValueError(
+            f"Measured reactant '{self.measured_reactant}' not found in the defined reaction."
+        )
+
+    @property
+    def substrate(self):
+        return self._get_species_of_role(SBOTerm.SUBSTRATE)
+
+    @property
+    def product(self):
+        return self._get_species_of_role(SBOTerm.PRODUCT)
+
+    @property
+    def enzyme(self):
+        return self._get_species_of_role(SBOTerm.CATALYST)
+
+    @property
+    def inhibitor(self):
+        return self._get_species_of_role(SBOTerm.INHIBITOR)
+
+    @property
+    def init_substrate_data(self):
+        init_substrates = []
+        for n_replicates, measurement in zip(
+            self._measurement_replicates, self.measurements
+        ):
+            for data in measurement.species:
+                if data.species_id == self.substrate.id:
+                    init_substrates.append([data.init_conc] * n_replicates)
+
+        return np.array(init_substrates).flatten()
+
+    @property
+    def substrate_data(self):
+        if self.measured_reactant_role == SBOTerm.SUBSTRATE:
+            return self._get_measurement_data(self.substrate)
+        else:
+            return self._calculate_missing_reactant(self.product)
+
+    @property
+    def product_data(self):
+        if self.measured_reactant_role == SBOTerm.PRODUCT:
+            return self._get_measurement_data(self.product)
+        else:
+            return self._calculate_missing_reactant(self.substrate)
+
+    def _get_measurement_data(self, reactant: Reactant):
+        measurement_data = []
+        for measurement in self.measurements:
+            for data in measurement.species:
+                if data.species_id == reactant.id:
+                    for replicate in data.replicates:
+                        measurement_data.append(replicate.data)
+
+        return np.array(measurement_data).reshape(sum(self._measurement_replicates), -1)
+
+    def _calculate_missing_reactant(self, existing_reactant: Reactant):
+        # calculate_product
+        if existing_reactant == self.substrate:
+            return self.init_substrate_data[:, None] - self.substrate_data
+
+        # calculate substrate
+        else:
+            return self.init_substrate_data[:, None] - self.product_data
+
+    @property
+    def _measurement_replicates(self) -> List[int]:
+        measurement_replicates = []
+        for measurement in self.measurements:
+            for data in measurement.species:
+                if data.species_id == self.measured_reactant.id:
+                    measurement_replicates.append(len(data.replicates))
+
+        return measurement_replicates
+
+    @property
+    def time_data(self):
+        time_data = []
+        for n_reps, measurement in zip(self._measurement_replicates, self.measurements):
+            time_data.append([measurement.global_time] * n_reps)
+
+        return np.array(time_data).reshape(sum(self._measurement_replicates), -1)
+
+    @property
+    def enzyme_data(self):
+        enzyme_data = []
+        for n_reps, measurement in zip(self._measurement_replicates, self.measurements):
+            for data in measurement.species:
+                if not data.species_id == self.enzyme.id:
+                    continue
+
+                if not data.replicates:
+                    enzyme_data.append([data.init_conc] * n_reps)
+
+        return np.repeat(np.array(enzyme_data), self.time_data.shape[1]).reshape(
+            self.time_data.shape
+        )
+
+    @property
+    def inhibitor_data(self):
+        inhibitor_data = []
+        for n_reps, measurement in zip(self._measurement_replicates, self.measurements):
+            for data in measurement.species:
+                if not data.species_id == self.inhibitor.id:
+                    continue
+
+                if not data.replicates:
+                    inhibitor_data.append([data.init_conc] * n_reps)
+
+        return np.repeat(np.array(inhibitor_data), self.time_data.shape[1]).reshape(
+            self.time_data.shape
+        )
+
+    def _get_species_of_role(self, role: SBOTerm):
+        for reaction in self.reactions:
+            for educt in reaction.educts:
+                if educt.ontology == role.value:
+                    species_id = educt.species_id
+
+            for product in reaction.products:
+                if product.ontology == role.value:
+                    species_id = product.species_id
+
+            for modifier in reaction.modifiers:
+                if modifier.ontology == role.value:
+                    species_id = modifier.species_id
+
+        return self._get_species(species_id)
+
+    def _get_species(self, species_id: str):
+        for species in self.species:
+            if species.id == species_id:
+                return species
 
     @classmethod
-    def from_enzymeml(cls, enzymeml_doc: Union[str, "EnzymeMLDocument"]):
-
-        return parse_enzymeml(cls, enzymeml_doc)
+    def from_enzymeml(
+        cls,
+        enzymeml_doc: Union[str, "EnzymeMLDocument"],
+        measured_reactant: Union[Reactant, str],
+    ):
+        return parse_enzymeml(cls, enzymeml_doc, measured_reactant)

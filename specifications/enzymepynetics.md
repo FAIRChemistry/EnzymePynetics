@@ -7,6 +7,9 @@
 - name
     - Type: string
     - Description: Title of the kinetic experiment
+- measured_reactant: 
+    - Type: https://github.com/EnzymeML/enzymeml-specifications.git@Reactant
+    - Description: Reactant that is measured in the experiment
 - species
     - Type: https://github.com/EnzymeML/enzymeml-specifications.git@AbstractSpecies, https://github.com/EnzymeML/enzymeml-specifications.git@Protein, https://github.com/EnzymeML/enzymeml-specifications.git@Reactant
     - Description: Reactants, Inhibitor, Activators and Catalysts of the reaction

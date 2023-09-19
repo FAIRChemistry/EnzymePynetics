@@ -36,6 +36,11 @@ class Estimator(sdRDM.DataModel):
         description="Title of the kinetic experiment",
     )
 
+    measured_reactant: Reactant = Field(
+        default=None,
+        description="Reactant that is measured in the experiment",
+    )
+
     species: List[Union[AbstractSpecies, Protein, Reactant]] = Field(
         description="Reactants, Inhibitor, Activators and Catalysts of the reaction",
         default_factory=ListPlus,
