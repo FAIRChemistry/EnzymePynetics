@@ -31,12 +31,17 @@ classDiagram
     MeasurementData *-- Replicate
     Replicate *-- DataTypes
     Replicate *-- AbstractSpecies
+    Estimator *-- ReactionSystem
     Estimator *-- AbstractSpecies
     Estimator *-- Protein
     Estimator *-- Reactant
     Estimator *-- Reaction
     Estimator *-- KineticModel
     Estimator *-- Measurement
+    ReactionSystem *-- ModelResult
+    ReactionSystem *-- Reaction
+    ModelResult *-- Parameter
+    Parameter *-- Correlation
     AbstractSpecies *-- Vessel
     Protein *-- SBOTerm
     Reactant *-- SBOTerm
@@ -56,10 +61,37 @@ classDiagram
     
     class Estimator {
         +string name
+        +Reactant measured_reactant:
+        +ReactionSystem[0..*] reaction_systems
         +AbstractSpecies, Protein, Reactant[0..*] species
-        +Reaction[0..*] reactions
+        +Reaction reaction
         +KineticModel[0..*] models
         +Measurement[0..*] measurements
+    }
+    
+    class ReactionSystem {
+        +string name
+        +Reaction[0..*] reactions
+        +ModelResult result
+    }
+    
+    class ModelResult {
+        +string[0..*] equations
+        +Parameter[0..*] parameters
+        +bool fit_success
+        +float AIC
+        +float BIC
+        +float RMSD
+    }
+    
+    class Parameter {
+        +string name
+        +Correlation[0..*] correlations
+    }
+    
+    class Correlation {
+        +string parameter_name
+        +float value
     }
     
     class Vessel {
@@ -219,7 +251,7 @@ classDiagram
     
     class https://github.com/EnzymeML/enzymeml-specifications.git {
         << External Object >>
-        +Repository <sdRDM.markdown.markdownparser.MarkdownParser object at 0x15f09a2d0>
+        +Repository <sdRDM.markdown.markdownparser.MarkdownParser object at 0x140a70b10>
     }
     
 ```

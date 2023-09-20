@@ -33,3 +33,11 @@ class SBOTerm(Enum):
     K_CAT = "SBO:0000025"
     K_M = "SBO:0000027"
     V_MAX = "SBO:0000186"
+
+
+class ParamType(Enum):
+    K_M = "K_m"
+    K_CAT = "k_cat"
+    K_IC = "K_ic"
+    K_IU = "K_iu"
+    K_IE = "k_ie"

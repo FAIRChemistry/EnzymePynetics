@@ -10,7 +10,7 @@ from .kineticparameter import KineticParameter
 from .measurement import Measurement
 from .measurementdata import MeasurementData
 from .replicate import Replicate
-from .sboterm import SBOTerm
+from .sboterm import SBOTerm, ParamType
 from .datatypes import DataTypes
 
 __doc__ = ""

@@ -1,3 +1,5 @@
+import copy
+from pyexpat import model
 import time
 import numpy as np
 import sdRDM
@@ -8,20 +10,18 @@ from pydantic import Field, PrivateAttr
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
 
-from EnzymePynetics.core import measurement
-
 from .abstractspecies import AbstractSpecies
 from .protein import Protein
 from .reactant import Reactant
 from .reaction import Reaction
 from .reactionelement import ReactionElement
+from .reactionsystem import ReactionSystem
 from .measurement import Measurement
-from .sboterm import SBOTerm
+from .sboterm import SBOTerm, ParamType
 from .kineticmodel import KineticModel
 from .measurementdata import MeasurementData
 from .kineticparameter import KineticParameter
 from EnzymePynetics.ioutils import parse_enzymeml
-from EnzymePynetics.models.parameters import PARAMS
 
 
 SPECIES_ROLES = ["substrate", "product", "enzyme", "inhibitor"]
@@ -48,6 +48,12 @@ class Estimator(sdRDM.DataModel):
         description="Reactant that is measured in the experiment",
     )
 
+    reaction_systems: Optional[ReactionSystem] = Field(
+        description="Reactions of multiple species",
+        default_factory=ListPlus,
+        multiple=True,
+    )
+
     species: List[AbstractSpecies] = Field(
         description="Reactants, Inhibitor, Activators and Catalysts of the reaction",
         default_factory=ListPlus,
@@ -71,58 +77,6 @@ class Estimator(sdRDM.DataModel):
         default_factory=ListPlus,
         multiple=True,
     )
-
-    def _add_to_species(self, new_species: AbstractSpecies) -> AbstractSpecies:
-        """
-        This method adds an object of type 'Species' to attribute species
-
-        Args:
-            id (str): Unique identifier of the 'Species' object. Defaults to 'None'.
-            type (): Type of the species.
-            name (): Name of the species. Defaults to None
-        """
-
-        if any([species.id == new_species.id for species in self.species]):
-            self.species = [
-                new_species if species.id == new_species.id else species
-                for species in self.species
-            ]
-
-            return new_species
-
-        else:
-            self.species.append(new_species)
-
-            return new_species
-
-    def add_protein(self, id: str, name: str, constant: bool, sequence: str, **kwargs):
-        # define abstract Vessel object
-        vessel = self._define_dummy_vessel()
-
-        params = {
-            "id": id,
-            "name": name,
-            "constant": constant,
-            "sequence": sequence,
-            "vessel_id": vessel.id,
-            **kwargs,
-        }
-
-        return self._add_to_species(Protein(**params))
-
-    def add_reactant(self, id: str, name: str, constant: bool, **kwargs):
-        # define abstract Vessel object
-        vessel = self._define_dummy_vessel()
-
-        params = {
-            "id": id,
-            "name": name,
-            "constant": constant,
-            "vessel_id": vessel.id,
-            **kwargs,
-        }
-
-        return self._add_to_species(Reactant(**params))
 
     def add_reaction(
         self,
@@ -238,12 +192,10 @@ class Estimator(sdRDM.DataModel):
             self.reactions.append(new_reaction)
 
             return new_reaction
-        
+
     def _validate_units(self):
         if not self.substrate_unit == self.product_unit:
             raise ValueError("Substrate and product have different units.")
-        
-    def 
 
     def add_model(
         self,
@@ -264,8 +216,6 @@ class Estimator(sdRDM.DataModel):
             ontology (): Type of the estimated parameter.. Defaults to None
         """
 
-        self._validate_equation(equation)
-
         params = {
             "id": id,
             "name": name,
@@ -275,6 +225,7 @@ class Estimator(sdRDM.DataModel):
         }
 
         new_model = KineticModel(**params)
+        parameterized_model = self._init_parameters(new_model)
 
         if any([model.id == new_model.id for model in self.models]):
             self.models = [
@@ -289,38 +240,59 @@ class Estimator(sdRDM.DataModel):
 
             return new_model
 
-    def _validate_equation(self, equation: str) -> None:
-        lhs, rhs = equation.split("=")
+    def _init_parameters(self, model: KineticModel) -> KineticModel:
+        value = float("nan")
 
-        # local_sympy_dict ensures that 'product' in the string expression is treated as
-        # a symbol instead of a function
-        sympy_dict = {"product": sp.Symbol("product")}
-        expr_lhs = sp.parse_expr(lhs, sympy_dict)
-        expr_rhs = sp.parse_expr(rhs, sympy_dict)
-        free_symbols_lhs = list(expr_lhs.free_symbols)
-        free_symbols_rhs = list(expr_rhs.free_symbols)
+        for param in model.eq_parameters:
+            if param == ParamType.K_CAT.value:
+                ontology = SBOTerm.K_CAT
+                initial_value = self._init_kcat
+                unit = f"1 / {self.time_unit}"
+                upper = initial_value * 100
+                lower = initial_value * 0.001
 
-        if free_symbols_lhs[0].name not in SPECIES_ROLES:
-            raise ValueError(
-                f"Left hand side of equation '{equation}' must be one of {SPECIES_ROLES}"
-            )
+            elif param == ParamType.K_M.value:
+                ontology = SBOTerm.K_M
+                initial_value = self._init_km
+                unit = self.substrate_unit
+                upper = initial_value * 100
+                lower = initial_value * 0.001
 
-        params = []
-        observables = []
-        unknowns = []
-        for symbol in free_symbols_rhs:
-            if symbol.name in SPECIES_ROLES:
-                observables.append(symbol.name)
-            elif symbol.name in [param.name for param in PARAMS]:
-                params.append(symbol.name)
+            elif param == ParamType.K_IC.value:
+                initial_value = self._init_km
+                unit = self.substrate_unit
+                ontology = None
+                upper = initial_value * 100
+                lower = initial_value * 0.001
+
+            elif param == ParamType.K_IU.value:
+                initial_value = self._init_km
+                unit = self.substrate_unit
+                ontology = None
+                upper = initial_value * 100
+                lower = initial_value * 0.001
+
+            elif param == ParamType.K_IE.value:
+                if self.time_unit == "s":
+                    initial_value = np.log(2) / 90 * 60  # 90 min half life
+                if self.time_unit == "min":
+                    initial_value = np.log(2) / 90  # 90 min half life
+                unit = self.time_unit
+                ontology = None
+                upper = initial_value * 100
+                lower = initial_value * 0.001
+
             else:
-                unknowns.append(symbol.name)
+                raise ValueError(f"Parameter '{param}' not recognized.")
 
-        if len(unknowns) > 0:
-            raise ValueError(
-                f"Equation '{equation}' contains unknown symbols: {unknowns}",
-                f"Allowed species are: {SPECIES_ROLES}",
-                f"Allowed parameters are: {[param.name for param in PARAMS]}",
+            model.add_to_parameters(
+                name=param,
+                initial_value=initial_value,
+                value=value,
+                unit=unit,
+                ontology=ontology,
+                upper=upper,
+                lower=lower,
             )
 
     def add_to_measurements(
@@ -403,6 +375,17 @@ class Estimator(sdRDM.DataModel):
         ):
             raise ValueError("Measurements have inconsistent temperature unit values.")
         return self.measurements[0].temperature_unit
+
+    @property
+    def time_unit(self):
+        if not all(
+            [
+                measurement.global_time_unit == self.measurements[0].global_time_unit
+                for measurement in self.measurements
+            ]
+        ):
+            raise ValueError("Measurements have inconsistent time units.")
+        return self.measurements[0].global_time_unit
 
     @property
     def substrate_unit(self):

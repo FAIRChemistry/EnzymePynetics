@@ -1,4 +1,8 @@
 from .estimator import Estimator
+from .reactionsystem import ReactionSystem
+from .modelresult import ModelResult
+from .parameter import Parameter
+from .correlation import Correlation
 from .vessel import Vessel
 from .abstractspecies import AbstractSpecies
 from .protein import Protein
@@ -17,6 +21,10 @@ __doc__ = ""
 
 __all__ = [
     "Estimator",
+    "ReactionSystem",
+    "ModelResult",
+    "Parameter",
+    "Correlation",
     "Vessel",
     "AbstractSpecies",
     "Protein",

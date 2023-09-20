@@ -7,10 +7,10 @@ from sdRDM.base.utils import forge_signature, IDGenerator
 
 from pydantic import PositiveFloat
 
-from .reactionelement import ReactionElement
+from .kineticmodel import KineticModel
 from .abstractspecies import AbstractSpecies
 from .sboterm import SBOTerm
-from .kineticmodel import KineticModel
+from .reactionelement import ReactionElement
 
 
 @forge_signature

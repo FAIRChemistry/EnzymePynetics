@@ -6,8 +6,8 @@ from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
 
 
-from .replicate import Replicate
 from .measurementdata import MeasurementData
+from .replicate import Replicate
 from .abstractspecies import AbstractSpecies
 
 

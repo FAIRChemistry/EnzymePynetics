@@ -4,8 +4,8 @@ from typing import Optional
 from pydantic import Field
 from sdRDM.base.utils import forge_signature, IDGenerator
 
-from pydantic import PositiveFloat
 from pydantic import StrictBool
+from pydantic import PositiveFloat
 
 
 @forge_signature
