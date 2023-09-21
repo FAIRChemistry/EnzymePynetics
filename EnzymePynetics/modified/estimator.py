@@ -6,11 +6,12 @@ import sdRDM
 import sympy as sp
 
 from typing import List, Optional, Union
-from pydantic import Field, PrivateAttr
+from pydantic import Field
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
 
 from .abstractspecies import AbstractSpecies
+from .modelresult import ModelResult
 from .protein import Protein
 from .reactant import Reactant
 from .reaction import Reaction
@@ -48,7 +49,7 @@ class Estimator(sdRDM.DataModel):
         description="Reactant that is measured in the experiment",
     )
 
-    reaction_systems: Optional[ReactionSystem] = Field(
+    reaction_systems: List[ReactionSystem] = Field(
         description="Reactions of multiple species",
         default_factory=ListPlus,
         multiple=True,
@@ -193,10 +194,6 @@ class Estimator(sdRDM.DataModel):
 
             return new_reaction
 
-    def _validate_units(self):
-        if not self.substrate_unit == self.product_unit:
-            raise ValueError("Substrate and product have different units.")
-
     def add_model(
         self,
         id: str,
@@ -239,6 +236,103 @@ class Estimator(sdRDM.DataModel):
             self.models.append(new_model)
 
             return new_model
+
+    def _create_model_combinations(self):
+        inactivation_reaction = self._create_inactivation_reaction()
+
+        if len(self.reactions) > 1:
+            raise ValueError(
+                "Currently only one reaction per reaction system is supported."
+            )
+        self.reaction_systems = ListPlus()
+        for substrate_model in self.substrate_models:
+            # Add different substrate models to reaction
+            substrate_reaction = Reaction(**self.reactions[0].to_dict())
+            substrate_reaction.model = substrate_model
+
+            self.reaction_systems.append(
+                ReactionSystem(
+                    name=f"{substrate_model.name}",
+                    reactions=[substrate_reaction],
+                )
+            )
+            print(self.reaction_systems)
+
+            # create reaction system with enzyme models
+            for enzyme_model in self.enzyme_models:
+                new_inactivation = Reaction(**inactivation_reaction.to_dict())
+                new_inactivation.model = enzyme_model
+                print(new_inactivation.name)
+
+                self.reaction_systems.append(
+                    ReactionSystem(
+                        name=f"{substrate_model.name} with {enzyme_model.name}",
+                        reactions=[substrate_reaction, new_inactivation],
+                    )
+                )
+
+    def _create_inactivation_reaction(self) -> Reaction:
+        # Make copies of enzyme species
+        active = Protein(**self.enzyme.to_dict())
+        active.name += " (active)"
+        active.constant = False
+
+        inactive = Protein(**self.enzyme.to_dict())
+        inactive.name += " (inactive)"
+        inactive.id += "_inactive"
+        inactive.constant = False
+        self.species.append(inactive)
+
+        # Make enzyme inactivation reaction
+        inactivation = Reaction(**self.reactions[0].to_dict())
+        inactivation.name = "enzyme inactivation"
+        inactivation.reversible = False
+        inactivation.educts = [
+            ReactionElement(
+                species_id=active.id,
+                constant=False,
+                ontology=SBOTerm.CATALYST,
+            )
+        ]
+        inactivation.products = [
+            ReactionElement(
+                species_id=inactive.id,
+                constant=False,
+                ontology=SBOTerm.PROTEIN,  # , since inactive
+            )
+        ]
+
+        return inactivation
+
+    def add_to_reaction_systems(
+        self,
+        name: Optional[str] = None,
+        reactions: List[Reaction] = ListPlus(),
+        result: Optional[ModelResult] = None,
+        id: Optional[str] = None,
+    ) -> None:
+        """
+        This method adds an object of type 'ReactionSystem' to attribute reaction_systems
+
+        Args:
+            id (str): Unique identifier of the 'ReactionSystem' object. Defaults to 'None'.
+            name (): Name of the reaction system. Defaults to None
+            reactions (): Reactions of the reaction system. Defaults to ListPlus()
+            result (): Result of the kinetic model fitting.. Defaults to None
+        """
+
+        params = {
+            "name": name,
+            "reactions": reactions,
+            "result": result,
+        }
+
+        if id is not None:
+            params["id"] = id
+
+        self.reaction_systems.append(ReactionSystem(**params))
+
+        return self.reaction_systems[-1]
 
     def _init_parameters(self, model: KineticModel) -> KineticModel:
         value = float("nan")
