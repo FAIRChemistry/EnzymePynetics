@@ -9,7 +9,6 @@ setup(
     author="Haeussler, Max",
     author_email="st171427@stud.uni-stuttgart.de",
     packages=setuptools.find_packages(),
-    
     install_requires=[
         "lmfit",
         "matplotlib",
@@ -17,5 +16,6 @@ setup(
         "pandas",
         "pydantic",
         "scipy",
-        "setuptools"]
-    )
+        "setuptools",
+    ],
+)

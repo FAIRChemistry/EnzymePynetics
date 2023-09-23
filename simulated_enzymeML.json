@@ -1,0 +1,305 @@
+{
+  "id": "enzymemldocument4",
+  "name": "simulated data",
+  "vessels": [
+    {
+      "id": "vessel4",
+      "name": "vessel",
+      "volume": 1.0,
+      "unit": "litre",
+      "constant": true
+    }
+  ],
+  "proteins": [
+    {
+      "id": "protein4",
+      "name": "enzyme",
+      "vessel_id": "vessel4",
+      "constant": false,
+      "sequence": "MSDGJSDGSDFGBSFBS",
+      "ontology": "SBO:0000013"
+    }
+  ],
+  "reactants": [
+    {
+      "id": "reactant8",
+      "name": "substrate",
+      "vessel_id": "vessel4",
+      "constant": false,
+      "ontology": "SBO:0000247"
+    },
+    {
+      "id": "reactant9",
+      "name": "product",
+      "vessel_id": "vessel4",
+      "constant": false,
+      "ontology": "SBO:0000247"
+    }
+  ],
+  "measurements": [
+    {
+      "id": "measurement40",
+      "name": "measurement",
+      "temperature": 30.0,
+      "temperature_unit": "C",
+      "ph": 4.0,
+      "species": [
+        {
+          "id": "measurementdata120",
+          "init_conc": 10.0,
+          "unit": "mmol / l",
+          "measurement_id": "measurement40",
+          "species_id": "reactant8",
+          "replicates": [
+            {
+              "id": "replicate40",
+              "species_id": "reactant8",
+              "measurement_id": "measurement40",
+              "data_type": "conc",
+              "data_unit": "mmol / l",
+              "time_unit": "min",
+              "time": [
+                0.0,
+                0.5263157894736842,
+                1.0526315789473684,
+                1.5789473684210527,
+                2.1052631578947367,
+                2.631578947368421,
+                3.1578947368421053,
+                3.6842105263157894,
+                4.2105263157894735,
+                4.7368421052631575,
+                5.263157894736842,
+                5.789473684210526,
+                6.315789473684211,
+                6.842105263157895,
+                7.368421052631579,
+                7.894736842105263,
+                8.421052631578947,
+                8.947368421052632,
+                9.473684210526315,
+                10.0
+              ],
+              "data": [
+                10.0,
+                8.009702382876668,
+                6.545903501777863,
+                5.436427409778027,
+                4.576291581183724,
+                3.8974008898335053,
+                3.3535785312783917,
+                2.9124398431427596,
+                2.5506638210324075,
+                2.2510917376199804,
+                2.000870753239589,
+                1.7902255836178027,
+                1.6116226489499037,
+                1.45918810527547,
+                1.328294433645981,
+                1.2152617425922176,
+                1.1171386937363446,
+                1.0315397149638015,
+                0.9565225899052102,
+                0.8904954381630742
+              ],
+              "is_calculated": false
+            }
+          ]
+        },
+        {
+          "id": "measurementdata121",
+          "init_conc": 0.0,
+          "unit": "mmol / l",
+          "measurement_id": "measurement40",
+          "species_id": "reactant9"
+        },
+        {
+          "id": "measurementdata122",
+          "init_conc": 1.0,
+          "unit": "mmol / l",
+          "measurement_id": "measurement40",
+          "species_id": "protein4"
+        }
+      ],
+      "global_time_unit": "min"
+    },
+    {
+      "id": "measurement41",
+      "name": "measurement",
+      "temperature": 30.0,
+      "temperature_unit": "C",
+      "ph": 4.0,
+      "species": [
+        {
+          "id": "measurementdata123",
+          "init_conc": 35.0,
+          "unit": "mmol / l",
+          "measurement_id": "measurement41",
+          "species_id": "reactant8",
+          "replicates": [
+            {
+              "id": "replicate41",
+              "species_id": "reactant8",
+              "measurement_id": "measurement41",
+              "data_type": "conc",
+              "data_unit": "mmol / l",
+              "time_unit": "min",
+              "time": [
+                0.0,
+                0.5263157894736842,
+                1.0526315789473684,
+                1.5789473684210527,
+                2.1052631578947367,
+                2.631578947368421,
+                3.1578947368421053,
+                3.6842105263157894,
+                4.2105263157894735,
+                4.7368421052631575,
+                5.263157894736842,
+                5.789473684210526,
+                6.315789473684211,
+                6.842105263157895,
+                7.368421052631579,
+                7.894736842105263,
+                8.421052631578947,
+                8.947368421052632,
+                9.473684210526315,
+                10.0
+              ],
+              "data": [
+                35.0,
+                31.18840439685372,
+                28.0892578546789,
+                25.520874128658335,
+                23.360633103812074,
+                21.521895217797205,
+                19.941277409152878,
+                18.571126154137108,
+                17.37481484555977,
+                16.323674728029854,
+                15.394919018040122,
+                14.57019708324821,
+                13.834562074386305,
+                13.175717395373711,
+                12.583457089990933,
+                12.049243125255536,
+                11.565881847053438,
+                11.127272841998472,
+                10.728212170523928,
+                10.36423639792282
+              ],
+              "is_calculated": false
+            }
+          ]
+        },
+        {
+          "id": "measurementdata124",
+          "init_conc": 0.0,
+          "unit": "mmol / l",
+          "measurement_id": "measurement41",
+          "species_id": "reactant9"
+        },
+        {
+          "id": "measurementdata125",
+          "init_conc": 1.0,
+          "unit": "mmol / l",
+          "measurement_id": "measurement41",
+          "species_id": "protein4"
+        }
+      ],
+      "global_time_unit": "min"
+    },
+    {
+      "id": "measurement42",
+      "name": "measurement",
+      "temperature": 30.0,
+      "temperature_unit": "C",
+      "ph": 4.0,
+      "species": [
+        {
+          "id": "measurementdata126",
+          "init_conc": 60.0,
+          "unit": "mmol / l",
+          "measurement_id": "measurement42",
+          "species_id": "reactant8",
+          "replicates": [
+            {
+              "id": "replicate42",
+              "species_id": "reactant8",
+              "measurement_id": "measurement42",
+              "data_type": "conc",
+              "data_unit": "mmol / l",
+              "time_unit": "min",
+              "time": [
+                0.0,
+                0.5263157894736842,
+                1.0526315789473684,
+                1.5789473684210527,
+                2.1052631578947367,
+                2.631578947368421,
+                3.1578947368421053,
+                3.6842105263157894,
+                4.2105263157894735,
+                4.7368421052631575,
+                5.263157894736842,
+                5.789473684210526,
+                6.315789473684211,
+                6.842105263157895,
+                7.368421052631579,
+                7.894736842105263,
+                8.421052631578947,
+                8.947368421052632,
+                9.473684210526315,
+                10.0
+              ],
+              "data": [
+                60.0,
+                55.48266578195172,
+                51.64886832746787,
+                48.35413508035812,
+                45.49382121145668,
+                42.98967589607233,
+                40.78168469571107,
+                38.82286117392484,
+                37.07578304539409,
+                35.51021065009417,
+                34.10140328668704,
+                32.828899677182484,
+                31.675616864107738,
+                30.627172298006606,
+                29.671365863787177,
+                28.797778773793464,
+                27.997458638811022,
+                27.262670178690158,
+                26.58669547573411,
+                25.963672515879335
+              ],
+              "is_calculated": false
+            }
+          ]
+        },
+        {
+          "id": "measurementdata127",
+          "init_conc": 0.0,
+          "unit": "mmol / l",
+          "measurement_id": "measurement42",
+          "species_id": "reactant9"
+        },
+        {
+          "id": "measurementdata128",
+          "init_conc": 1.0,
+          "unit": "mmol / l",
+          "measurement_id": "measurement42",
+          "species_id": "protein4"
+        }
+      ],
+      "global_time_unit": "min"
+    }
+  ],
+  "__source__": {
+    "root": "EnzymeMLDocument",
+    "repo": "https://github.com/EnzymeML/enzymeml-specifications.git",
+    "commit": "72c3d8be4a094983667a7aa62fb599fbc9f7351c",
+    "url": "https://github.com/EnzymeML/enzymeml-specifications/tree/72c3d8be4a094983667a7aa62fb599fbc9f7351c"
+  }
+}

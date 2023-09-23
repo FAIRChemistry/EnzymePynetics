@@ -2,8 +2,12 @@ import copy
 from pyexpat import model
 import time
 import numpy as np
+import pandas as pd
 import sdRDM
 import sympy as sp
+import plotly.express as px
+from plotly import graph_objects as go
+from plotly.graph_objs import Layout
 
 from typing import List, Optional, Union
 from pydantic import Field
@@ -222,6 +226,7 @@ class Estimator(sdRDM.DataModel):
         }
 
         new_model = KineticModel(**params)
+        new_model.pretty_print
         parameterized_model = self._init_parameters(new_model)
 
         if any([model.id == new_model.id for model in self.models]):
@@ -248,7 +253,7 @@ class Estimator(sdRDM.DataModel):
         for substrate_model in self.substrate_models:
             # Add different substrate models to reaction
             substrate_reaction = Reaction(**self.reactions[0].to_dict())
-            substrate_reaction.model = substrate_model
+            substrate_reaction.model = KineticModel(**substrate_model.to_dict())
 
             self.reaction_systems.append(
                 ReactionSystem(
@@ -256,13 +261,12 @@ class Estimator(sdRDM.DataModel):
                     reactions=[substrate_reaction],
                 )
             )
-            print(self.reaction_systems)
 
             # create reaction system with enzyme models
             for enzyme_model in self.enzyme_models:
+                substrate_reaction = Reaction(**substrate_reaction.to_dict())
                 new_inactivation = Reaction(**inactivation_reaction.to_dict())
-                new_inactivation.model = enzyme_model
-                print(new_inactivation.name)
+                new_inactivation.model = KineticModel(**enzyme_model.to_dict())
 
                 self.reaction_systems.append(
                     ReactionSystem(
@@ -304,6 +308,77 @@ class Estimator(sdRDM.DataModel):
 
         return inactivation
 
+    def _remove_nans(self):
+        # remove nans
+
+        nan_mask = np.isnan(self.substrate_data).any(axis=1)
+
+        substrate_data = self.substrate_data[~nan_mask]
+        product_data = self.product_data[~nan_mask]
+        enzyme_data = self.enzyme_data[~nan_mask]
+        time_data = self.time_data[~nan_mask]
+
+        return [substrate_data, enzyme_data, product_data, time_data]
+
+    def fit_models(self):
+        self._create_model_combinations()
+
+        substrate, enzyme, product, time = self._remove_nans()
+
+        for system in self.reaction_systems:
+            print(f"Fitting {system.name}")
+            system.fit(
+                substrate_data=substrate,
+                enzyme_data=enzyme,
+                product_data=product,
+                times=time,
+            )
+
+        return self.fit_statistics()
+
+    def fit_statistics(self):
+        header = np.array(
+            [
+                ["Model", ""],
+                ["AIC", ""],
+                [ParamType.K_CAT.value, f"1 / {self.time_unit}"],
+                [ParamType.K_M.value, self.substrate_unit],
+                [ParamType.K_IC.value, self.substrate_unit],
+                [ParamType.K_IU.value, self.substrate_unit],
+                [ParamType.K_IE.value, f"1 / {self.time_unit}"],
+            ]
+        )
+
+        entries = []
+        for system in self.reaction_systems:
+            entry = dict.fromkeys(header[:, 0])
+            entry["Model"] = system.name
+            entry["AIC"] = system.result.AIC
+
+            for reaction in system.reactions:
+                for param in reaction.model.parameters:
+                    entry[param.name] = param.value
+
+            entries.append(entry)
+
+        decimal_formatting = {
+            "AIC": "{:.0f}",
+            ParamType.K_M.value: "{:.2f}",
+            ParamType.K_CAT.value: "{:.2f}",
+            ParamType.K_IE.value: "{:.2f}",
+            ParamType.K_IU.value: "{:.2f}",
+            ParamType.K_IC.value: "{:.2f}",
+        }
+
+        df = pd.DataFrame(entries).set_index("Model").sort_values("AIC")
+        df.columns = pd.MultiIndex.from_arrays(header[1:, :].T)
+
+        return (
+            df.style.format("{:.2f}", na_rep="")
+            .format("{:.0f}", subset=["AIC"], na_rep="failed")
+            .background_gradient(cmap="Blues", subset=["AIC"])
+        )
+
     def add_to_reaction_systems(
         self,
         name: Optional[str] = None,
@@ -342,28 +417,28 @@ class Estimator(sdRDM.DataModel):
                 ontology = SBOTerm.K_CAT
                 initial_value = self._init_kcat
                 unit = f"1 / {self.time_unit}"
-                upper = initial_value * 100
+                upper = initial_value * 1000
                 lower = initial_value * 0.001
 
             elif param == ParamType.K_M.value:
                 ontology = SBOTerm.K_M
                 initial_value = self._init_km
                 unit = self.substrate_unit
-                upper = initial_value * 100
+                upper = initial_value * 1000
                 lower = initial_value * 0.001
 
             elif param == ParamType.K_IC.value:
-                initial_value = self._init_km
+                initial_value = self._init_km / 10
                 unit = self.substrate_unit
                 ontology = None
-                upper = initial_value * 100
+                upper = initial_value * 1000
                 lower = initial_value * 0.001
 
             elif param == ParamType.K_IU.value:
-                initial_value = self._init_km
+                initial_value = self._init_km / 10
                 unit = self.substrate_unit
                 ontology = None
-                upper = initial_value * 100
+                upper = initial_value * 1000
                 lower = initial_value * 0.001
 
             elif param == ParamType.K_IE.value:
@@ -371,7 +446,7 @@ class Estimator(sdRDM.DataModel):
                     initial_value = np.log(2) / 90 * 60  # 90 min half life
                 if self.time_unit == "min":
                     initial_value = np.log(2) / 90  # 90 min half life
-                unit = self.time_unit
+                unit = f"1 / {self.time_unit}"
                 ontology = None
                 upper = initial_value * 100
                 lower = initial_value * 0.001
@@ -483,21 +558,21 @@ class Estimator(sdRDM.DataModel):
 
     @property
     def substrate_unit(self):
-        return self._get_consisten_unit(self.substrate)
+        return self._get_consistent_unit(self.substrate)
 
     @property
     def product_unit(self):
-        return self._get_consisten_unit(self.product)
+        return self._get_consistent_unit(self.product)
 
     @property
     def enzyme_unit(self):
-        return self._get_consisten_unit(self.enzyme)
+        return self._get_consistent_unit(self.enzyme)
 
     @property
     def inhibitor_unit(self):
-        return self._get_consisten_unit(self.inhibitor)
+        return self._get_consistent_unit(self.inhibitor)
 
-    def _get_consisten_unit(self, species: AbstractSpecies) -> None:
+    def _get_consistent_unit(self, species: AbstractSpecies) -> None:
         units = [measurement.unit for measurement in self._get_species_data(species)]
         if not all([unit == units[0] for unit in units]):
             raise ValueError("Measurements have inconsistent substrate units.")
@@ -506,7 +581,7 @@ class Estimator(sdRDM.DataModel):
 
     @property
     def reactants(self):
-        return [species for species in self.species if species.constant == False]
+        return [species for species in self.species if isinstance(species, Reactant)]
 
     @property
     def modifiers(self):
@@ -623,8 +698,9 @@ class Estimator(sdRDM.DataModel):
     @property
     def time_data(self):
         time_data = []
-        for n_reps, measurement in zip(self._measurement_replicates, self.measurements):
-            time_data.append([measurement.global_time] * n_reps)
+        for measurement in self._get_species_data(self.measured_reactant):
+            for replicate in measurement.replicates:
+                time_data.append(replicate.time)
 
         return np.array(time_data).reshape(sum(self._measurement_replicates), -1)
 
@@ -718,3 +794,251 @@ class Estimator(sdRDM.DataModel):
         measured_reactant: Union[Reactant, str],
     ):
         return parse_enzymeml(cls, enzymeml_doc, measured_reactant)
+
+    def get_reaction_system(self, system_name: str) -> ReactionSystem:
+        for system in self.reaction_systems:
+            if system.name == system_name:
+                return system
+
+        raise ValueError(f"Reaction system '{system_name}' not found.")
+
+    def visualize(self, reaction_system: ReactionSystem = None):
+        # Initialize figure
+
+        reactant = self.measured_reactant
+
+        colors = px.colors.qualitative.Plotly
+
+        fig = go.Figure()
+
+        annotations = []
+        steps = []
+
+        # Add measured data
+        new_colors = []
+        show_legend = True
+        for measurement, color in zip(self._get_species_data(reactant), colors):
+            if show_legend:
+                show_legend = True
+            else:
+                if old_init_conc != measurement.init_conc:
+                    show_legend = True
+
+            for replicate in measurement.replicates:
+                if any(np.isnan(replicate.data)):
+                    continue
+                fig.add_trace(
+                    go.Scatter(
+                        x=replicate.time,
+                        y=replicate.data,
+                        mode="markers",
+                        customdata=["measured"],
+                        name=f"{measurement.init_conc} {self._format_unit(measurement.unit)}",
+                        marker=dict(color=self.hex_to_rgba(color)),
+                        hovertemplate=f"Well ID: {replicate.id}",
+                        showlegend=show_legend,
+                    )
+                )
+                old_init_conc = measurement.init_conc
+                show_legend = False
+            new_colors.append(color)
+
+        # Add annotation for raw data
+        annotations.append(
+            go.layout.Annotation(
+                font=dict(color="black", size=10),
+                x=0,
+                y=0,
+                showarrow=False,
+                text=f"",
+                textangle=0,
+                xref="x",
+                yref="paper",
+                xanchor="left",
+            )
+        )
+
+        # Add simulated data for each model
+        systems = [
+            system for system in self.reaction_systems if system.result.fit_success
+        ]
+        systems = sorted(systems, key=lambda system: system.result.AIC)
+
+        dense_time = np.linspace(0, max(self.time_data.flatten()), 100)
+
+        for system in systems:
+            init_conditions = self._get_init_conditions
+
+            times = np.tile(dense_time, init_conditions.shape[0]).reshape(
+                init_conditions.shape[0], -1
+            )
+
+            simulated_substrates = system.simulate(
+                times, init_conditions, system.fitted_params_dict
+            )[:, :, 0]
+
+            for sim_substrate, time, color in zip(
+                simulated_substrates, times, reversed(new_colors)
+            ):
+                # Add data traces for each model
+                fig.add_trace(
+                    go.Scatter(
+                        x=time,
+                        y=sim_substrate,
+                        name=f"{system.name}",
+                        mode="lines",
+                        marker=dict(color="#000000"),
+                        customdata=[f"{system.name}"],
+                        hoverinfo="skip",
+                        showlegend=False,
+                        visible=False,
+                    )
+                )
+
+            # Add annotations for each model
+            label_pos = -0.5
+            annotations.append(
+                go.layout.Annotation(
+                    font=dict(color="black", size=10),
+                    x=0,
+                    y=label_pos,
+                    showarrow=False,
+                    text=f"{system._style_parameters()}",
+                    textangle=0,
+                    xref="paper",
+                    yref="paper",
+                    xanchor="left",
+                )
+            )
+
+        # Add step for raw data
+        steps.append(
+            dict(
+                method="update",
+                args=[
+                    dict(
+                        visible=self._visibility_mask(
+                            visible_traces=["measured"], fig_data=fig.data
+                        )
+                    ),
+                    {
+                        "title.text": f"{self.name} at {self.temperature} {self.temperature_unit} and pH {self.ph}"
+                    },
+                    {"annotations": [annotations[0]]},
+                ],
+                label=f"-",
+            )
+        )
+
+        for annotation, system in zip(annotations[1:], systems):
+            step = dict(
+                method="update",
+                args=[
+                    dict(
+                        visible=self._visibility_mask(
+                            visible_traces=["measured", system.name], fig_data=fig.data
+                        )
+                    ),
+                    dict(annotations=[annotation]),
+                    {
+                        "title.text": f"{self.name} at {self.temperature} {self.temperature_unit} and pH {self.ph}"
+                    },
+                ],
+                label=f"{system.name}",
+            )
+
+            steps.append(step)
+
+        # Add Slider
+        sliders = [
+            dict(
+                active=0,
+                currentvalue=dict(prefix="Model: ", font=dict(color="black")),
+                tickcolor="white",
+                tickwidth=0,
+                font=dict(color="white"),
+                pad={"t": 50},
+                steps=steps,
+            )
+        ]
+
+        fig.update_layout(
+            title=f"{self.name} at {self.temperature} {self.temperature_unit} and pH {self.ph}",
+            sliders=sliders,
+            updatemenus=[
+                dict(
+                    type="buttons",
+                    direction="right",
+                    x=0.7,
+                    y=1.3,
+                    showactive=True,
+                )
+            ],
+            template="simple_white",
+            hoverlabel_align="right",
+            legend_title=f"Initial {reactant.name}",
+            xaxis_title=f"time / {self.time_unit}",
+            yaxis_title=f"{reactant.name} / {self._format_unit(measurement.unit)}",
+            xaxis=dict(showgrid=False),
+            yaxis=dict(showgrid=False),
+        )
+
+        fig.show()
+
+    @staticmethod
+    def hex_to_rgba(hex: str) -> str:
+        rgb = tuple(int(hex.strip("#")[i : i + 2], 16) for i in (0, 2, 4))
+        return f"rgba{rgb + (255,)}"
+
+    @staticmethod
+    def _format_unit(unit: str) -> str:
+        unit = unit.replace(" / l", " L<sup>-1</sup>")
+        unit = unit.replace("1 / s", "s<sup>-1</sup>")
+        unit = unit.replace("1 / min", "min<sup>-1</sup>")
+        unit = unit.replace("umol", "µmol")
+        unit = unit.replace("ug", "µg")
+        return unit
+
+    @property
+    def _get_init_conditions(self):
+        init_conditions = np.zeros((len(self.measurements), 3))
+
+        for i, measurement in enumerate(self.measurements):
+            for data in measurement.species:
+                if data.species_id == self.substrate.id:
+                    if not data.replicates:
+                        init_conditions[i, 0] = data.init_conc
+                    else:
+                        init_conditions[i, 0] = np.mean(
+                            [replicate.data[0] for replicate in data.replicates]
+                        )
+
+                if data.species_id == self.enzyme.id:
+                    if not data.replicates:
+                        init_conditions[i, 1] = data.init_conc
+                    else:
+                        init_conditions[i, 1] = np.mean(
+                            [replicate.data[0] for replicate in data.replicates]
+                        )
+
+                if data.species_id == self.product.id:
+                    if not data.replicates:
+                        init_conditions[i, 2] = data.init_conc
+                    else:
+                        init_conditions[i, 2] = np.mean(
+                            [replicate.data[0] for replicate in data.replicates]
+                        )
+
+        nan_rows_mask = np.isnan(init_conditions).any(axis=1)
+
+        # Use the mask to select rows without NaN values in the first dimension
+        filtered_matrix = init_conditions[~nan_rows_mask]
+
+        return filtered_matrix
+
+    @staticmethod
+    def _visibility_mask(visible_traces: list, fig_data: list) -> list:
+        return [
+            any(fig["customdata"][0] == trace for trace in visible_traces)
+            for fig in fig_data
+        ]

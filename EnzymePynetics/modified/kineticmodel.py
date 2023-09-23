@@ -9,6 +9,7 @@ from sdRDM.base.utils import forge_signature, IDGenerator
 
 from .sboterm import SBOTerm, ParamType
 from .kineticparameter import KineticParameter
+from sympy import pprint
 
 SPECIES = ("substrate", "product", "enzyme", "inhibitor")
 
@@ -187,3 +188,7 @@ class KineticModel(sdRDM.DataModel):
             raise ValueError("Species equation must contain exactly one free symbol.")
 
         return species_eq
+
+    @property
+    def pretty_print(self):
+        return pprint(self._equality)

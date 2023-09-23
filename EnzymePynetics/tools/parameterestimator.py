@@ -939,9 +939,9 @@ class ParameterEstimator:
                 fig.layout["annotations"][count]["xanchor"] = "left"
                 inhibitor_annotations.append(fig.layout["annotations"][count])
 
-        ####################
+        ############################
         ### Add traces to figure ###
-        ####################
+        ############################
 
         annotations = []
         steps = []
