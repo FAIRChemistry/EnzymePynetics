@@ -1,4 +1,5 @@
 from sdRDM import DataModel
+from EnzymePynetics.modified.reactionsystem import ReactionSystem
 from EnzymePynetics.modified.protein import Protein
 from EnzymePynetics.modified.reactant import Reactant
 
@@ -58,3 +59,22 @@ def get_measured_species(
         f"'{measured_reactant}' not found in EnzymeML document.",
         f"Available reactants: {[reactant.name for reactant in enzymeml.reactants]}",
     )
+
+
+def _to_enzymeml(
+    enzymeml: "EnzymeML.EnzymeMLDocument",
+    reaction_system: ReactionSystem,
+    out_path: str,
+) -> "EnzymeML.EnzymeMLDocument":
+    if isinstance(enzymeml, str):
+        out_path = enzymeml
+        enzymeml, _ = DataModel.parse(enzymeml)
+
+    for reaction in reaction_system.reactions:
+        enzymeml.reactions.append(reaction)
+
+    if out_path:
+        with open(path, "w") as f:
+            f.write(enzymeml.json())
+
+    return enzymeml

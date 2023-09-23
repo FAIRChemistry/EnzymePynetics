@@ -1,13 +1,8 @@
-import copy
-from pyexpat import model
-import time
 import numpy as np
 import pandas as pd
 import sdRDM
-import sympy as sp
 import plotly.express as px
 from plotly import graph_objects as go
-from plotly.graph_objs import Layout
 
 from typing import List, Optional, Union
 from pydantic import Field
@@ -26,7 +21,7 @@ from .sboterm import SBOTerm, ParamType
 from .kineticmodel import KineticModel
 from .measurementdata import MeasurementData
 from .kineticparameter import KineticParameter
-from EnzymePynetics.ioutils import parse_enzymeml
+from EnzymePynetics.ioutils import parse_enzymeml, _to_enzymeml
 
 
 SPECIES_ROLES = ["substrate", "product", "enzyme", "inhibitor"]
@@ -511,6 +506,14 @@ class Estimator(sdRDM.DataModel):
         self.measurements.append(Measurement(**params))
 
         return self.measurements[-1]
+
+    def to_enzymeml(
+        self,
+        enzymeml: "EnzymeML.EnzymeMLDocument",
+        reaction_system: ReactionSystem = None,
+        out_path: str = None,
+    ) -> "EnzymeML.EnzymeMLDocument":
+        return _to_enzymeml(enzymeml, reaction_system, out_path)
 
     @property
     def ph(self):

@@ -1,1 +1,1 @@
-from .enzymeml import parse_enzymeml
+from .enzymeml import parse_enzymeml, _to_enzymeml

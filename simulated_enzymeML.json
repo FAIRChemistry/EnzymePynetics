@@ -36,6 +36,89 @@
       "ontology": "SBO:0000247"
     }
   ],
+  "reactions": [
+    {
+      "id": "r1",
+      "name": "Oxidation",
+      "reversible": false,
+      "temperature": 30.0,
+      "temperature_unit": "C",
+      "ph": 4.0,
+      "ontology": "SBO:0000176",
+      "model": {
+        "id": "model3",
+        "name": "competitive product inhibition",
+        "equation": "substrate = -substrate * enzyme * k_cat / (K_m * (1 + product / K_ic) + substrate)",
+        "parameters": [
+          {
+            "id": "kineticparameter0",
+            "name": "K_ic",
+            "value": 2.219870043199241,
+            "unit": "mmol / l",
+            "initial_value": 3.0,
+            "upper": 3000.0,
+            "lower": 0.003,
+            "is_global": false,
+            "stdev": 0.31122332440683753,
+            "constant": false
+          },
+          {
+            "id": "kineticparameter1",
+            "name": "k_cat",
+            "value": 14.025623123176901,
+            "unit": "1 / min",
+            "initial_value": 8.582935014291738,
+            "upper": 8582.93501429174,
+            "lower": 0.008582935014291738,
+            "is_global": false,
+            "stdev": 0.5960254200638845,
+            "constant": false,
+            "ontology": "SBO:0000025"
+          },
+          {
+            "id": "kineticparameter2",
+            "name": "K_m",
+            "value": 11.948866451448309,
+            "unit": "mmol / l",
+            "initial_value": 30.0,
+            "upper": 30000.0,
+            "lower": 0.03,
+            "is_global": false,
+            "stdev": 1.8061814858743084,
+            "constant": false,
+            "ontology": "SBO:0000027"
+          }
+        ]
+      },
+      "educts": [
+        {
+          "id": "reactionelement0",
+          "species_id": "reactant8",
+          "stoichiometry": 1.0,
+          "constant": false,
+          "ontology": "SBO:0000015"
+        }
+      ],
+      "products": [
+        {
+          "id": "reactionelement1",
+          "species_id": "reactant9",
+          "stoichiometry": 1.0,
+          "constant": false,
+          "ontology": "SBO:0000011"
+        }
+      ],
+      "modifiers": [
+        {
+          "id": "reactionelement2",
+          "species_id": "protein4",
+          "stoichiometry": 1.0,
+          "constant": false,
+          "ontology": "SBO:0000013"
+        }
+      ]
+    }
+  ],
   "measurements": [
     {
       "id": "measurement40",
