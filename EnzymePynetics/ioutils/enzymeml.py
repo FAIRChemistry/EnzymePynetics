@@ -1,3 +1,4 @@
+from typing import Tuple
 from sdRDM import DataModel
 from EnzymePynetics.modified.reactionsystem import ReactionSystem
 from EnzymePynetics.modified.protein import Protein
@@ -14,7 +15,7 @@ DataTypes = EnzymeML.enums.DataTypes
 
 def parse_enzymeml(
     cls: "Estimator", enzymeml: "EnzymeML.EnzymeMLDocument", measured_reactant: Reactant
-) -> "Estimator":
+) -> Tuple["Estimator", "EnzymeML.EnzymeMLDocument"]:
     if isinstance(enzymeml, str) and isinstance(measured_reactant, str):
         enzymeml, _ = DataModel.parse(enzymeml)
         measured_reactant = get_measured_species(enzymeml, measured_reactant)
@@ -26,11 +27,14 @@ def parse_enzymeml(
     for protein in enzymeml.proteins:
         species.append(Protein(**protein.to_dict()))
 
-    return cls(
-        name=enzymeml.name,
-        measured_reactant=measured_reactant,
-        measurements=enzymeml.measurements,
-        species=species,
+    return (
+        cls(
+            name=enzymeml.name,
+            measured_reactant=measured_reactant,
+            measurements=enzymeml.measurements,
+            species=species,
+        ),
+        enzymeml,
     )
 
 
@@ -70,6 +74,7 @@ def _to_enzymeml(
         out_path = enzymeml
         enzymeml, _ = DataModel.parse(enzymeml)
 
+    del enzymeml.reactions[0]
     for reaction in reaction_system.reactions:
         enzymeml.reactions.append(reaction)
 

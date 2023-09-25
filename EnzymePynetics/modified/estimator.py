@@ -221,7 +221,6 @@ class Estimator(sdRDM.DataModel):
         }
 
         new_model = KineticModel(**params)
-        new_model.pretty_print
         parameterized_model = self._init_parameters(new_model)
 
         if any([model.id == new_model.id for model in self.models]):
@@ -315,10 +314,32 @@ class Estimator(sdRDM.DataModel):
 
         return [substrate_data, enzyme_data, product_data, time_data]
 
-    def fit_models(self):
+    def _subset_time(
+        self,
+        max_time: float,
+        substrate_data: np.ndarray,
+        enzyme_data: np.ndarray,
+        product_data: np.ndarray,
+        time_data: np.ndarray,
+    ):
+        subset_slice = time_data < max_time
+
+        return (
+            substrate_data[subset_slice].reshape(time_data.shape[0], -1),
+            enzyme_data[subset_slice].reshape(time_data.shape[0], -1),
+            product_data[subset_slice].reshape(time_data.shape[0], -1),
+            time_data[subset_slice].reshape(time_data.shape[0], -1),
+        )
+
+    def fit_models(self, max_time: float = None):
         self._create_model_combinations()
 
         substrate, enzyme, product, time = self._remove_nans()
+
+        if max_time:
+            substrate, enzyme, product, time = self._subset_time(
+                max_time, substrate, enzyme, product, time
+            )
 
         for system in self.reaction_systems:
             print(f"Fitting {system.name}")
@@ -793,10 +814,10 @@ class Estimator(sdRDM.DataModel):
     @classmethod
     def from_enzymeml(
         cls,
-        enzymeml_doc: Union[str, "EnzymeMLDocument"],
+        enzymeml: Union[str, "EnzymeMLDocument"],
         measured_reactant: Union[Reactant, str],
     ):
-        return parse_enzymeml(cls, enzymeml_doc, measured_reactant)
+        return parse_enzymeml(cls, enzymeml, measured_reactant)
 
     def get_reaction_system(self, system_name: str) -> ReactionSystem:
         for system in self.reaction_systems:
