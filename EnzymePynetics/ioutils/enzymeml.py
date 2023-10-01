@@ -74,7 +74,6 @@ def _to_enzymeml(
         out_path = enzymeml
         enzymeml, _ = DataModel.parse(enzymeml)
 
-    del enzymeml.reactions[0]
     for reaction in reaction_system.reactions:
         enzymeml.reactions.append(reaction)
 
