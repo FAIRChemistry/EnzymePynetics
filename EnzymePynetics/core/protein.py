@@ -5,11 +5,12 @@ from pydantic import Field
 from sdRDM.base.utils import forge_signature, IDGenerator
 
 
+from .abstractspecies import AbstractSpecies
 from .sboterm import SBOTerm
 
 
 @forge_signature
-class Protein(sdRDM.DataModel):
+class Protein(AbstractSpecies):
 
     """This objects describes the proteins that were used or produced in the course of the experiment."""
 

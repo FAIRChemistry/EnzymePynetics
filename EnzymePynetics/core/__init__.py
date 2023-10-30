@@ -1,12 +1,8 @@
 from .estimator import Estimator
-from .reactionsystem import ReactionSystem
-from .modelresult import ModelResult
-from .parameter import Parameter
-from .correlation import Correlation
+from .reactant import Reactant
+from .protein import Protein
 from .vessel import Vessel
 from .abstractspecies import AbstractSpecies
-from .protein import Protein
-from .reactant import Reactant
 from .reaction import Reaction
 from .reactionelement import ReactionElement
 from .kineticmodel import KineticModel
@@ -14,21 +10,15 @@ from .kineticparameter import KineticParameter
 from .measurement import Measurement
 from .measurementdata import MeasurementData
 from .replicate import Replicate
-from .sboterm import SBOTerm
+from .sboterm import SBOTerm, ParamType
 from .datatypes import DataTypes
 
 __doc__ = ""
 
 __all__ = [
     "Estimator",
-    "ReactionSystem",
-    "ModelResult",
-    "Parameter",
-    "Correlation",
     "Vessel",
     "AbstractSpecies",
-    "Protein",
-    "Reactant",
     "Reaction",
     "ReactionElement",
     "KineticModel",
@@ -38,4 +28,6 @@ __all__ = [
     "Replicate",
     "SBOTerm",
     "DataTypes",
+    "Reactant",
+    "Protein",
 ]

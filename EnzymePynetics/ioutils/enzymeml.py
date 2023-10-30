@@ -1,8 +1,8 @@
 from typing import Tuple
 from sdRDM import DataModel
-from EnzymePynetics.modified.reactionsystem import ReactionSystem
-from EnzymePynetics.modified.protein import Protein
-from EnzymePynetics.modified.reactant import Reactant
+from EnzymePynetics.core.reactionsystem import ReactionSystem
+from EnzymePynetics.core.protein import Protein
+from EnzymePynetics.core.reactant import Reactant
 
 # Specify EnzymeML version
 URL = "https://github.com/EnzymeML/enzymeml-specifications.git"

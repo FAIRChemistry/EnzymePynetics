@@ -6,9 +6,9 @@ from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
 
 
+from .datatypes import DataTypes
 from .replicate import Replicate
 from .abstractspecies import AbstractSpecies
-from .datatypes import DataTypes
 
 
 @forge_signature

@@ -1,13 +1,17 @@
 import sdRDM
+import sympy as sp
 
-from typing import List, Optional
-from pydantic import Field
+from typing import List, Optional, FrozenSet
+from pydantic import Field, validator
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
 
 
+from .sboterm import SBOTerm, ParamType
 from .kineticparameter import KineticParameter
-from .sboterm import SBOTerm
+from sympy import pprint
+
+SPECIES = ("substrate", "product", "enzyme", "inhibitor")
 
 
 @forge_signature
@@ -41,6 +45,38 @@ class KineticModel(sdRDM.DataModel):
         default=None,
         description="Type of the estimated parameter.",
     )
+
+    @validator("equation")
+    def check_eqation_symbols(cls, v):
+        sp_dict = {"product": sp.Symbol("product")}
+
+        symbol_str, rate_law_str = v.split("=")
+
+        symbol = sp.parse_expr(symbol_str, sp_dict)
+        if not len(symbol.free_symbols) == 1:
+            raise ValueError(f"Species equation must one of {SPECIES} left of '='.")
+
+        rate_law = sp.parse_expr(rate_law_str, sp_dict)
+
+        params = []
+        observables = []
+        unknowns = []
+        for symbol in rate_law.free_symbols:
+            if symbol.name in SPECIES:
+                observables.append(symbol.name)
+            elif symbol.name in [param.value for param in ParamType]:
+                params.append(symbol.name)
+            else:
+                unknowns.append(symbol.name)
+
+        if len(unknowns) > 0:
+            raise ValueError(
+                f"Equation '{v}' contains unknown symbols: {unknowns}",
+                f"Allowed species are: {SPECIES}",
+                f"Allowed parameters are: {[param.name for param in ParamType]}",
+            )
+
+        return v
 
     def add_to_parameters(
         self,
@@ -89,6 +125,70 @@ class KineticModel(sdRDM.DataModel):
         if id is not None:
             params["id"] = id
 
-        self.parameters.append(KineticParameter(**params))
+        new_parameter = KineticParameter(**params)
 
-        return self.parameters[-1]
+        if any([parameter.name == new_parameter.name for parameter in self.parameters]):
+            print("already in list")
+            self.parameters = [
+                new_parameter if parameter.name == new_parameter.name else parameter
+                for parameter in self.parameters
+            ]
+
+            return new_parameter
+
+        else:
+            self.parameters.append(new_parameter)
+
+            return new_parameter
+
+    def _set_bounds():
+        pass
+
+    @property
+    def function(self) -> callable:
+        rate_expression = self.equation.split("=")[1]
+        fun = sp.parse_expr(rate_expression, {"product": sp.Symbol("product")})
+
+        return sp.lambdify(list(fun.free_symbols), fun)
+
+    @property
+    def eq_species(self) -> FrozenSet[str]:
+        return set(
+            symbol.name
+            for symbol in self._equality.free_symbols
+            if symbol.name in SPECIES
+        )
+
+    @property
+    def _equality(self):
+        sp_dict = {"product": sp.Symbol("product")}
+        return sp.Equality(
+            *[sp.parse_expr(side, sp_dict) for side in self.equation.split("=")]
+        )
+
+    @property
+    def eq_parameters(self):
+        return set(
+            symbol.name
+            for symbol in self._equality.free_symbols
+            if symbol.name in [param.value for param in ParamType]
+        )
+
+    @property
+    def _sp_rate_law(self):
+        rate_law = self.equation.split("=")[1]
+        return sp.parse_expr(rate_law, {"product": sp.Symbol("product")})
+
+    @property
+    def _sp_species_symbol(self) -> sp.Symbol:
+        rate_law = self.equation.split("=")[0]
+        species_eq = sp.parse_expr(rate_law, {"product": sp.Symbol("product")})
+
+        if not len(species_eq.free_symbols) == 1:
+            raise ValueError("Species equation must contain exactly one free symbol.")
+
+        return species_eq
+
+    @property
+    def pretty_print(self):
+        return pprint(self._equality)

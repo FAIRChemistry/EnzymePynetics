@@ -1,1 +1,1 @@
-from .modified import Estimator
+from .core import Estimator
