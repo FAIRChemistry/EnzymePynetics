@@ -858,8 +858,6 @@ class Estimator(sdRDM.DataModel):
                     show_legend = True
 
             for replicate in measurement.replicates:
-                print(substrate.init_conc)
-
                 if any(np.isnan(replicate.data)):
                     continue
                 fig.add_trace(
