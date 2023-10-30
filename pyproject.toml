@@ -5,6 +5,11 @@ description = "Kinetic parameter estimation and model comparison for catalyzed r
 authors = ["haeussma <83341109+haeussma@users.noreply.github.com>"]
 license = "MIT License"
 readme = "README.md"
+packages = [
+    { include = "EnzymePynetics/core" },
+    { include = "EnzymePynetics/ioutils" },
+    { include = "EnzymePynetics/tools" },
+]
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.13"
