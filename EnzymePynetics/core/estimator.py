@@ -3,6 +3,11 @@ import pandas as pd
 import sdRDM
 import plotly.express as px
 from plotly import graph_objects as go
+from IPython.display import display
+from tqdm import tqdm
+
+from lmfit import report_fit
+
 
 from typing import List, Optional, Union
 from pydantic import Field
@@ -341,16 +346,20 @@ class Estimator(sdRDM.DataModel):
                 max_time, substrate, enzyme, product, time
             )
 
-        for system in self.reaction_systems:
-            print(f"Fitting {system.name}")
-            system.fit(
+        systems = tqdm(self.reaction_systems)
+        for system in systems:
+            systems.set_description(desc=f"Fitting {system.name} model")
+            report = system.fit(
                 substrate_data=substrate,
                 enzyme_data=enzyme,
                 product_data=product,
                 times=time,
             )
+            # print(report_fit(report))
 
-        return self.fit_statistics()
+        self.reaction_systems.sort(key=lambda x: x.result.AIC, reverse=True)
+
+        display(self.fit_statistics())
 
     def fit_statistics(self):
         header = np.array(
@@ -359,6 +368,10 @@ class Estimator(sdRDM.DataModel):
                 ["AIC", ""],
                 [ParamType.K_CAT.value, f"1 / {self.time_unit}"],
                 [ParamType.K_M.value, self.substrate_unit],
+                [
+                    f"{ParamType.K_CAT.value} / {ParamType.K_M.value}",
+                    f"{self.substrate_unit} / {self.time_unit}",
+                ],
                 [ParamType.K_IC.value, self.substrate_unit],
                 [ParamType.K_IU.value, self.substrate_unit],
                 [ParamType.K_IE.value, f"1 / {self.time_unit}"],
@@ -379,21 +392,130 @@ class Estimator(sdRDM.DataModel):
 
         decimal_formatting = {
             "AIC": "{:.0f}",
-            ParamType.K_M.value: "{:.2f}",
-            ParamType.K_CAT.value: "{:.2f}",
-            ParamType.K_IE.value: "{:.2f}",
-            ParamType.K_IU.value: "{:.2f}",
-            ParamType.K_IC.value: "{:.2f}",
+            ParamType.K_M.value: "{3f}",
+            ParamType.K_CAT.value: "{:.3f}",
+            ParamType.K_IE.value: "{:.3f}",
+            ParamType.K_IU.value: "{:.3f}",
+            ParamType.K_IC.value: "{:.3f}",
         }
 
         df = pd.DataFrame(entries).set_index("Model").sort_values("AIC")
         df.columns = pd.MultiIndex.from_arrays(header[1:, :].T)
 
-        return (
-            df.style.format("{:.2f}", na_rep="")
-            .format("{:.0f}", subset=["AIC"], na_rep="failed")
-            .background_gradient(cmap="Blues", subset=["AIC"])
+        df[f"{ParamType.K_CAT.value} / {ParamType.K_M.value}"] = (
+            df[ParamType.K_CAT.value].values / df[ParamType.K_M.value].values
         )
+
+        return (
+            df.style.format("{:.3f}", na_rep="")
+            .format("{:.0f}", subset=["AIC"], na_rep="failed")
+            .background_gradient(cmap="Blues", subset=["AIC"], gmap=-df["AIC"])
+        )
+
+    def correlations(self):
+        # Format model names
+        model_names = [system.name for system in self.reaction_systems]
+        for name_id, name in enumerate(model_names):
+            if len(name.split()) > 3:
+                model_names[name_id] = (
+                    " ".join(name.split()[:3]) + "<br>" + " ".join(name.split()[3:])
+                )
+
+            # Format correlation labels
+            param_name_map = {
+                ParamType.K_CAT.value: "k<sub>cat</sub>",
+                ParamType.K_M.value: "K<sub>m</sub>",
+                ParamType.K_IE.value: "k<sub>ie</sub>",
+                ParamType.K_IC.value: "K<sub>ic</sub>",
+                ParamType.K_IU.value: "K<sub>iu</sub>",
+            }
+
+        unique_labels = set()
+        for system in self.reaction_systems:
+            added_labels = set()
+            for param in system.result.parameters:
+                for correlation in param.correlations:
+                    if {param.name, correlation.parameter_name} in added_labels:
+                        continue
+
+                    added_labels.add(
+                        frozenset((param.name, correlation.parameter_name))
+                    )
+                    unique_labels.add(f"{(param.name)} {correlation.parameter_name}")
+
+        print(unique_labels)
+
+        # Add data to heatmap
+        correlations = []
+        for system in self.reaction_systems:
+            system_entry = []
+            for label in unique_labels:
+                key_label, value_label = label.split()
+
+                if key_label not in [param.name for param in system.result.parameters]:
+                    system_entry.append(float("nan"))
+                    continue
+
+                for parameter in system.result.parameters:
+                    if key_label != parameter.name:
+                        continue
+
+                    if value_label not in [
+                        corr.parameter_name for corr in parameter.correlations
+                    ]:
+                        system_entry.append(float("nan"))
+                        continue
+
+                    for other_correlation in parameter.correlations:
+                        if other_correlation.parameter_name != value_label:
+                            continue
+                        system_entry.append(other_correlation.value)
+
+                    if parameter.name != key_label:
+                        continue
+
+                    for correlation in parameter.correlations:
+                        if param.name != key_label:
+                            continue
+
+                        system_entry.append(correlation.value)
+
+            correlations.append(system_entry)
+
+        correlations = np.array(correlations)
+        unique_labels = list(unique_labels)
+        model_names = model_names
+        text_values = np.around(correlations, decimals=2).astype(str)
+        text_values[text_values == "nan"] = ""
+
+        for label_id, label in enumerate(unique_labels):
+            key, value = label.split()
+            unique_labels[
+                label_id
+            ] = f"{param_name_map[key]}<br>{param_name_map[value]}"
+
+        fig = go.Figure(
+            data=go.Heatmap(
+                z=correlations,
+                x=list(unique_labels),
+                y=model_names,
+                colorscale=px.colors.diverging.balance,
+                zmin=-1,
+                zmax=1,
+                text=text_values,
+                texttemplate="%{text}",
+            )
+        )
+        fig.update_layout(
+            template="simple_white",
+            xaxis_title="Parameter correlations",
+            yaxis_title="Model",
+            yaxis=dict(showgrid=False),
+            xaxis=dict(showgrid=False),
+            title=f"Correlations of estimated parameters at {self.temperature} {self.temperature_unit} and pH {self.ph}",
+        )
+
+        fig.show()
 
     def add_to_reaction_systems(
         self,
@@ -433,39 +555,39 @@ class Estimator(sdRDM.DataModel):
                 ontology = SBOTerm.K_CAT
                 initial_value = self._init_kcat
                 unit = f"1 / {self.time_unit}"
-                upper = initial_value * 1000
-                lower = initial_value * 0.001
+                upper = initial_value * 10
+                lower = initial_value / 100
 
             elif param == ParamType.K_M.value:
                 ontology = SBOTerm.K_M
                 initial_value = self._init_km
                 unit = self.substrate_unit
-                upper = initial_value * 1000
-                lower = initial_value * 0.001
+                upper = initial_value * 10
+                lower = initial_value / 100
 
             elif param == ParamType.K_IC.value:
-                initial_value = self._init_km / 10
+                initial_value = self._init_km
                 unit = self.substrate_unit
                 ontology = None
-                upper = initial_value * 1000
-                lower = initial_value * 0.001
+                upper = initial_value * 5
+                lower = initial_value / 100
 
             elif param == ParamType.K_IU.value:
-                initial_value = self._init_km / 10
+                initial_value = self._init_km
                 unit = self.substrate_unit
                 ontology = None
-                upper = initial_value * 1000
-                lower = initial_value * 0.001
+                upper = initial_value * 5
+                lower = initial_value / 100
 
             elif param == ParamType.K_IE.value:
                 if self.time_unit == "s" or self.time_unit == "sec":
-                    initial_value = np.log(2) / 90 * 60  # 90 min half life
+                    initial_value = np.log(2) / 60 / 60  # 60 min half life
                 if self.time_unit == "min":
-                    initial_value = np.log(2) / 90  # 90 min half life
+                    initial_value = np.log(2) / 60  # 60 min half life
                 unit = f"1 / {self.time_unit}"
                 ontology = None
-                upper = initial_value * 100
-                lower = initial_value * 0.001
+                upper = initial_value * 50
+                lower = initial_value / 50
 
             else:
                 raise ValueError(f"Parameter '{param}' not recognized.")
