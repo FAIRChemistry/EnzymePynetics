@@ -75,9 +75,6 @@ class ReactionSystem(sdRDM.DataModel):
 
         return parameters
 
-    def fit_ode(substrate_data: np.ndarray, params: Parameters, time: np.ndarray):
-        pass
-
     def _setup_ode_model(self) -> Callable:
         substrate_eq = self.substrate.model.function
 
@@ -232,6 +229,15 @@ class ReactionSystem(sdRDM.DataModel):
                     + f"{self._format_unit(parameter.unit)} \n\n"
                 )
         return params
+
+    def get_correlation(self, param_1: str, param_2: str):
+        for parameter in self.result.parameters:
+            if parameter.name == param_1:
+                for correlation in parameter.correlations:
+                    if correlation.parameter_name == param_2:
+                        return correlation.value
+
+        raise ValueError(f"No correlation found between {param_1} and {param_2}")
 
     @staticmethod
     def _format_unit(unit: str) -> str:
