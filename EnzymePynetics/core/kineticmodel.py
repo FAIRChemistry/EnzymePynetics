@@ -47,7 +47,7 @@ class KineticModel(sdRDM.DataModel):
     )
 
     @validator("equation")
-    def check_eqation_symbols(cls, v):
+    def check_equation_symbols(cls, v):
         sp_dict = {"product": sp.Symbol("product")}
 
         symbol_str, rate_law_str = v.split("=")
@@ -128,7 +128,6 @@ class KineticModel(sdRDM.DataModel):
         new_parameter = KineticParameter(**params)
 
         if any([parameter.name == new_parameter.name for parameter in self.parameters]):
-            print("already in list")
             self.parameters = [
                 new_parameter if parameter.name == new_parameter.name else parameter
                 for parameter in self.parameters
@@ -140,9 +139,6 @@ class KineticModel(sdRDM.DataModel):
             self.parameters.append(new_parameter)
 
             return new_parameter
-
-    def _set_bounds():
-        pass
 
     @property
     def function(self) -> callable:
