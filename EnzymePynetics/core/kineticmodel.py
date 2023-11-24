@@ -11,7 +11,7 @@ from .sboterm import SBOTerm, ParamType
 from .kineticparameter import KineticParameter
 from sympy import pprint
 
-SPECIES = ("substrate", "product", "enzyme", "inhibitor")
+SPECIES = ("substrate", "product", "catalyst", "inhibitor")
 
 
 @forge_signature
@@ -139,6 +139,13 @@ class KineticModel(sdRDM.DataModel):
             self.parameters.append(new_parameter)
 
             return new_parameter
+
+    def get_parameter(self, param_name: str) -> KineticParameter:
+        for parameter in self.parameters:
+            if parameter.name == param_name:
+                return parameter
+
+        raise ValueError(f"Parameter '{param_name}' not found in kinetic model.")
 
     @property
     def function(self) -> callable:

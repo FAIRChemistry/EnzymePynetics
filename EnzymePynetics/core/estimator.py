@@ -1,3 +1,7 @@
+import enum
+from itertools import combinations
+from os import name
+import re
 import numpy as np
 import pandas as pd
 import sdRDM
@@ -29,7 +33,7 @@ from .kineticparameter import KineticParameter
 from EnzymePynetics.ioutils import parse_enzymeml, _to_enzymeml
 
 
-SPECIES_ROLES = ["substrate", "product", "enzyme", "inhibitor"]
+SPECIES_ROLES = ["substrate", "product", "catalyst", "inhibitor"]
 
 
 @forge_signature
@@ -94,7 +98,7 @@ class Estimator(sdRDM.DataModel):
         model: Optional[KineticModel] = None,
         educt: Reactant = None,
         product: Reactant = None,
-        enzyme: Protein = None,
+        catalyst: Protein = None,
         inhibitor: Reactant = None,
     ) -> None:
         """
@@ -142,14 +146,14 @@ class Estimator(sdRDM.DataModel):
         # Add modifiers
         modifiers = []
 
-        if not enzyme and len(self.enzymes) == 1:
-            enzyme = self.enzymes[0]
+        if not catalyst and len(self.enzymes) == 1:
+            catalyst = self.enzymes[0]
 
-        if enzyme:
+        if catalyst:
             modifiers.append(
                 ReactionElement(
-                    species_id=enzyme.id,
-                    constant=enzyme.constant,
+                    species_id=catalyst.id,
+                    constant=catalyst.constant,
                     ontology=SBOTerm.CATALYST,
                 )
             )
@@ -242,8 +246,6 @@ class Estimator(sdRDM.DataModel):
             return new_model
 
     def _create_model_combinations(self):
-        inactivation_reaction = self._create_inactivation_reaction()
-
         if len(self.reactions) > 1:
             raise ValueError(
                 "Currently only one reaction per reaction system is supported."
@@ -261,26 +263,32 @@ class Estimator(sdRDM.DataModel):
                 )
             )
 
-            # create reaction system with enzyme models
-            for enzyme_model in self.enzyme_models:
-                substrate_reaction = Reaction(**substrate_reaction.to_dict())
-                new_inactivation = Reaction(**inactivation_reaction.to_dict())
-                new_inactivation.model = KineticModel(**enzyme_model.to_dict())
+            if self.enzyme_models:
+                inactivation_reaction = self._create_inactivation_reaction()
+                # create reaction system with enzyme models
+                for enzyme_model in self.enzyme_models:
+                    substrate_reaction = Reaction(**substrate_reaction.to_dict())
+                    new_inactivation = Reaction(**inactivation_reaction.to_dict())
+                    new_inactivation.model = KineticModel(**enzyme_model.to_dict())
 
-                self.reaction_systems.append(
-                    ReactionSystem(
-                        name=f"{substrate_model.name} with {enzyme_model.name}",
-                        reactions=[substrate_reaction, new_inactivation],
+                    self.reaction_systems.append(
+                        ReactionSystem(
+                            name=f"{substrate_model.name} with {enzyme_model.name}",
+                            reactions=[substrate_reaction, new_inactivation],
+                        )
                     )
-                )
 
     def _create_inactivation_reaction(self) -> Reaction:
         # Make copies of enzyme species
-        active = Protein(**self.enzyme.to_dict())
+        if self.enzyme.ontology == SBOTerm.SMALL_MOLECULE.value:
+            Species = Reactant
+        else:
+            Species = Protein
+        active = Species(**self.enzyme.to_dict())
         active.name += " (active)"
         active.constant = False
 
-        inactive = Protein(**self.enzyme.to_dict())
+        inactive = Species(**self.enzyme.to_dict())
         inactive.name += " (inactive)"
         inactive.id += "_inactive"
         inactive.constant = False
@@ -336,6 +344,47 @@ class Estimator(sdRDM.DataModel):
             time_data[subset_slice].reshape(time_data.shape[0], -1),
         )
 
+    def fit_models_fixed_params(
+        self,
+        model: KineticModel,
+        max_time: float = None,
+        fixed_params: List[str] = None,
+    ):
+        if isinstance(model, str):
+            model = [
+                system for system in self.reaction_systems if system.name == model
+            ][0]
+
+        for system in self.reaction_systems:
+            if system.name != model.name:
+                for reaction in system.reactions:
+                    for param in reaction.model.parameters:
+                        if param.name in fixed_params:
+                            param.value = model.get_parameter(param.name).value
+
+        substrate, enzyme, product, time = self._remove_nans()
+
+        if max_time:
+            substrate, enzyme, product, time = self._subset_time(
+                max_time, substrate, enzyme, product, time
+            )
+
+        systems = tqdm(self.reaction_systems)
+        for system in systems:
+            systems.set_description(desc=f"Fitting {system.name} model")
+            report = system.fit(
+                substrate_data=substrate,
+                enzyme_data=enzyme,
+                product_data=product,
+                times=time,
+                fixed_params=fixed_params,
+            )
+            # print(report_fit(report))
+
+        self.reaction_systems.sort(key=lambda x: x.result.AIC)
+
+        display(self.fit_statistics())
+
     def fit_models(self, max_time: float = None):
         self._create_model_combinations()
 
@@ -355,9 +404,8 @@ class Estimator(sdRDM.DataModel):
                 product_data=product,
                 times=time,
             )
-            # print(report_fit(report))
 
-        self.reaction_systems.sort(key=lambda x: x.result.AIC, reverse=True)
+        self.reaction_systems.sort(key=lambda x: x.result.AIC)
 
         display(self.fit_statistics())
 
@@ -412,7 +460,99 @@ class Estimator(sdRDM.DataModel):
             .background_gradient(cmap="Blues", subset=["AIC"], gmap=-df["AIC"])
         )
 
-    def correlations(self):
+    def _format_html(self, param: str):
+        if param == f"{ParamType.K_CAT.value} {ParamType.K_M.value}":
+            param1, param2 = param.split()
+            return f"{param1.replace('_', '<sub>') + '</sub>'} {param2.replace('_', '<sub>') + '</sub>'}<sup>-1</sup>"
+
+        return param.replace("_", "<sub>") + "</sub>"
+
+    def model_table(self, round_digits: int = 3, return_fig: bool = False):
+        table_traces = self._get_table_traces(round_digits)
+
+        fig = go.Figure(data=table_traces)
+        if return_fig:
+            return fig
+
+        fig.update_layout(
+            title=f"{self.name} at {self.temperature} {self.temperature_unit} and pH {self.ph}",
+        )
+
+        fig.show()
+
+    def _get_table_traces(self, round_digits: int = 3):
+        # Get column labels
+
+        # Iterate
+        parameters = {}
+        for system in self.reaction_systems:
+            for reaction in system.reactions:
+                for param in reaction.model.parameters:
+                    parameters[param.name] = param.unit
+
+        columns = ["Model", "AIC"] + list(parameters.keys())
+        columns.append(f"{ParamType.K_CAT.value} {ParamType.K_M.value}")
+
+        headers = []
+        for column in columns:
+            if column == "Model":
+                col = ["", f"<b>{column}</b>"]
+                headers.append(col)
+            elif column == "AIC":
+                col = ["", f"<b>{column}</b>"]
+                headers.append(col)
+            elif column == f"{ParamType.K_CAT.value} {ParamType.K_M.value}":
+                col = [
+                    f"<b>{self._format_html(column)}</b><br>{ReactionSystem._format_unit(parameters[ParamType.K_CAT.value])} {ReactionSystem._format_unit(parameters[ParamType.K_M.value])}",
+                    "",
+                ]
+                headers.append(col)
+            else:
+                col = [
+                    f"<b>{self._format_html(column)}</b><br>{ReactionSystem._format_unit(parameters[column])}",
+                    "",
+                ]
+                headers.append(col)
+
+        entries = []
+        for system in self.reaction_systems:
+            data = []
+            for row_name in columns:
+                if row_name == "Model":
+                    data.append(system.name)
+                    continue
+                if row_name == "AIC":
+                    data.append(round(system.result.AIC))
+                    continue
+
+                if row_name not in [param.name for param in system.result.parameters]:
+                    data.append(float("nan"))
+                    continue
+
+                for reaction in system.reactions:
+                    for parameter in reaction.model.parameters:
+                        if parameter.name != row_name:
+                            continue
+                        percent_error = parameter.stdev / parameter.value * 100
+                        if percent_error > 100:
+                            percent_error = f"± >100 %"
+                        else:
+                            percent_error = (
+                                f"± {percent_error:.0f} %" if percent_error else ""
+                            )
+                        data.append(
+                            f"{round(parameter.value, round_digits)}<br>{percent_error}"
+                        )
+            entries.append(data)
+        entries = np.array(entries).T
+        entries[entries == "nan"] = ""
+
+        return go.Table(
+            header=dict(values=headers, align="center"),
+            cells=dict(values=entries, align="center"),
+        )
+
+    def _get_correlation_traces(self):
         # Format model names
         model_names = [system.name for system in self.reaction_systems]
         for name_id, name in enumerate(model_names):
@@ -430,27 +570,15 @@ class Estimator(sdRDM.DataModel):
                 ParamType.K_IU.value: "K<sub>iu</sub>",
             }
 
-        unique_labels = set()
-        for system in self.reaction_systems:
-            added_labels = set()
-            for param in system.result.parameters:
-                for correlation in param.correlations:
-                    if {param.name, correlation.parameter_name} in added_labels:
-                        continue
-
-                    added_labels.add(
-                        frozenset((param.name, correlation.parameter_name))
-                    )
-                    unique_labels.add(f"{(param.name)} {correlation.parameter_name}")
-
-        print(unique_labels)
+        params = [param.value for param in ParamType]
+        unique_combinations = list(combinations(params, 2))
 
         # Add data to heatmap
         correlations = []
         for system in self.reaction_systems:
             system_entry = []
-            for label in unique_labels:
-                key_label, value_label = label.split()
+            for label in unique_combinations:
+                key_label, value_label = label
 
                 if key_label not in [param.name for param in system.result.parameters]:
                     system_entry.append(float("nan"))
@@ -475,37 +603,38 @@ class Estimator(sdRDM.DataModel):
                         continue
 
                     for correlation in parameter.correlations:
-                        if param.name != key_label:
+                        if correlation.parameter_name != key_label:
                             continue
 
                         system_entry.append(correlation.value)
 
             correlations.append(system_entry)
 
-        correlations = np.array(correlations)
-        unique_labels = list(unique_labels)
-        model_names = model_names
+        correlations = np.array(correlations)[::-1]
+        model_names = list(reversed(model_names))
         text_values = np.around(correlations, decimals=2).astype(str)
         text_values[text_values == "nan"] = ""
 
-        for label_id, label in enumerate(unique_labels):
-            key, value = label.split()
-            unique_labels[
+        for label_id, label in enumerate(unique_combinations):
+            key, value = label
+            unique_combinations[
                 label_id
             ] = f"{param_name_map[key]}<br>{param_name_map[value]}"
 
-        fig = go.Figure(
-            data=go.Heatmap(
-                z=correlations,
-                x=list(unique_labels),
-                y=model_names,
-                colorscale=px.colors.diverging.balance,
-                zmin=-1,
-                zmax=1,
-                text=text_values,
-                texttemplate="%{text}",
-            )
+        return go.Heatmap(
+            z=correlations,
+            x=unique_combinations,
+            y=model_names,
+            colorscale=px.colors.diverging.balance,
+            zmin=-1,
+            zmax=1,
+            text=text_values,
+            texttemplate="%{text}",
         )
+
+    def correlations(self, return_fig: bool = False):
+        fig = go.Figure(data=self._get_correlation_traces())
+
         fig.update_layout(
             template="simple_white",
             xaxis_title="Parameter correlations",
@@ -514,6 +643,9 @@ class Estimator(sdRDM.DataModel):
             xaxis=dict(showgrid=False),
             title=f"Correlations of estimated parameters at {self.temperature} {self.temperature_unit} and pH {self.ph}",
         )
+
+        if return_fig:
+            return fig
 
         fig.show()
 
@@ -555,15 +687,15 @@ class Estimator(sdRDM.DataModel):
                 ontology = SBOTerm.K_CAT
                 initial_value = self._init_kcat
                 unit = f"1 / {self.time_unit}"
-                upper = initial_value * 10
-                lower = initial_value / 100
+                upper = initial_value * 1000
+                lower = initial_value / 10000
 
             elif param == ParamType.K_M.value:
                 ontology = SBOTerm.K_M
                 initial_value = self._init_km
                 unit = self.substrate_unit
-                upper = initial_value * 10
-                lower = initial_value / 100
+                upper = initial_value * 1000
+                lower = initial_value / 10000
 
             elif param == ParamType.K_IC.value:
                 initial_value = self._init_km
@@ -584,6 +716,8 @@ class Estimator(sdRDM.DataModel):
                     initial_value = np.log(2) / 60 / 60  # 60 min half life
                 if self.time_unit == "min":
                     initial_value = np.log(2) / 60  # 60 min half life
+                if self.time_unit == "h":
+                    initial_value = np.log(2)
                 unit = f"1 / {self.time_unit}"
                 ontology = None
                 upper = initial_value * 50
@@ -860,7 +994,6 @@ class Estimator(sdRDM.DataModel):
 
                 if not data.replicates:
                     enzyme_data.append([data.init_conc] * n_reps)
-
         return np.repeat(np.array(enzyme_data), self.time_data.shape[1]).reshape(
             self.time_data.shape
         )

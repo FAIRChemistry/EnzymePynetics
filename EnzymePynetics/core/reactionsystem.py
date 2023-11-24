@@ -1,4 +1,5 @@
 from math import nan
+import re
 import sdRDM
 from lmfit import Parameters, minimize
 from lmfit.minimizer import MinimizerResult
@@ -16,6 +17,7 @@ from .parameter import Parameter
 from .correlation import Correlation
 from .reaction import Reaction
 from .sboterm import ParamType, SBOTerm
+from .kineticparameter import KineticParameter
 
 
 @forge_signature
@@ -61,16 +63,23 @@ class ReactionSystem(sdRDM.DataModel):
 
         return None
 
-    def _create_lmfit_params(self) -> Parameters:
+    def _create_lmfit_params(self, fixed_params: List[str] = []) -> Parameters:
         parameters = Parameters()
 
         for reaction in self.reactions:
             for param in reaction.model.parameters:
+                if param.name in fixed_params:
+                    vary = False
+                    value = param.value
+                else:
+                    vary = True
+                    value = param.initial_value
                 parameters.add(
                     name=param.name,
-                    value=param.initial_value,
+                    value=value,
                     min=param.lower,
                     max=param.upper,
+                    vary=vary,
                 )
 
         return parameters
@@ -82,11 +91,11 @@ class ReactionSystem(sdRDM.DataModel):
             enzyme_eq = self.enzyme.model.function
         else:
 
-            def enzyme_eq(enzyme):
+            def enzyme_eq(catalyst):  # change to enzyme
                 return 0
 
         def ode_model(species, time: np.ndarray, params: Parameters):
-            species_dict = dict(zip(["substrate", "enzyme", "product"], species))
+            species_dict = dict(zip(["substrate", "catalyst", "product"], species))
 
             try:
                 params_dict = params.valuesdict()
@@ -99,6 +108,7 @@ class ReactionSystem(sdRDM.DataModel):
             substrate_dict = {k: combined_dict[k] for k in subtrate_args}
 
             enzyme_args = enzyme_eq.__code__.co_varnames
+            # enzyme_args = ("catalyst",)
             enzyme_dict = {k: combined_dict[k] for k in enzyme_args}
 
             d_substrate = substrate_eq(**substrate_dict)
@@ -149,9 +159,9 @@ class ReactionSystem(sdRDM.DataModel):
         enzyme_data: np.ndarray,
         product_data: np.ndarray,
         times: np.ndarray,
+        fixed_params: List[str] = [],
     ):
-        params = self._create_lmfit_params()
-        # model = self._setup_ode_model()
+        params = self._create_lmfit_params(fixed_params=fixed_params)
 
         init_conditions = self._get_init_conditions(
             substrate_data=substrate_data,
@@ -171,6 +181,12 @@ class ReactionSystem(sdRDM.DataModel):
         self._update_fit_statistics(lmfit_result)
 
         return lmfit_result
+
+    def get_parameter(self, param_name: str) -> KineticParameter:
+        for reaction in self.reactions:
+            return reaction.model.get_parameter(param_name)
+
+        raise ValueError(f"Parameter '{param_name}' not found in kinetic model.")
 
     def _update_param_values(self, result: MinimizerResult):
         if not result.success:
