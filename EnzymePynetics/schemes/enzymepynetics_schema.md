@@ -62,7 +62,7 @@ classDiagram
         +Reactant measured_reactant
         +ReactionSystem[0..*] reaction_systems
         +AbstractSpecies, Protein, Reactant[0..*] species
-        +Reaction reaction
+        +Reaction[0..*] reactions
         +KineticModel[0..*] models
         +Measurement[0..*] measurements
     }

@@ -8,15 +8,15 @@ from sdRDM.base.utils import forge_signature, IDGenerator
 from lmfit import Parameters, minimize
 from lmfit.minimizer import MinimizerResult
 from scipy.integrate import odeint
+from .modelresult import ModelResult
 from .correlation import Correlation
 from .kineticparameter import KineticParameter
-from .reaction import Reaction
-from .modelresult import ModelResult
-from .parameter import Parameter
-from .sboterm import SBOTerm
-from .paramtype import ParamType
-from .kineticmodel import KineticModel
 from .reactionelement import ReactionElement
+from .reaction import Reaction
+from .sboterm import SBOTerm
+from .kineticmodel import KineticModel
+from .parameter import Parameter
+from .paramtype import ParamType
 
 
 @forge_signature
@@ -48,7 +48,7 @@ class ReactionSystem(sdRDM.DataModel):
         default="https://github.com/haeussma/EnzymePynetics"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="1748ba97d5a2129736858e14a1bd662315849589"
+        default="1eb6fe3fd3d8f9a2eb20911141e5b01d10a9bd57"
     )
 
     def add_to_reactions(
@@ -178,17 +178,15 @@ class ReactionSystem(sdRDM.DataModel):
     def simulate(
         self, times: np.ndarray, init_conditions: np.ndarray, params: Parameters
     ):
-        return np.array(
-            [
-                odeint(
-                    func=self._setup_ode_model(),
-                    y0=init_condition,
-                    t=time,
-                    args=(params,),
-                )
-                for init_condition, time in zip(init_conditions, times)
-            ]
-        )
+        return np.array([
+            odeint(
+                func=self._setup_ode_model(),
+                y0=init_condition,
+                t=time,
+                args=(params,),
+            )
+            for init_condition, time in zip(init_conditions, times)
+        ])
 
     def residuals(
         self,

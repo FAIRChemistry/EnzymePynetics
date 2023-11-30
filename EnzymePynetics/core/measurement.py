@@ -4,9 +4,9 @@ from typing import List, Optional
 from pydantic import Field, PrivateAttr
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
+from .replicate import Replicate
 from .measurementdata import MeasurementData
 from .abstractspecies import AbstractSpecies
-from .replicate import Replicate
 
 
 @forge_signature
@@ -73,7 +73,7 @@ class Measurement(sdRDM.DataModel):
         default="https://github.com/haeussma/EnzymePynetics"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="1748ba97d5a2129736858e14a1bd662315849589"
+        default="1eb6fe3fd3d8f9a2eb20911141e5b01d10a9bd57"
     )
 
     def add_to_species(
