@@ -7,7 +7,8 @@ from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
 from sympy import pprint
 from .kineticparameter import KineticParameter
-from .sboterm import SBOTerm, ParamType
+from .sboterm import SBOTerm
+from .paramtype import ParamType
 
 
 @forge_signature
@@ -213,9 +214,9 @@ class KineticModel(sdRDM.DataModel):
     @property
     def _equality(self):
         sp_dict = {"product": sp.Symbol("product")}
-        return sp.Equality(*[
-            sp.parse_expr(side, sp_dict) for side in self.equation.split("=")
-        ])
+        return sp.Equality(
+            *[sp.parse_expr(side, sp_dict) for side in self.equation.split("=")]
+        )
 
     @property
     def eq_parameters(self):

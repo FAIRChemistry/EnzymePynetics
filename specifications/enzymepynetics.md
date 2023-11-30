@@ -95,9 +95,9 @@ Defines a kinetic parameter.
 ### ParamType
 
 ```python
-  K_M = "K_M"
-  K_CAT = "k_cat"
-  K_IC = "K_ic"
-  K_IU = "K_iu"
-  K_IE = "k_ie"
+K_M = "K_M"
+K_CAT = "k_cat"
+K_IC = "K_ic"
+K_IU = "K_iu"
+K_IE = "k_ie"
 ```
