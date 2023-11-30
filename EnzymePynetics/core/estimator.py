@@ -19,7 +19,8 @@ from .reactionsystem import ReactionSystem
 from .reactionelement import ReactionElement
 from .vessel import Vessel
 from .reactant import Reactant
-from .sboterm import SBOTerm, ParamType
+from .sboterm import SBOTerm
+from .paramtype import ParamType
 from .abstractspecies import AbstractSpecies
 from .measurement import Measurement
 from .protein import Protein
@@ -1304,19 +1305,21 @@ class Estimator(sdRDM.DataModel):
         display(self.fit_statistics())
 
     def fit_statistics(self):
-        header = np.array([
-            ["Model", ""],
-            ["AIC", ""],
-            [ParamType.K_CAT.value, f"1 / {self.time_unit}"],
-            [ParamType.K_M.value, self.substrate_unit],
+        header = np.array(
             [
-                f"{ParamType.K_CAT.value} / {ParamType.K_M.value}",
-                f"{self.substrate_unit} / {self.time_unit}",
-            ],
-            [ParamType.K_IC.value, self.substrate_unit],
-            [ParamType.K_IU.value, self.substrate_unit],
-            [ParamType.K_IE.value, f"1 / {self.time_unit}"],
-        ])
+                ["Model", ""],
+                ["AIC", ""],
+                [ParamType.K_CAT.value, f"1 / {self.time_unit}"],
+                [ParamType.K_M.value, self.substrate_unit],
+                [
+                    f"{ParamType.K_CAT.value} / {ParamType.K_M.value}",
+                    f"{self.substrate_unit} / {self.time_unit}",
+                ],
+                [ParamType.K_IC.value, self.substrate_unit],
+                [ParamType.K_IU.value, self.substrate_unit],
+                [ParamType.K_IE.value, f"1 / {self.time_unit}"],
+            ]
+        )
 
         entries = []
         for system in self.reaction_systems:
@@ -1355,9 +1358,7 @@ class Estimator(sdRDM.DataModel):
     def _format_html(self, param: str):
         if param == f"{ParamType.K_CAT.value} {ParamType.K_M.value}":
             param1, param2 = param.split()
-            return (
-                f"{param1.replace('_', '<sub>') + '</sub>'} {param2.replace('_', '<sub>') + '</sub>'}<sup>-1</sup>"
-            )
+            return f"{param1.replace('_', '<sub>') + '</sub>'} {param2.replace('_', '<sub>') + '</sub>'}<sup>-1</sup>"
 
         return param.replace("_", "<sub>") + "</sub>"
 
@@ -1516,9 +1517,9 @@ class Estimator(sdRDM.DataModel):
 
         for label_id, label in enumerate(unique_combinations):
             key, value = label
-            unique_combinations[label_id] = (
-                f"{param_name_map[key]}<br>{param_name_map[value]}"
-            )
+            unique_combinations[
+                label_id
+            ] = f"{param_name_map[key]}<br>{param_name_map[value]}"
 
         return go.Heatmap(
             z=correlations,
@@ -1705,37 +1706,45 @@ class Estimator(sdRDM.DataModel):
 
     @property
     def ph(self):
-        if not all([
-            measurement.ph == self.measurements[0].ph
-            for measurement in self.measurements
-        ]):
+        if not all(
+            [
+                measurement.ph == self.measurements[0].ph
+                for measurement in self.measurements
+            ]
+        ):
             raise ValueError("Measurements have inconsistent pH values.")
         return self.measurements[0].ph
 
     @property
     def temperature(self):
-        if not all([
-            measurement.temperature == self.measurements[0].temperature
-            for measurement in self.measurements
-        ]):
+        if not all(
+            [
+                measurement.temperature == self.measurements[0].temperature
+                for measurement in self.measurements
+            ]
+        ):
             raise ValueError("Measurements have inconsistent temperature values.")
         return self.measurements[0].temperature
 
     @property
     def temperature_unit(self):
-        if not all([
-            measurement.temperature_unit == self.measurements[0].temperature_unit
-            for measurement in self.measurements
-        ]):
+        if not all(
+            [
+                measurement.temperature_unit == self.measurements[0].temperature_unit
+                for measurement in self.measurements
+            ]
+        ):
             raise ValueError("Measurements have inconsistent temperature unit values.")
         return self.measurements[0].temperature_unit
 
     @property
     def time_unit(self):
-        if not all([
-            measurement.global_time_unit == self.measurements[0].global_time_unit
-            for measurement in self.measurements
-        ]):
+        if not all(
+            [
+                measurement.global_time_unit == self.measurements[0].global_time_unit
+                for measurement in self.measurements
+            ]
+        ):
             raise ValueError("Measurements have inconsistent time units.")
         return self.measurements[0].global_time_unit
 
@@ -2162,26 +2171,26 @@ class Estimator(sdRDM.DataModel):
             ):
                 init_conditions = np.zeros((1, 3))
                 if substrate.replicates:
-                    init_conditions[0, 0] = np.nanmean([
-                        rep.data[index] for rep in substrate.replicates
-                    ])
+                    init_conditions[0, 0] = np.nanmean(
+                        [rep.data[index] for rep in substrate.replicates]
+                    )
                 else:
-                    init_conditions[0, 0] = substrate.init_conc - np.nanmean([
-                        rep.data[index] for rep in product.replicates
-                    ])
+                    init_conditions[0, 0] = substrate.init_conc - np.nanmean(
+                        [rep.data[index] for rep in product.replicates]
+                    )
 
                 # enzyme
                 init_conditions[0, 1] = enzyme.init_conc
 
                 # product
                 if product.replicates:
-                    init_conditions[0, 2] = np.nanmean([
-                        rep.data[index] for rep in product.replicates
-                    ])
+                    init_conditions[0, 2] = np.nanmean(
+                        [rep.data[index] for rep in product.replicates]
+                    )
                 else:
-                    init_conditions[0, 2] = product.init_conc - np.nanmean([
-                        rep.data[index] for rep in substrate.replicates
-                    ])
+                    init_conditions[0, 2] = product.init_conc - np.nanmean(
+                        [rep.data[index] for rep in substrate.replicates]
+                    )
 
                 simulated_substrates = system.simulate(
                     [dense_time], init_conditions, system.fitted_params_dict

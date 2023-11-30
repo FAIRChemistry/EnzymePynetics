@@ -13,7 +13,8 @@ from .kineticparameter import KineticParameter
 from .reaction import Reaction
 from .modelresult import ModelResult
 from .parameter import Parameter
-from .sboterm import SBOTerm, ParamType
+from .sboterm import SBOTerm
+from .paramtype import ParamType
 from .kineticmodel import KineticModel
 from .reactionelement import ReactionElement
 
@@ -177,15 +178,17 @@ class ReactionSystem(sdRDM.DataModel):
     def simulate(
         self, times: np.ndarray, init_conditions: np.ndarray, params: Parameters
     ):
-        return np.array([
-            odeint(
-                func=self._setup_ode_model(),
-                y0=init_condition,
-                t=time,
-                args=(params,),
-            )
-            for init_condition, time in zip(init_conditions, times)
-        ])
+        return np.array(
+            [
+                odeint(
+                    func=self._setup_ode_model(),
+                    y0=init_condition,
+                    t=time,
+                    args=(params,),
+                )
+                for init_condition, time in zip(init_conditions, times)
+            ]
+        )
 
     def residuals(
         self,
