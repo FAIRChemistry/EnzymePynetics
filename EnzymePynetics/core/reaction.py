@@ -5,9 +5,9 @@ from pydantic import Field, PositiveFloat, PrivateAttr
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
 from .kineticmodel import KineticModel
+from .abstractspecies import AbstractSpecies
 from .reactionelement import ReactionElement
 from .sboterm import SBOTerm
-from .abstractspecies import AbstractSpecies
 
 
 @forge_signature
@@ -100,7 +100,7 @@ class Reaction(sdRDM.DataModel):
         default="https://github.com/haeussma/EnzymePynetics"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="848940aa08a13cbeaf65ea0c24300dacab3d421d"
+        default="5dcc898a16a04c37e7fd62bb4b0d81bfd9103184"
     )
 
     def add_to_educts(

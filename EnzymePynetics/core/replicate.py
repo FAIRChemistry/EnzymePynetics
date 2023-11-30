@@ -76,8 +76,23 @@ class Replicate(sdRDM.DataModel):
         default="https://github.com/haeussma/EnzymePynetics"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="848940aa08a13cbeaf65ea0c24300dacab3d421d"
+        default="5dcc898a16a04c37e7fd62bb4b0d81bfd9103184"
     )
+
+    @validator("species_id")
+    def get_species_id_reference(cls, value):
+        """Extracts the ID from a given object to create a reference"""
+        from .abstractspecies import AbstractSpecies
+
+        if isinstance(value, AbstractSpecies):
+            return value.id
+        elif isinstance(value, str):
+            return value
+        else:
+            raise TypeError(
+                f"Expected types [AbstractSpecies, str] got '{type(value).__name__}'"
+                " instead."
+            )
 
     @validator("species_id")
     def get_species_id_reference(cls, value):
