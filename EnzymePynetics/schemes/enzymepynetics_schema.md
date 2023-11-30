@@ -202,6 +202,15 @@ classDiagram
         +string creator_id
     }
     
+    class ParamType {
+        << Enumeration >>
+        +K_M
+        +K_CAT
+        +K_IC
+        +K_IU
+        +K_IE
+    }
+    
     class SBOTerm {
         << Enumeration >>
         +BIOCHEMICAL_REACTION

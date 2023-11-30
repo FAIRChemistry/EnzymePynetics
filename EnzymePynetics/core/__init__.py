@@ -14,6 +14,7 @@ from .kineticparameter import KineticParameter
 from .measurement import Measurement
 from .measurementdata import MeasurementData
 from .replicate import Replicate
+from .paramtype import ParamType
 from .sboterm import SBOTerm
 from .datatypes import DataTypes
 
@@ -35,6 +36,7 @@ __all__ = [
     "Measurement",
     "MeasurementData",
     "Replicate",
+    "ParamType",
     "SBOTerm",
     "DataTypes",
 ]
