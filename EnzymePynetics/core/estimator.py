@@ -7,7 +7,9 @@ import pandas as pd
 import sdRDM
 import plotly.express as px
 from plotly import graph_objects as go
+from plotly.subplots import make_subplots
 from IPython.display import display
+from sympy import product
 from tqdm import tqdm
 
 from lmfit import report_fit
@@ -316,7 +318,7 @@ class Estimator(sdRDM.DataModel):
         return inactivation
 
     def _remove_nans(self):
-        # remove nans
+        """Removes all samples which contain nan values."""
 
         nan_mask = np.isnan(self.substrate_data).any(axis=1)
 
@@ -329,13 +331,21 @@ class Estimator(sdRDM.DataModel):
 
     def _subset_time(
         self,
+        min_time: float,
         max_time: float,
         substrate_data: np.ndarray,
         enzyme_data: np.ndarray,
         product_data: np.ndarray,
         time_data: np.ndarray,
     ):
-        subset_slice = time_data < max_time
+        if min_time is None and max_time is not None:
+            subset_slice = time_data < max_time
+        elif min_time is not None and max_time is None:
+            subset_slice = time_data > min_time
+        elif min_time is not None and max_time is not None:
+            subset_slice = (time_data > min_time) & (time_data < max_time)
+        else:
+            raise ValueError("Either min_time or max_time must be specified.")
 
         return (
             substrate_data[subset_slice].reshape(time_data.shape[0], -1),
@@ -385,14 +395,14 @@ class Estimator(sdRDM.DataModel):
 
         display(self.fit_statistics())
 
-    def fit_models(self, max_time: float = None):
+    def fit_models(self, min_time: float = None, max_time: float = None):
         self._create_model_combinations()
 
         substrate, enzyme, product, time = self._remove_nans()
 
-        if max_time:
+        if min_time or max_time:
             substrate, enzyme, product, time = self._subset_time(
-                max_time, substrate, enzyme, product, time
+                min_time, max_time, substrate, enzyme, product, time
             )
 
         systems = tqdm(self.reaction_systems)
@@ -687,15 +697,15 @@ class Estimator(sdRDM.DataModel):
                 ontology = SBOTerm.K_CAT
                 initial_value = self._init_kcat
                 unit = f"1 / {self.time_unit}"
-                upper = initial_value * 1000
-                lower = initial_value / 10000
+                upper = initial_value * 10
+                lower = initial_value / 100
 
             elif param == ParamType.K_M.value:
                 ontology = SBOTerm.K_M
                 initial_value = self._init_km
                 unit = self.substrate_unit
-                upper = initial_value * 1000
-                lower = initial_value / 10000
+                upper = initial_value * 10
+                lower = initial_value / 1000
 
             elif param == ParamType.K_IC.value:
                 initial_value = self._init_km
@@ -708,7 +718,7 @@ class Estimator(sdRDM.DataModel):
                 initial_value = self._init_km
                 unit = self.substrate_unit
                 ontology = None
-                upper = initial_value * 5
+                upper = initial_value * 10
                 lower = initial_value / 100
 
             elif param == ParamType.K_IE.value:
@@ -791,6 +801,15 @@ class Estimator(sdRDM.DataModel):
         out_path: str = None,
     ) -> "EnzymeML.EnzymeMLDocument":
         return _to_enzymeml(enzymeml, reaction_system, out_path)
+
+    def remove_replicate(self, replicate_id: str):
+        for measurement in self.measurements:
+            for species in measurement.species:
+                if not species.replicates:
+                    continue
+                for replicate in species.replicates:
+                    if replicate.id == replicate_id:
+                        species.replicates.remove(replicate)
 
     @property
     def ph(self):
@@ -932,7 +951,9 @@ class Estimator(sdRDM.DataModel):
                 if data.species_id == self.substrate.id:
                     init_substrates.append([data.init_conc] * n_replicates)
 
-        return np.array(init_substrates).flatten()
+        flat_list = np.array([item for sublist in init_substrates for item in sublist])
+
+        return flat_list
 
     @property
     def substrate_data(self):
@@ -994,7 +1015,10 @@ class Estimator(sdRDM.DataModel):
 
                 if not data.replicates:
                     enzyme_data.append([data.init_conc] * n_reps)
-        return np.repeat(np.array(enzyme_data), self.time_data.shape[1]).reshape(
+
+        flat_list = np.array([item for sublist in enzyme_data for item in sublist])
+
+        return np.repeat(np.array(flat_list), self.time_data.shape[1]).reshape(
             self.time_data.shape
         )
 
@@ -1061,10 +1085,12 @@ class Estimator(sdRDM.DataModel):
                     return species.unit
 
     def _get_species_data(self, species: AbstractSpecies) -> MeasurementData:
+        species_measurements = []
         for measurment in self.measurements:
             for data in measurment.species:
                 if data.species_id == species.id:
-                    yield data
+                    species_measurements.append(data)
+        return species_measurements
 
     @classmethod
     def from_enzymeml(
@@ -1081,8 +1107,89 @@ class Estimator(sdRDM.DataModel):
 
         raise ValueError(f"Reaction system '{system_name}' not found.")
 
-    def visualize(self, reaction_system: ReactionSystem = None):
+    def visualize_data(self):
+        # find min length, sqrt and round up
+        n_cols = int(np.ceil(np.sqrt(len(self.measurements))))
+
+        fig = make_subplots(
+            rows=n_cols,
+            cols=n_cols,
+            shared_yaxes=True,
+            subplot_titles=[f"{measurement.name}" for measurement in self.measurements],
+        )
+
+        row = (0,)
+        col = (0,)
+        for meas_id, measurement in enumerate(self.measurements):
+            row = meas_id // n_cols
+            col = meas_id % n_cols
+            for species in measurement.species:
+                if not species.replicates:
+                    continue
+
+                n_colors = len(species.replicates)
+                colors = px.colors.sample_colorscale(
+                    "Purpor_r", [n / n_colors for n in range(n_colors)]
+                )
+
+                for replicate, color in zip(species.replicates, colors):
+                    fig.add_trace(
+                        go.Scatter(
+                            x=np.array(replicate.time),
+                            y=np.array(replicate.data),
+                            mode="markers",
+                            marker=dict(color=color),
+                            name=replicate.id,
+                        ),
+                        row=row + 1,
+                        col=col + 1,
+                    )
+
+        init_substrate_conc = [
+            f"{self.substrate.name} {substrate.init_conc} / {self._format_unit(substrate.unit)}"
+            for substrate in self._get_species_data(self.substrate)
+        ]
+
+        for annotation, subtitle in zip(fig.layout.annotations, init_substrate_conc):
+            annotation.update(text=subtitle)
+            annotation["font"].update(size=8)
+
+        fig.update_yaxes(
+            # title=f"{self.measured_reactant.name} {self.measured_reactant.unit}",
+            ticks="outside",
+            tickwidth=1,
+            tickcolor="black",
+            tickfont=dict(size=8),
+            title_font=dict(size=8),
+        )
+
+        fig.update_xaxes(
+            # title=f"Time {self.time_unit}",
+            ticks="outside",
+            tickwidth=1,
+            tickcolor="black",
+            tickfont=dict(size=8),
+            title_font=dict(size=8),
+        )
+
+        fig.update_layout(
+            template="simple_white",
+            hoverlabel_align="right",
+            legend_title=f"Measurement IDs",
+            xaxis=dict(showgrid=False),
+            yaxis=dict(showgrid=False),
+            margin=dict(l=20, r=20, t=40, b=20),
+        )
+        fig.show()
+
+    def visualize(self, min_time: float = None, max_time: float = None):
         # Initialize figure
+
+        if min_time is None:
+            min_time = self.time_data.min()
+        else:
+            index = min(np.where(self.time_data[0] > min_time)[0])
+            min_time = self.time_data[0][index]
 
         reactant = self.measured_reactant
 
@@ -1091,7 +1198,10 @@ class Estimator(sdRDM.DataModel):
         else:
             vismode = 2
 
-        colors = px.colors.qualitative.Plotly
+        n_colors = len(self.measurements)
+        colors = px.colors.sample_colorscale(
+            "turbo", [n / (n_colors - 1) for n in range(n_colors)]
+        )
 
         fig = go.Figure()
 
@@ -1122,7 +1232,7 @@ class Estimator(sdRDM.DataModel):
                         mode="markers",
                         customdata=["measured"],
                         name=f"{substrate.init_conc} {self._format_unit(measurement.unit)}",
-                        marker=dict(color=self.hex_to_rgba(color)),
+                        marker=dict(color=color),
                         hovertemplate=f"Well ID: {replicate.id}",
                         showlegend=show_legend,
                     )
@@ -1152,30 +1262,51 @@ class Estimator(sdRDM.DataModel):
         ]
         systems = sorted(systems, key=lambda system: system.result.AIC)
 
-        dense_time = np.linspace(0, max(self.time_data.flatten()), 100)
+        dense_time = np.linspace(min_time, max(self.time_data.flatten()), 100)
 
         for system in systems:
-            init_conditions = self._get_init_conditions
+            substrate_data = self._get_species_data(self.substrate)
+            enzyme_data = self._get_species_data(self.enzyme)
+            product_data = self._get_species_data(self.product)
 
-            times = np.tile(dense_time, init_conditions.shape[0]).reshape(
-                init_conditions.shape[0], -1
-            )
-
-            simulated_substrates = system.simulate(
-                times, init_conditions, system.fitted_params_dict
-            )[:, :, vismode]
-
-            for sim_substrate, time, color in zip(
-                simulated_substrates, times, reversed(new_colors)
+            for meas_id, (substrate, enzyme, product, color) in enumerate(
+                zip(substrate_data, enzyme_data, product_data, colors)
             ):
+                init_conditions = np.zeros((1, 3))
+                if substrate.replicates:
+                    init_conditions[0, 0] = np.nanmean(
+                        [rep.data[index] for rep in substrate.replicates]
+                    )
+                else:
+                    init_conditions[0, 0] = substrate.init_conc - np.nanmean(
+                        [rep.data[index] for rep in product.replicates]
+                    )
+
+                # enzyme
+                init_conditions[0, 1] = enzyme.init_conc
+
+                # product
+                if product.replicates:
+                    init_conditions[0, 2] = np.nanmean(
+                        [rep.data[index] for rep in product.replicates]
+                    )
+                else:
+                    init_conditions[0, 2] = product.init_conc - np.nanmean(
+                        [rep.data[index] for rep in substrate.replicates]
+                    )
+
+                simulated_substrates = system.simulate(
+                    [dense_time], init_conditions, system.fitted_params_dict
+                )[:, :, vismode]
+
                 # Add data traces for each model
                 fig.add_trace(
                     go.Scatter(
-                        x=time,
-                        y=sim_substrate,
+                        x=dense_time,
+                        y=simulated_substrates[0],
                         name=f"{system.name}",
                         mode="lines",
-                        marker=dict(color="#000000"),
+                        marker=dict(color=color),
                         customdata=[f"{system.name}"],
                         hoverinfo="skip",
                         showlegend=False,
@@ -1264,7 +1395,7 @@ class Estimator(sdRDM.DataModel):
             ],
             template="simple_white",
             hoverlabel_align="right",
-            legend_title=f"Initial {reactant.name}",
+            legend_title=f"Initial {self.substrate.name}",
             xaxis_title=f"time / {self.time_unit}",
             yaxis_title=f"{reactant.name} / {self._format_unit(measurement.unit)}",
             xaxis=dict(showgrid=False),
@@ -1274,9 +1405,10 @@ class Estimator(sdRDM.DataModel):
         fig.show()
 
     @staticmethod
-    def hex_to_rgba(hex: str) -> str:
+    def hex_to_rgba(hex: str, alpha: float = 1) -> str:
+        alpha = int(alpha * 255)
         rgb = tuple(int(hex.strip("#")[i : i + 2], 16) for i in (0, 2, 4))
-        return f"rgba{rgb + (255,)}"
+        return f"rgba{rgb + (alpha,)}"
 
     @staticmethod
     def _format_unit(unit: str) -> str:
@@ -1287,35 +1419,25 @@ class Estimator(sdRDM.DataModel):
         unit = unit.replace("ug", "µg")
         return unit
 
-    @property
-    def _get_init_conditions(self):
+    def _get_conditions(self, time: float):
         init_conditions = np.zeros((len(self.measurements), 3))
 
-        for i, measurement in enumerate(self.measurements):
-            for data in measurement.species:
-                if data.species_id == self.substrate.id:
-                    if not data.replicates:
-                        init_conditions[i, 0] = data.init_conc
-                    else:
-                        init_conditions[i, 0] = np.mean(
-                            [replicate.data[0] for replicate in data.replicates]
-                        )
+        index = self.time_data[0].tolist().index(time)
 
-                if data.species_id == self.enzyme.id:
-                    if not data.replicates:
-                        init_conditions[i, 1] = data.init_conc
-                    else:
-                        init_conditions[i, 1] = np.mean(
-                            [replicate.data[0] for replicate in data.replicates]
-                        )
+        replicates = self._measurement_replicates
 
-                if data.species_id == self.product.id:
-                    if not data.replicates:
-                        init_conditions[i, 2] = data.init_conc
-                    else:
-                        init_conditions[i, 2] = np.mean(
-                            [replicate.data[0] for replicate in data.replicates]
-                        )
+        start_slice = 0
+        end_slice = 0
+        for measurement_id, rep in enumerate(replicates):
+            end_slice += rep
+            data_substrate = self.substrate_data[start_slice:end_slice]
+            data_enzyme = self.enzyme_data[start_slice:end_slice]
+            data_product = self.product_data[start_slice:end_slice]
+            start_slice += rep
+
+            init_conditions[measurement_id, 0] = np.nanmean(data_substrate[:, index])
+            init_conditions[measurement_id, 1] = np.nanmean(data_enzyme[:, index])
+            init_conditions[measurement_id, 2] = np.nanmean(data_product[:, index])
 
         nan_rows_mask = np.isnan(init_conditions).any(axis=1)
 
