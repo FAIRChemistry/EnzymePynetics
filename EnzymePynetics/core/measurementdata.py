@@ -1,19 +1,16 @@
 import sdRDM
 
 from typing import Optional, Union, List
-from pydantic import Field, validator
+from pydantic import PrivateAttr, Field, validator
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
-
-
 from .datatypes import DataTypes
-from .replicate import Replicate
 from .abstractspecies import AbstractSpecies
+from .replicate import Replicate
 
 
 @forge_signature
 class MeasurementData(sdRDM.DataModel):
-
     """This object describes a single entity of a measurement, which corresponds to one species. It also holds replicates which contain time course data."""
 
     id: Optional[str] = Field(
@@ -48,6 +45,12 @@ class MeasurementData(sdRDM.DataModel):
         multiple=True,
         description="A list of replicate objects holding raw data of the measurement.",
     )
+    __repo__: Optional[str] = PrivateAttr(
+        default="https://github.com/haeussma/EnzymePynetics"
+    )
+    __commit__: Optional[str] = PrivateAttr(
+        default="848940aa08a13cbeaf65ea0c24300dacab3d421d"
+    )
 
     def add_to_replicates(
         self,
@@ -79,7 +82,6 @@ class MeasurementData(sdRDM.DataModel):
             uri (): URI of the protein.. Defaults to None
             creator_id (): Unique identifier of the author.. Defaults to None
         """
-
         params = {
             "species_id": species_id,
             "measurement_id": measurement_id,
@@ -92,13 +94,27 @@ class MeasurementData(sdRDM.DataModel):
             "uri": uri,
             "creator_id": creator_id,
         }
-
         if id is not None:
             params["id"] = id
-
         self.replicates.append(Replicate(**params))
-
         return self.replicates[-1]
+
+    @validator("species_id")
+    def get_species_id_reference(cls, value):
+        """Extracts the ID from a given object to create a reference"""
+        from .abstractspecies import AbstractSpecies
+
+        if isinstance(value, AbstractSpecies):
+            return value.id
+        elif isinstance(value, str):
+            return value
+        elif value is None:
+            return value
+        else:
+            raise TypeError(
+                f"Expected types [AbstractSpecies, str] got '{type(value).__name__}'"
+                " instead."
+            )
 
     @validator("species_id")
     def get_species_id_reference(cls, value):

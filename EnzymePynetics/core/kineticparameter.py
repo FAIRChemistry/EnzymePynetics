@@ -1,16 +1,13 @@
 import sdRDM
 
 from typing import Optional
-from pydantic import Field
+from pydantic import Field, PrivateAttr
 from sdRDM.base.utils import forge_signature, IDGenerator
-
-
 from .sboterm import SBOTerm
 
 
 @forge_signature
 class KineticParameter(sdRDM.DataModel):
-
     """This object describes the parameters of the kinetic model and can include all estimated values."""
 
     id: Optional[str] = Field(
@@ -67,4 +64,10 @@ class KineticParameter(sdRDM.DataModel):
     ontology: Optional[SBOTerm] = Field(
         default=None,
         description="Type of the estimated parameter.",
+    )
+    __repo__: Optional[str] = PrivateAttr(
+        default="https://github.com/haeussma/EnzymePynetics"
+    )
+    __commit__: Optional[str] = PrivateAttr(
+        default="848940aa08a13cbeaf65ea0c24300dacab3d421d"
     )

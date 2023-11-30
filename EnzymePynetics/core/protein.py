@@ -1,17 +1,13 @@
-import sdRDM
 
 from typing import Optional
-from pydantic import Field
+from pydantic import Field, PrivateAttr
 from sdRDM.base.utils import forge_signature, IDGenerator
-
-
-from .abstractspecies import AbstractSpecies
 from .sboterm import SBOTerm
+from .abstractspecies import AbstractSpecies
 
 
 @forge_signature
 class Protein(AbstractSpecies):
-
     """This objects describes the proteins that were used or produced in the course of the experiment."""
 
     id: Optional[str] = Field(
@@ -29,7 +25,7 @@ class Protein(AbstractSpecies):
     ecnumber: Optional[str] = Field(
         default=None,
         description="EC number of the protein.",
-        regex="(\d+.)(\d+.)(\d+.)(\d+)",
+        pattern="(\\d+.)(\\d+.)(\\d+.)(\\d+)",
         template_alias="EC Number",
     )
 
@@ -56,4 +52,10 @@ class Protein(AbstractSpecies):
     ontology: SBOTerm = Field(
         description="None",
         default=SBOTerm.CATALYST,
+    )
+    __repo__: Optional[str] = PrivateAttr(
+        default="https://github.com/haeussma/EnzymePynetics"
+    )
+    __commit__: Optional[str] = PrivateAttr(
+        default="848940aa08a13cbeaf65ea0c24300dacab3d421d"
     )

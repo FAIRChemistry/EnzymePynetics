@@ -1,18 +1,15 @@
 import sdRDM
 
 from typing import Optional, Union, List
-from pydantic import Field, validator
+from pydantic import PrivateAttr, Field, validator
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
-
-
 from .datatypes import DataTypes
 from .abstractspecies import AbstractSpecies
 
 
 @forge_signature
 class Replicate(sdRDM.DataModel):
-
     """This object contains the measured time course data as well as metadata to the replicate itself."""
 
     id: Optional[str] = Field(
@@ -75,6 +72,27 @@ class Replicate(sdRDM.DataModel):
         default=None,
         description="Unique identifier of the author.",
     )
+    __repo__: Optional[str] = PrivateAttr(
+        default="https://github.com/haeussma/EnzymePynetics"
+    )
+    __commit__: Optional[str] = PrivateAttr(
+        default="848940aa08a13cbeaf65ea0c24300dacab3d421d"
+    )
+
+    @validator("species_id")
+    def get_species_id_reference(cls, value):
+        """Extracts the ID from a given object to create a reference"""
+        from .abstractspecies import AbstractSpecies
+
+        if isinstance(value, AbstractSpecies):
+            return value.id
+        elif isinstance(value, str):
+            return value
+        else:
+            raise TypeError(
+                f"Expected types [AbstractSpecies, str] got '{type(value).__name__}'"
+                " instead."
+            )
 
     @validator("species_id")
     def get_species_id_reference(cls, value):

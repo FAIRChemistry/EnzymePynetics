@@ -1,17 +1,13 @@
-import sdRDM
 
 from typing import Optional
-from pydantic import Field
+from pydantic import Field, PrivateAttr
 from sdRDM.base.utils import forge_signature, IDGenerator
-
-
-from .abstractspecies import AbstractSpecies
 from .sboterm import SBOTerm
+from .abstractspecies import AbstractSpecies
 
 
 @forge_signature
 class Reactant(AbstractSpecies):
-
     """This objects describes the reactants that were used or produced in the course of the experiment."""
 
     id: Optional[str] = Field(
@@ -48,4 +44,10 @@ class Reactant(AbstractSpecies):
     ontology: SBOTerm = Field(
         description="None",
         default=SBOTerm.SMALL_MOLECULE,
+    )
+    __repo__: Optional[str] = PrivateAttr(
+        default="https://github.com/haeussma/EnzymePynetics"
+    )
+    __commit__: Optional[str] = PrivateAttr(
+        default="848940aa08a13cbeaf65ea0c24300dacab3d421d"
     )

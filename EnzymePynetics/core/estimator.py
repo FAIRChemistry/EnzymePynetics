@@ -1,46 +1,35 @@
-import enum
-from itertools import combinations
-from os import name
-import re
+import sdRDM
+
 import numpy as np
 import pandas as pd
-import sdRDM
 import plotly.express as px
+from typing import Optional, Union, List
+from pydantic import Field, PrivateAttr
+from sdRDM.base.listplus import ListPlus
+from sdRDM.base.utils import forge_signature, IDGenerator
+from itertools import combinations
 from plotly import graph_objects as go
 from plotly.subplots import make_subplots
 from IPython.display import display
-from sympy import product
 from tqdm import tqdm
-
-from lmfit import report_fit
-
-
-from typing import List, Optional, Union
-from pydantic import Field
-from sdRDM.base.listplus import ListPlus
-from sdRDM.base.utils import forge_signature, IDGenerator
-
+from EnzymePynetics.ioutils import parse_enzymeml, _to_enzymeml
+from .sboterm import SBOTerm, ParamType
+from .vessel import Vessel
+from .kineticmodel import KineticModel
+from .protein import Protein
+from .reaction import Reaction
+from .kineticparameter import KineticParameter
+from .reactant import Reactant
+from .measurementdata import MeasurementData
+from .reactionelement import ReactionElement
 from .abstractspecies import AbstractSpecies
 from .modelresult import ModelResult
-from .protein import Protein
-from .reactant import Reactant
-from .reaction import Reaction
-from .reactionelement import ReactionElement
-from .reactionsystem import ReactionSystem
 from .measurement import Measurement
-from .sboterm import SBOTerm, ParamType
-from .kineticmodel import KineticModel
-from .measurementdata import MeasurementData
-from .kineticparameter import KineticParameter
-from EnzymePynetics.ioutils import parse_enzymeml, _to_enzymeml
-
-
-SPECIES_ROLES = ["substrate", "product", "catalyst", "inhibitor"]
+from .reactionsystem import ReactionSystem
 
 
 @forge_signature
 class Estimator(sdRDM.DataModel):
-
     """"""
 
     id: Optional[str] = Field(
@@ -54,7 +43,7 @@ class Estimator(sdRDM.DataModel):
         description="Title of the kinetic experiment",
     )
 
-    measured_reactant: Reactant = Field(
+    measured_reactant: Optional[Reactant] = Field(
         default=None,
         description="Reactant that is measured in the experiment",
     )
@@ -65,16 +54,15 @@ class Estimator(sdRDM.DataModel):
         multiple=True,
     )
 
-    species: List[AbstractSpecies] = Field(
+    species: List[Union[AbstractSpecies, Protein, Reactant]] = Field(
         description="Reactants, Inhibitor, Activators and Catalysts of the reaction",
         default_factory=ListPlus,
         multiple=True,
     )
 
-    reactions: List[Reaction] = Field(
+    reaction: Optional[Reaction] = Field(
+        default=None,
         description="Reaction proceeding in measurements",
-        default_factory=ListPlus,
-        multiple=True,
     )
 
     models: List[KineticModel] = Field(
@@ -88,6 +76,251 @@ class Estimator(sdRDM.DataModel):
         default_factory=ListPlus,
         multiple=True,
     )
+    __repo__: Optional[str] = PrivateAttr(
+        default="https://github.com/haeussma/EnzymePynetics"
+    )
+    __commit__: Optional[str] = PrivateAttr(
+        default="848940aa08a13cbeaf65ea0c24300dacab3d421d"
+    )
+
+    def add_to_reaction_systems(
+        self,
+        name: Optional[str] = None,
+        reactions: List[Reaction] = ListPlus(),
+        result: Optional[ModelResult] = None,
+        id: Optional[str] = None,
+    ) -> None:
+        """
+        This method adds an object of type 'ReactionSystem' to attribute reaction_systems
+
+        Args:
+            id (str): Unique identifier of the 'ReactionSystem' object. Defaults to 'None'.
+            name (): Name of the reaction system. Defaults to None
+            reactions (): Reactions of the reaction system. Defaults to ListPlus()
+            result (): Result of the kinetic model fitting.. Defaults to None
+        """
+        params = {"name": name, "reactions": reactions, "result": result}
+        if id is not None:
+            params["id"] = id
+        self.reaction_systems.append(ReactionSystem(**params))
+        return self.reaction_systems[-1]
+
+    def add_abstract_species_to_species(
+        self,
+        name: str,
+        vessel_id: Vessel,
+        constant: bool,
+        init_conc: Optional[float] = None,
+        unit: Optional[str] = None,
+        uri: Optional[str] = None,
+        creator_id: Optional[str] = None,
+        id: Optional[str] = None,
+    ) -> None:
+        """
+        This method adds an object of type 'AbstractSpecies' to attribute species
+
+        Args:
+            id (str): Unique identifier of the 'AbstractSpecies' object. Defaults to 'None'.
+            name (): None.
+            vessel_id (): None.
+            constant (): None.
+            init_conc (): None. Defaults to None
+            unit (): None. Defaults to None
+            uri (): None. Defaults to None
+            creator_id (): None. Defaults to None
+        """
+        params = {
+            "name": name,
+            "vessel_id": vessel_id,
+            "constant": constant,
+            "init_conc": init_conc,
+            "unit": unit,
+            "uri": uri,
+            "creator_id": creator_id,
+        }
+        if id is not None:
+            params["id"] = id
+        self.species.append(AbstractSpecies(**params))
+        return self.species[-1]
+
+    def add_protein_to_species(
+        self,
+        sequence: str,
+        name: str,
+        vessel_id: Vessel,
+        constant: bool,
+        ecnumber: Optional[str] = None,
+        organism: Optional[str] = None,
+        organism_tax_id: Optional[str] = None,
+        uniprotid: Optional[str] = None,
+        ontology: SBOTerm = SBOTerm.CATALYST,
+        init_conc: Optional[float] = None,
+        unit: Optional[str] = None,
+        uri: Optional[str] = None,
+        creator_id: Optional[str] = None,
+        id: Optional[str] = None,
+    ) -> None:
+        """
+        This method adds an object of type 'Protein' to attribute species
+
+        Args:
+            id (str): Unique identifier of the 'Protein' object. Defaults to 'None'.
+            sequence (): Amino acid sequence of the protein.
+            name (): None.
+            vessel_id (): None.
+            constant (): None.
+            ecnumber (): EC number of the protein.. Defaults to None
+            organism (): Organism the protein was expressed in.. Defaults to None
+            organism_tax_id (): Taxonomy identifier of the expression host.. Defaults to None
+            uniprotid (): Unique identifier referencing a protein entry at UniProt. Use this identifier to initialize the object from the UniProt database.. Defaults to None
+            ontology (): None. Defaults to SBOTerm.CATALYST
+            init_conc (): None. Defaults to None
+            unit (): None. Defaults to None
+            uri (): None. Defaults to None
+            creator_id (): None. Defaults to None
+        """
+        params = {
+            "sequence": sequence,
+            "name": name,
+            "vessel_id": vessel_id,
+            "constant": constant,
+            "ecnumber": ecnumber,
+            "organism": organism,
+            "organism_tax_id": organism_tax_id,
+            "uniprotid": uniprotid,
+            "ontology": ontology,
+            "init_conc": init_conc,
+            "unit": unit,
+            "uri": uri,
+            "creator_id": creator_id,
+        }
+        if id is not None:
+            params["id"] = id
+        self.species.append(Protein(**params))
+        return self.species[-1]
+
+    def add_reactant_to_species(
+        self,
+        name: str,
+        vessel_id: Vessel,
+        constant: bool,
+        smiles: Optional[str] = None,
+        inchi: Optional[str] = None,
+        chebi_id: Optional[str] = None,
+        ontology: SBOTerm = SBOTerm.SMALL_MOLECULE,
+        init_conc: Optional[float] = None,
+        unit: Optional[str] = None,
+        uri: Optional[str] = None,
+        creator_id: Optional[str] = None,
+        id: Optional[str] = None,
+    ) -> None:
+        """
+        This method adds an object of type 'Reactant' to attribute species
+
+        Args:
+            id (str): Unique identifier of the 'Reactant' object. Defaults to 'None'.
+            name (): None.
+            vessel_id (): None.
+            constant (): None.
+            smiles (): Simplified Molecular Input Line Entry System (SMILES) encoding of the reactant.. Defaults to None
+            inchi (): International Chemical Identifier (InChI) encoding of the reactant.. Defaults to None
+            chebi_id (): Unique identifier of the CHEBI database. Use this identifier to initialize the object from the CHEBI database.. Defaults to None
+            ontology (): None. Defaults to SBOTerm.SMALL_MOLECULE
+            init_conc (): None. Defaults to None
+            unit (): None. Defaults to None
+            uri (): None. Defaults to None
+            creator_id (): None. Defaults to None
+        """
+        params = {
+            "name": name,
+            "vessel_id": vessel_id,
+            "constant": constant,
+            "smiles": smiles,
+            "inchi": inchi,
+            "chebi_id": chebi_id,
+            "ontology": ontology,
+            "init_conc": init_conc,
+            "unit": unit,
+            "uri": uri,
+            "creator_id": creator_id,
+        }
+        if id is not None:
+            params["id"] = id
+        self.species.append(Reactant(**params))
+        return self.species[-1]
+
+    def add_to_models(
+        self,
+        name: str,
+        equation: str,
+        parameters: List[KineticParameter] = ListPlus(),
+        ontology: Optional[SBOTerm] = None,
+        id: Optional[str] = None,
+    ) -> None:
+        """
+        This method adds an object of type 'KineticModel' to attribute models
+
+        Args:
+            id (str): Unique identifier of the 'KineticModel' object. Defaults to 'None'.
+            name (): Name of the kinetic law..
+            equation (): Equation for the kinetic law..
+            parameters (): List of estimated parameters.. Defaults to ListPlus()
+            ontology (): Type of the estimated parameter.. Defaults to None
+        """
+        params = {
+            "name": name,
+            "equation": equation,
+            "parameters": parameters,
+            "ontology": ontology,
+        }
+        if id is not None:
+            params["id"] = id
+        self.models.append(KineticModel(**params))
+        return self.models[-1]
+
+    def add_to_measurements(
+        self,
+        name: str,
+        temperature: float,
+        temperature_unit: str,
+        ph: float,
+        global_time_unit: str,
+        species: List[MeasurementData] = ListPlus(),
+        global_time: List[float] = ListPlus(),
+        uri: Optional[str] = None,
+        creator_id: Optional[str] = None,
+        id: Optional[str] = None,
+    ) -> None:
+        """
+        This method adds an object of type 'Measurement' to attribute measurements
+
+        Args:
+            id (str): Unique identifier of the 'Measurement' object. Defaults to 'None'.
+            name (): Name of the measurement.
+            temperature (): Numeric value of the temperature of the reaction..
+            temperature_unit (): Unit of the temperature of the reaction..
+            ph (): PH value of the reaction..
+            global_time_unit (): Unit of the global time..
+            species (): Species of the measurement.. Defaults to ListPlus()
+            global_time (): Global time of the measurement all replicates agree on.. Defaults to ListPlus()
+            uri (): URI of the reaction.. Defaults to None
+            creator_id (): Unique identifier of the author.. Defaults to None
+        """
+        params = {
+            "name": name,
+            "temperature": temperature,
+            "temperature_unit": temperature_unit,
+            "ph": ph,
+            "global_time_unit": global_time_unit,
+            "species": species,
+            "global_time": global_time,
+            "uri": uri,
+            "creator_id": creator_id,
+        }
+        if id is not None:
+            params["id"] = id
+        self.measurements.append(Measurement(**params))
+        return self.measurements[-1]
 
     def add_reaction(
         self,
@@ -420,21 +653,19 @@ class Estimator(sdRDM.DataModel):
         display(self.fit_statistics())
 
     def fit_statistics(self):
-        header = np.array(
+        header = np.array([
+            ["Model", ""],
+            ["AIC", ""],
+            [ParamType.K_CAT.value, f"1 / {self.time_unit}"],
+            [ParamType.K_M.value, self.substrate_unit],
             [
-                ["Model", ""],
-                ["AIC", ""],
-                [ParamType.K_CAT.value, f"1 / {self.time_unit}"],
-                [ParamType.K_M.value, self.substrate_unit],
-                [
-                    f"{ParamType.K_CAT.value} / {ParamType.K_M.value}",
-                    f"{self.substrate_unit} / {self.time_unit}",
-                ],
-                [ParamType.K_IC.value, self.substrate_unit],
-                [ParamType.K_IU.value, self.substrate_unit],
-                [ParamType.K_IE.value, f"1 / {self.time_unit}"],
-            ]
-        )
+                f"{ParamType.K_CAT.value} / {ParamType.K_M.value}",
+                f"{self.substrate_unit} / {self.time_unit}",
+            ],
+            [ParamType.K_IC.value, self.substrate_unit],
+            [ParamType.K_IU.value, self.substrate_unit],
+            [ParamType.K_IE.value, f"1 / {self.time_unit}"],
+        ])
 
         entries = []
         for system in self.reaction_systems:
@@ -473,7 +704,9 @@ class Estimator(sdRDM.DataModel):
     def _format_html(self, param: str):
         if param == f"{ParamType.K_CAT.value} {ParamType.K_M.value}":
             param1, param2 = param.split()
-            return f"{param1.replace('_', '<sub>') + '</sub>'} {param2.replace('_', '<sub>') + '</sub>'}<sup>-1</sup>"
+            return (
+                f"{param1.replace('_', '<sub>') + '</sub>'} {param2.replace('_', '<sub>') + '</sub>'}<sup>-1</sup>"
+            )
 
         return param.replace("_", "<sub>") + "</sub>"
 
@@ -485,7 +718,10 @@ class Estimator(sdRDM.DataModel):
             return fig
 
         fig.update_layout(
-            title=f"{self.name} at {self.temperature} {self.temperature_unit} and pH {self.ph}",
+            title=(
+                f"{self.name} at {self.temperature} {self.temperature_unit} and pH"
+                f" {self.ph}"
+            ),
         )
 
         fig.show()
@@ -513,7 +749,9 @@ class Estimator(sdRDM.DataModel):
                 headers.append(col)
             elif column == f"{ParamType.K_CAT.value} {ParamType.K_M.value}":
                 col = [
-                    f"<b>{self._format_html(column)}</b><br>{ReactionSystem._format_unit(parameters[ParamType.K_CAT.value])} {ReactionSystem._format_unit(parameters[ParamType.K_M.value])}",
+                    (
+                        f"<b>{self._format_html(column)}</b><br>{ReactionSystem._format_unit(parameters[ParamType.K_CAT.value])} {ReactionSystem._format_unit(parameters[ParamType.K_M.value])}"
+                    ),
                     "",
                 ]
                 headers.append(col)
@@ -627,9 +865,9 @@ class Estimator(sdRDM.DataModel):
 
         for label_id, label in enumerate(unique_combinations):
             key, value = label
-            unique_combinations[
-                label_id
-            ] = f"{param_name_map[key]}<br>{param_name_map[value]}"
+            unique_combinations[label_id] = (
+                f"{param_name_map[key]}<br>{param_name_map[value]}"
+            )
 
         return go.Heatmap(
             z=correlations,
@@ -651,7 +889,10 @@ class Estimator(sdRDM.DataModel):
             yaxis_title="Model",
             yaxis=dict(showgrid=False),
             xaxis=dict(showgrid=False),
-            title=f"Correlations of estimated parameters at {self.temperature} {self.temperature_unit} and pH {self.ph}",
+            title=(
+                "Correlations of estimated parameters at"
+                f" {self.temperature} {self.temperature_unit} and pH {self.ph}"
+            ),
         )
 
         if return_fig:
@@ -813,45 +1054,37 @@ class Estimator(sdRDM.DataModel):
 
     @property
     def ph(self):
-        if not all(
-            [
-                measurement.ph == self.measurements[0].ph
-                for measurement in self.measurements
-            ]
-        ):
+        if not all([
+            measurement.ph == self.measurements[0].ph
+            for measurement in self.measurements
+        ]):
             raise ValueError("Measurements have inconsistent pH values.")
         return self.measurements[0].ph
 
     @property
     def temperature(self):
-        if not all(
-            [
-                measurement.temperature == self.measurements[0].temperature
-                for measurement in self.measurements
-            ]
-        ):
+        if not all([
+            measurement.temperature == self.measurements[0].temperature
+            for measurement in self.measurements
+        ]):
             raise ValueError("Measurements have inconsistent temperature values.")
         return self.measurements[0].temperature
 
     @property
     def temperature_unit(self):
-        if not all(
-            [
-                measurement.temperature_unit == self.measurements[0].temperature_unit
-                for measurement in self.measurements
-            ]
-        ):
+        if not all([
+            measurement.temperature_unit == self.measurements[0].temperature_unit
+            for measurement in self.measurements
+        ]):
             raise ValueError("Measurements have inconsistent temperature unit values.")
         return self.measurements[0].temperature_unit
 
     @property
     def time_unit(self):
-        if not all(
-            [
-                measurement.global_time_unit == self.measurements[0].global_time_unit
-                for measurement in self.measurements
-            ]
-        ):
+        if not all([
+            measurement.global_time_unit == self.measurements[0].global_time_unit
+            for measurement in self.measurements
+        ]):
             raise ValueError("Measurements have inconsistent time units.")
         return self.measurements[0].global_time_unit
 
@@ -922,7 +1155,8 @@ class Estimator(sdRDM.DataModel):
                     return SBOTerm(product.ontology)
 
         raise ValueError(
-            f"Measured reactant '{self.measured_reactant}' not found in the defined reaction."
+            f"Measured reactant '{self.measured_reactant}' not found in the defined"
+            " reaction."
         )
 
     @property
@@ -1146,7 +1380,8 @@ class Estimator(sdRDM.DataModel):
                     )
 
         init_substrate_conc = [
-            f"{self.substrate.name} {substrate.init_conc} / {self._format_unit(substrate.unit)}"
+            f"{self.substrate.name} {substrate.init_conc} /"
+            f" {self._format_unit(substrate.unit)}"
             for substrate in self._get_species_data(self.substrate)
         ]
 
@@ -1231,7 +1466,9 @@ class Estimator(sdRDM.DataModel):
                         y=replicate.data,
                         mode="markers",
                         customdata=["measured"],
-                        name=f"{substrate.init_conc} {self._format_unit(measurement.unit)}",
+                        name=(
+                            f"{substrate.init_conc} {self._format_unit(measurement.unit)}"
+                        ),
                         marker=dict(color=color),
                         hovertemplate=f"Well ID: {replicate.id}",
                         showlegend=show_legend,
@@ -1274,26 +1511,26 @@ class Estimator(sdRDM.DataModel):
             ):
                 init_conditions = np.zeros((1, 3))
                 if substrate.replicates:
-                    init_conditions[0, 0] = np.nanmean(
-                        [rep.data[index] for rep in substrate.replicates]
-                    )
+                    init_conditions[0, 0] = np.nanmean([
+                        rep.data[index] for rep in substrate.replicates
+                    ])
                 else:
-                    init_conditions[0, 0] = substrate.init_conc - np.nanmean(
-                        [rep.data[index] for rep in product.replicates]
-                    )
+                    init_conditions[0, 0] = substrate.init_conc - np.nanmean([
+                        rep.data[index] for rep in product.replicates
+                    ])
 
                 # enzyme
                 init_conditions[0, 1] = enzyme.init_conc
 
                 # product
                 if product.replicates:
-                    init_conditions[0, 2] = np.nanmean(
-                        [rep.data[index] for rep in product.replicates]
-                    )
+                    init_conditions[0, 2] = np.nanmean([
+                        rep.data[index] for rep in product.replicates
+                    ])
                 else:
-                    init_conditions[0, 2] = product.init_conc - np.nanmean(
-                        [rep.data[index] for rep in substrate.replicates]
-                    )
+                    init_conditions[0, 2] = product.init_conc - np.nanmean([
+                        rep.data[index] for rep in substrate.replicates
+                    ])
 
                 simulated_substrates = system.simulate(
                     [dense_time], init_conditions, system.fitted_params_dict
@@ -1341,7 +1578,11 @@ class Estimator(sdRDM.DataModel):
                         )
                     ),
                     {
-                        "title.text": f"{self.name} at {self.temperature} {self.temperature_unit} and pH {self.ph}"
+                        "title.text": (
+                            f"{self.name} at"
+                            f" {self.temperature} {self.temperature_unit} and pH"
+                            f" {self.ph}"
+                        )
                     },
                     {"annotations": [annotations[0]]},
                 ],
@@ -1360,7 +1601,11 @@ class Estimator(sdRDM.DataModel):
                     ),
                     dict(annotations=[annotation]),
                     {
-                        "title.text": f"{self.name} at {self.temperature} {self.temperature_unit} and pH {self.ph}"
+                        "title.text": (
+                            f"{self.name} at"
+                            f" {self.temperature} {self.temperature_unit} and pH"
+                            f" {self.ph}"
+                        )
                     },
                 ],
                 label=f"{system.name}",
@@ -1382,7 +1627,10 @@ class Estimator(sdRDM.DataModel):
         ]
 
         fig.update_layout(
-            title=f"{self.name} at {self.temperature} {self.temperature_unit} and pH {self.ph}",
+            title=(
+                f"{self.name} at {self.temperature} {self.temperature_unit} and pH"
+                f" {self.ph}"
+            ),
             sliders=sliders,
             updatemenus=[
                 dict(

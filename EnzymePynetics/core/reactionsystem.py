@@ -1,28 +1,25 @@
-from math import nan
-import re
 import sdRDM
+
+import numpy as np
+from typing import Callable, List, Optional
+from pydantic import Field, PrivateAttr
+from sdRDM.base.listplus import ListPlus
+from sdRDM.base.utils import forge_signature, IDGenerator
 from lmfit import Parameters, minimize
 from lmfit.minimizer import MinimizerResult
-import numpy as np
 from scipy.integrate import odeint
-
-from typing import Callable, Optional, List
-from pydantic import Field
-from sdRDM.base.utils import forge_signature, IDGenerator
-from sdRDM.base.listplus import ListPlus
-
-
-from .modelresult import ModelResult
-from .parameter import Parameter
-from .correlation import Correlation
+from .kineticmodel import KineticModel
+from .reactionelement import ReactionElement
+from .sboterm import SBOTerm, ParamType
 from .reaction import Reaction
-from .sboterm import ParamType, SBOTerm
+from .parameter import Parameter
+from .modelresult import ModelResult
 from .kineticparameter import KineticParameter
+from .correlation import Correlation
 
 
 @forge_signature
 class ReactionSystem(sdRDM.DataModel):
-
     """"""
 
     id: Optional[str] = Field(
@@ -43,9 +40,68 @@ class ReactionSystem(sdRDM.DataModel):
     )
 
     result: Optional[ModelResult] = Field(
-        default=ModelResult(),
         description="Result of the kinetic model fitting.",
+        default_factory=ModelResult,
     )
+    __repo__: Optional[str] = PrivateAttr(
+        default="https://github.com/haeussma/EnzymePynetics"
+    )
+    __commit__: Optional[str] = PrivateAttr(
+        default="848940aa08a13cbeaf65ea0c24300dacab3d421d"
+    )
+
+    def add_to_reactions(
+        self,
+        name: str,
+        reversible: bool = False,
+        temperature: Optional[float] = None,
+        temperature_unit: Optional[str] = None,
+        ph: Optional[float] = None,
+        ontology: SBOTerm = SBOTerm.BIOCHEMICAL_REACTION,
+        uri: Optional[str] = None,
+        creator_id: Optional[str] = None,
+        model: Optional[KineticModel] = None,
+        educts: List[ReactionElement] = ListPlus(),
+        products: List[ReactionElement] = ListPlus(),
+        modifiers: List[ReactionElement] = ListPlus(),
+        id: Optional[str] = None,
+    ) -> None:
+        """
+        This method adds an object of type 'Reaction' to attribute reactions
+
+        Args:
+            id (str): Unique identifier of the 'Reaction' object. Defaults to 'None'.
+            name (): Name of the reaction..
+            reversible (): Whether the reaction is reversible or irreversible. Defaults to False
+            temperature (): Numeric value of the temperature of the reaction.. Defaults to None
+            temperature_unit (): Unit of the temperature of the reaction.. Defaults to None
+            ph (): PH value of the reaction.. Defaults to None
+            ontology (): Ontology defining the role of the given species.. Defaults to SBOTerm.BIOCHEMICAL_REACTION
+            uri (): URI of the reaction.. Defaults to None
+            creator_id (): Unique identifier of the author.. Defaults to None
+            model (): Kinetic model decribing the reaction.. Defaults to None
+            educts (): List of educts containing ReactionElement objects.. Defaults to ListPlus()
+            products (): List of products containing ReactionElement objects.. Defaults to ListPlus()
+            modifiers (): List of modifiers (Proteins, snhibitors, stimulators) containing ReactionElement objects.. Defaults to ListPlus()
+        """
+        params = {
+            "name": name,
+            "reversible": reversible,
+            "temperature": temperature,
+            "temperature_unit": temperature_unit,
+            "ph": ph,
+            "ontology": ontology,
+            "uri": uri,
+            "creator_id": creator_id,
+            "model": model,
+            "educts": educts,
+            "products": products,
+            "modifiers": modifiers,
+        }
+        if id is not None:
+            params["id"] = id
+        self.reactions.append(Reaction(**params))
+        return self.reactions[-1]
 
     @property
     def substrate(self) -> Reaction:
@@ -121,17 +177,15 @@ class ReactionSystem(sdRDM.DataModel):
     def simulate(
         self, times: np.ndarray, init_conditions: np.ndarray, params: Parameters
     ):
-        return np.array(
-            [
-                odeint(
-                    func=self._setup_ode_model(),
-                    y0=init_condition,
-                    t=time,
-                    args=(params,),
-                )
-                for init_condition, time in zip(init_conditions, times)
-            ]
-        )
+        return np.array([
+            odeint(
+                func=self._setup_ode_model(),
+                y0=init_condition,
+                t=time,
+                args=(params,),
+            )
+            for init_condition, time in zip(init_conditions, times)
+        ])
 
     def residuals(
         self,

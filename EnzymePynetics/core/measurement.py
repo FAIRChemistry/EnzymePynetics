@@ -1,19 +1,16 @@
 import sdRDM
 
 from typing import List, Optional
-from pydantic import Field
+from pydantic import Field, PrivateAttr
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
-
-
-from .replicate import Replicate
 from .measurementdata import MeasurementData
 from .abstractspecies import AbstractSpecies
+from .replicate import Replicate
 
 
 @forge_signature
 class Measurement(sdRDM.DataModel):
-
     """This object describes the result of a measurement, which includes time course data of any type defined in DataTypes. It includes initial concentrations of all species used in a single measurement."""
 
     id: Optional[str] = Field(
@@ -36,7 +33,7 @@ class Measurement(sdRDM.DataModel):
     temperature_unit: str = Field(
         ...,
         description="Unit of the temperature of the reaction.",
-        regex="kelvin|Kelvin|k|K|celsius|Celsius|C|c",
+        pattern="kelvin|Kelvin|k|K|celsius|Celsius|C|c",
     )
 
     ph: float = Field(
@@ -72,6 +69,12 @@ class Measurement(sdRDM.DataModel):
         default=None,
         description="Unique identifier of the author.",
     )
+    __repo__: Optional[str] = PrivateAttr(
+        default="https://github.com/haeussma/EnzymePynetics"
+    )
+    __commit__: Optional[str] = PrivateAttr(
+        default="848940aa08a13cbeaf65ea0c24300dacab3d421d"
+    )
 
     def add_to_species(
         self,
@@ -93,7 +96,6 @@ class Measurement(sdRDM.DataModel):
             species_id (): The identifier for the described reactant.. Defaults to None
             replicates (): A list of replicate objects holding raw data of the measurement.. Defaults to ListPlus()
         """
-
         params = {
             "init_conc": init_conc,
             "unit": unit,
@@ -101,10 +103,7 @@ class Measurement(sdRDM.DataModel):
             "species_id": species_id,
             "replicates": replicates,
         }
-
         if id is not None:
             params["id"] = id
-
         self.species.append(MeasurementData(**params))
-
         return self.species[-1]

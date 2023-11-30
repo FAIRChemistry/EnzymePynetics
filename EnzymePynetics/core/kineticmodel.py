@@ -1,22 +1,17 @@
 import sdRDM
-import sympy as sp
 
-from typing import List, Optional, FrozenSet
-from pydantic import Field, validator
+import sympy as sp
+from typing import FrozenSet, List, Optional
+from pydantic import PrivateAttr, Field, validator
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
-
-
+from sympy import pprint
 from .sboterm import SBOTerm, ParamType
 from .kineticparameter import KineticParameter
-from sympy import pprint
-
-SPECIES = ("substrate", "product", "catalyst", "inhibitor")
 
 
 @forge_signature
 class KineticModel(sdRDM.DataModel):
-
     """This object describes a kinetic model that was derived from the experiment."""
 
     id: Optional[str] = Field(
@@ -45,6 +40,59 @@ class KineticModel(sdRDM.DataModel):
         default=None,
         description="Type of the estimated parameter.",
     )
+    __repo__: Optional[str] = PrivateAttr(
+        default="https://github.com/haeussma/EnzymePynetics"
+    )
+    __commit__: Optional[str] = PrivateAttr(
+        default="848940aa08a13cbeaf65ea0c24300dacab3d421d"
+    )
+
+    def add_to_parameters(
+        self,
+        name: str,
+        value: float,
+        unit: str,
+        initial_value: Optional[float] = None,
+        upper: Optional[float] = None,
+        lower: Optional[float] = None,
+        is_global: bool = False,
+        stdev: Optional[float] = None,
+        constant: bool = False,
+        ontology: Optional[SBOTerm] = None,
+        id: Optional[str] = None,
+    ) -> None:
+        """
+        This method adds an object of type 'KineticParameter' to attribute parameters
+
+        Args:
+            id (str): Unique identifier of the 'KineticParameter' object. Defaults to 'None'.
+            name (): Name of the estimated parameter..
+            value (): Numerical value of the estimated parameter..
+            unit (): Unit of the estimated parameter..
+            initial_value (): Initial value that was used for the parameter estimation.. Defaults to None
+            upper (): Upper bound of the estimated parameter.. Defaults to None
+            lower (): Lower bound of the estimated parameter.. Defaults to None
+            is_global (): Specifies if this parameter is a global parameter.. Defaults to False
+            stdev (): Standard deviation of the estimated parameter.. Defaults to None
+            constant (): Specifies if this parameter is constant. Defaults to False
+            ontology (): Type of the estimated parameter.. Defaults to None
+        """
+        params = {
+            "name": name,
+            "value": value,
+            "unit": unit,
+            "initial_value": initial_value,
+            "upper": upper,
+            "lower": lower,
+            "is_global": is_global,
+            "stdev": stdev,
+            "constant": constant,
+            "ontology": ontology,
+        }
+        if id is not None:
+            params["id"] = id
+        self.parameters.append(KineticParameter(**params))
+        return self.parameters[-1]
 
     @validator("equation")
     def check_equation_symbols(cls, v):
@@ -165,9 +213,9 @@ class KineticModel(sdRDM.DataModel):
     @property
     def _equality(self):
         sp_dict = {"product": sp.Symbol("product")}
-        return sp.Equality(
-            *[sp.parse_expr(side, sp_dict) for side in self.equation.split("=")]
-        )
+        return sp.Equality(*[
+            sp.parse_expr(side, sp_dict) for side in self.equation.split("=")
+        ])
 
     @property
     def eq_parameters(self):

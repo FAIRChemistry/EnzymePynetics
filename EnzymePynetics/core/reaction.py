@@ -1,21 +1,17 @@
 import sdRDM
 
 from typing import List, Optional
-from pydantic import Field
+from pydantic import Field, PositiveFloat, PrivateAttr
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
-
-from pydantic import PositiveFloat
-
+from .kineticmodel import KineticModel
 from .reactionelement import ReactionElement
 from .sboterm import SBOTerm
-from .kineticmodel import KineticModel
 from .abstractspecies import AbstractSpecies
 
 
 @forge_signature
 class Reaction(sdRDM.DataModel):
-
     """This object describes a chemical or enzymatic reaction that was investigated in the course of the experiment. All species used within this object need to be part of the data model."""
 
     id: Optional[str] = Field(
@@ -45,7 +41,7 @@ class Reaction(sdRDM.DataModel):
     temperature_unit: Optional[str] = Field(
         default=None,
         description="Unit of the temperature of the reaction.",
-        regex="kelvin|Kelvin|k|K|celsius|Celsius|C|c",
+        pattern="kelvin|Kelvin|k|K|celsius|Celsius|C|c",
         template_alias="Temperature unit",
     )
 
@@ -100,6 +96,12 @@ class Reaction(sdRDM.DataModel):
         ),
         template_alias="Modifiers",
     )
+    __repo__: Optional[str] = PrivateAttr(
+        default="https://github.com/haeussma/EnzymePynetics"
+    )
+    __commit__: Optional[str] = PrivateAttr(
+        default="848940aa08a13cbeaf65ea0c24300dacab3d421d"
+    )
 
     def add_to_educts(
         self,
@@ -119,19 +121,15 @@ class Reaction(sdRDM.DataModel):
             constant (): Whether or not the concentration of this species remains constant.. Defaults to False
             ontology (): Ontology defining the role of the given species.. Defaults to None
         """
-
         params = {
             "species_id": species_id,
             "stoichiometry": stoichiometry,
             "constant": constant,
             "ontology": ontology,
         }
-
         if id is not None:
             params["id"] = id
-
         self.educts.append(ReactionElement(**params))
-
         return self.educts[-1]
 
     def add_to_products(
@@ -152,19 +150,15 @@ class Reaction(sdRDM.DataModel):
             constant (): Whether or not the concentration of this species remains constant.. Defaults to False
             ontology (): Ontology defining the role of the given species.. Defaults to None
         """
-
         params = {
             "species_id": species_id,
             "stoichiometry": stoichiometry,
             "constant": constant,
             "ontology": ontology,
         }
-
         if id is not None:
             params["id"] = id
-
         self.products.append(ReactionElement(**params))
-
         return self.products[-1]
 
     def add_to_modifiers(
@@ -185,17 +179,13 @@ class Reaction(sdRDM.DataModel):
             constant (): Whether or not the concentration of this species remains constant.. Defaults to False
             ontology (): Ontology defining the role of the given species.. Defaults to None
         """
-
         params = {
             "species_id": species_id,
             "stoichiometry": stoichiometry,
             "constant": constant,
             "ontology": ontology,
         }
-
         if id is not None:
             params["id"] = id
-
         self.modifiers.append(ReactionElement(**params))
-
         return self.modifiers[-1]

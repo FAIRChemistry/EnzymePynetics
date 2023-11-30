@@ -1,18 +1,15 @@
 import sdRDM
 
 from typing import List, Optional
-from pydantic import Field
+from pydantic import Field, PrivateAttr
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
-
-
 from .parameter import Parameter
 from .correlation import Correlation
 
 
 @forge_signature
 class ModelResult(sdRDM.DataModel):
-
     """Description of a kinetic model"""
 
     id: Optional[str] = Field(
@@ -52,6 +49,12 @@ class ModelResult(sdRDM.DataModel):
         default=None,
         description="Root mean square deviation between model and measurement data.",
     )
+    __repo__: Optional[str] = PrivateAttr(
+        default="https://github.com/haeussma/EnzymePynetics"
+    )
+    __commit__: Optional[str] = PrivateAttr(
+        default="848940aa08a13cbeaf65ea0c24300dacab3d421d"
+    )
 
     def add_to_parameters(
         self,
@@ -67,15 +70,8 @@ class ModelResult(sdRDM.DataModel):
             name (): Name of the kinetic parameter.. Defaults to None
             correlations (): Correlation of parameter to other parameters of a model.. Defaults to ListPlus()
         """
-
-        params = {
-            "name": name,
-            "correlations": correlations,
-        }
-
+        params = {"name": name, "correlations": correlations}
         if id is not None:
             params["id"] = id
-
         self.parameters.append(Parameter(**params))
-
         return self.parameters[-1]
