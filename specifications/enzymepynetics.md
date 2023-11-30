@@ -89,3 +89,15 @@ Defines a kinetic parameter.
 - value
   - Type: float
   - Description: Correlation value between -1 and 1.
+
+## Enumerations
+
+### ParamType
+
+```python
+  K_M = "K_M"
+  K_CAT = "k_cat"
+  K_IC = "K_ic"
+  K_IU = "K_iu"
+  K_IE = "k_ie"
+```
