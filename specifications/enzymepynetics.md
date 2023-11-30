@@ -7,7 +7,7 @@
 - name
     - Type: string
     - Description: Title of the kinetic experiment
-- measured_reactant: 
+- measured_reactant
     - Type: https://github.com/EnzymeML/enzymeml-specifications.git@Reactant
     - Description: Reactant that is measured in the experiment
 - reaction_systems
