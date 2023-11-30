@@ -4,8 +4,8 @@ from typing import Optional, Union, List
 from pydantic import PrivateAttr, Field, validator
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
-from .datatypes import DataTypes
 from .abstractspecies import AbstractSpecies
+from .datatypes import DataTypes
 
 
 @forge_signature
@@ -76,8 +76,23 @@ class Replicate(sdRDM.DataModel):
         default="https://github.com/haeussma/EnzymePynetics"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="5dcc898a16a04c37e7fd62bb4b0d81bfd9103184"
+        default="25b9eaa1ad02d290cf2a98a59b5a6f1730cb7652"
     )
+
+    @validator("species_id")
+    def get_species_id_reference(cls, value):
+        """Extracts the ID from a given object to create a reference"""
+        from .abstractspecies import AbstractSpecies
+
+        if isinstance(value, AbstractSpecies):
+            return value.id
+        elif isinstance(value, str):
+            return value
+        else:
+            raise TypeError(
+                f"Expected types [AbstractSpecies, str] got '{type(value).__name__}'"
+                " instead."
+            )
 
     @validator("species_id")
     def get_species_id_reference(cls, value):

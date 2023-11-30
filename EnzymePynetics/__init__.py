@@ -1,3 +1,3 @@
 
 __URL__ = "https://github.com/haeussma/EnzymePynetics"
-__COMMIT__ = "5dcc898a16a04c37e7fd62bb4b0d81bfd9103184"
+__COMMIT__ = "25b9eaa1ad02d290cf2a98a59b5a6f1730cb7652"
