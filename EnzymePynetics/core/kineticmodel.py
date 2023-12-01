@@ -97,6 +97,7 @@ class KineticModel(sdRDM.DataModel):
 
     @validator("equation")
     def check_equation_symbols(cls, v):
+        SPECIES = "substrate", "product", "catalyst", "inhibitor"
         sp_dict = {"product": sp.Symbol("product")}
 
         symbol_str, rate_law_str = v.split("=")
@@ -205,6 +206,7 @@ class KineticModel(sdRDM.DataModel):
 
     @property
     def eq_species(self) -> FrozenSet[str]:
+        SPECIES = "substrate", "product", "catalyst", "inhibitor"
         return set(
             symbol.name
             for symbol in self._equality.free_symbols
@@ -214,9 +216,9 @@ class KineticModel(sdRDM.DataModel):
     @property
     def _equality(self):
         sp_dict = {"product": sp.Symbol("product")}
-        return sp.Equality(*[
-            sp.parse_expr(side, sp_dict) for side in self.equation.split("=")
-        ])
+        return sp.Equality(
+            *[sp.parse_expr(side, sp_dict) for side in self.equation.split("=")]
+        )
 
     @property
     def eq_parameters(self):

@@ -78,7 +78,7 @@ def _to_enzymeml(
         enzymeml.reactions.append(reaction)
 
     if out_path:
-        with open(path, "w") as f:
+        with open(out_path, "w") as f:
             f.write(enzymeml.json())
 
     return enzymeml
