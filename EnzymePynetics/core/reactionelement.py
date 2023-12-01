@@ -3,8 +3,8 @@ import sdRDM
 from typing import Optional, Union
 from pydantic import PrivateAttr, Field, validator, PositiveFloat
 from sdRDM.base.utils import forge_signature, IDGenerator
-from .sboterm import SBOTerm
 from .abstractspecies import AbstractSpecies
+from .sboterm import SBOTerm
 
 
 @forge_signature
@@ -47,8 +47,23 @@ class ReactionElement(sdRDM.DataModel):
         default="https://github.com/haeussma/EnzymePynetics"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="1eb6fe3fd3d8f9a2eb20911141e5b01d10a9bd57"
+        default="e6ee5d208d59c44e46c402bcceafa385ca48b435"
     )
+
+    @validator("species_id")
+    def get_species_id_reference(cls, value):
+        """Extracts the ID from a given object to create a reference"""
+        from .abstractspecies import AbstractSpecies
+
+        if isinstance(value, AbstractSpecies):
+            return value.id
+        elif isinstance(value, str):
+            return value
+        else:
+            raise TypeError(
+                f"Expected types [AbstractSpecies, str] got '{type(value).__name__}'"
+                " instead."
+            )
 
     @validator("species_id")
     def get_species_id_reference(cls, value):
