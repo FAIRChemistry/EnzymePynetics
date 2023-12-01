@@ -12,7 +12,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.9,<3.13"
+python = ">=3.9,<3.12"
 lmfit = "^1.2.2"
 scipy = "^1.11.3"
 numpy = "^1.26.1"
