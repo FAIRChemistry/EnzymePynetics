@@ -30,7 +30,6 @@ classDiagram
     Replicate *-- DataTypes
     Replicate *-- AbstractSpecies
     Estimator *-- ReactionSystem
-    Estimator *-- AbstractSpecies
     Estimator *-- Protein
     Estimator *-- Reactant
     Estimator *-- Reaction
@@ -61,7 +60,7 @@ classDiagram
         +string name
         +Reactant measured_reactant
         +ReactionSystem[0..*] reaction_systems
-        +AbstractSpecies, Protein, Reactant[0..*] species
+        +Protein, Reactant[0..*] species
         +Reaction[0..*] reactions
         +KineticModel[0..*] models
         +Measurement[0..*] measurements
