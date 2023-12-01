@@ -15,7 +15,7 @@
     - Description: Reactions of multiple species
     - Multiple: True
 - species
-    - Type: https://github.com/EnzymeML/enzymeml-specifications.git@AbstractSpecies, https://github.com/EnzymeML/enzymeml-specifications.git@Protein, https://github.com/EnzymeML/enzymeml-specifications.git@Reactant
+    - Type: https://github.com/EnzymeML/enzymeml-specifications.git@Protein, https://github.com/EnzymeML/enzymeml-specifications.git@Reactant
     - Description: Reactants, Inhibitor, Activators and Catalysts of the reaction
     - Multiple: True
 - reactions
