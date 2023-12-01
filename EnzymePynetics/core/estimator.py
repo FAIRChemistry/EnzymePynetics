@@ -28,6 +28,8 @@ from .abstractspecies import AbstractSpecies
 from .reactionsystem import ReactionSystem
 from .paramtype import ParamType
 
+from lmfit import Parameters, minimize, report_fit
+
 
 @forge_signature
 class Estimator(sdRDM.DataModel):
@@ -2110,7 +2112,7 @@ class Estimator(sdRDM.DataModel):
                 product_data=product,
                 times=time,
             )
-            print(report)
+            print(report_fit(report)
 
         self.reaction_systems.sort(key=lambda x: x.result.AIC)
 
