@@ -2382,7 +2382,7 @@ class Estimator(sdRDM.DataModel):
                 product_data=product,
                 times=time,
             )
-            print(report_fit(report)
+            print(report_fit(report))
 
         self.reaction_systems.sort(key=lambda x: x.result.AIC)
 
