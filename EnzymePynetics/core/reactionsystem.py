@@ -8,14 +8,14 @@ from sdRDM.base.utils import forge_signature, IDGenerator
 from lmfit import Parameters, minimize
 from lmfit.minimizer import MinimizerResult
 from scipy.integrate import odeint
-from .reaction import Reaction
+from .kineticmodel import KineticModel
+from .parameter import Parameter
+from .correlation import Correlation
 from .sboterm import SBOTerm
+from .kineticparameter import KineticParameter
 from .reactionelement import ReactionElement
 from .modelresult import ModelResult
-from .correlation import Correlation
-from .kineticmodel import KineticModel
-from .kineticparameter import KineticParameter
-from .parameter import Parameter
+from .reaction import Reaction
 from .paramtype import ParamType
 
 
@@ -48,7 +48,7 @@ class ReactionSystem(sdRDM.DataModel):
         default="https://github.com/haeussma/EnzymePynetics"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="e6ee5d208d59c44e46c402bcceafa385ca48b435"
+        default="03921055e59509f53cb2a585ac4f063e6829d789"
     )
 
     def add_to_reactions(

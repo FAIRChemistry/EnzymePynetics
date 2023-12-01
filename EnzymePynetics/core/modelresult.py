@@ -4,8 +4,8 @@ from typing import List, Optional
 from pydantic import Field, PrivateAttr
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
-from .correlation import Correlation
 from .parameter import Parameter
+from .correlation import Correlation
 
 
 @forge_signature
@@ -53,7 +53,7 @@ class ModelResult(sdRDM.DataModel):
         default="https://github.com/haeussma/EnzymePynetics"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="e6ee5d208d59c44e46c402bcceafa385ca48b435"
+        default="03921055e59509f53cb2a585ac4f063e6829d789"
     )
 
     def add_to_parameters(

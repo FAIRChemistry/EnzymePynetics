@@ -6,8 +6,8 @@ from pydantic import PrivateAttr, Field, validator
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
 from sympy import pprint
-from .sboterm import SBOTerm
 from .kineticparameter import KineticParameter
+from .sboterm import SBOTerm
 from .paramtype import ParamType
 
 
@@ -45,7 +45,7 @@ class KineticModel(sdRDM.DataModel):
         default="https://github.com/haeussma/EnzymePynetics"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="e6ee5d208d59c44e46c402bcceafa385ca48b435"
+        default="03921055e59509f53cb2a585ac4f063e6829d789"
     )
 
     def add_to_parameters(
@@ -216,9 +216,9 @@ class KineticModel(sdRDM.DataModel):
     @property
     def _equality(self):
         sp_dict = {"product": sp.Symbol("product")}
-        return sp.Equality(
-            *[sp.parse_expr(side, sp_dict) for side in self.equation.split("=")]
-        )
+        return sp.Equality(*[
+            sp.parse_expr(side, sp_dict) for side in self.equation.split("=")
+        ])
 
     @property
     def eq_parameters(self):
