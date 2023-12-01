@@ -55,8 +55,22 @@ class AbstractSpecies(sdRDM.DataModel):
         default="https://github.com/haeussma/EnzymePynetics"
     )
     __commit__: Optional[str] = PrivateAttr(
-        default="e5998e2dd90292ff638e74dd3cba10877e4b6c59"
+        default="948b7bed8fff2e67df3e48c03b9bbf1ccf7b9243"
     )
+
+    @validator("vessel_id")
+    def get_vessel_id_reference(cls, value):
+        """Extracts the ID from a given object to create a reference"""
+        from .vessel import Vessel
+
+        if isinstance(value, Vessel):
+            return value.id
+        elif isinstance(value, str):
+            return value
+        else:
+            raise TypeError(
+                f"Expected types [Vessel, str] got '{type(value).__name__}' instead."
+            )
 
     @validator("vessel_id")
     def get_vessel_id_reference(cls, value):
