@@ -71,3 +71,11 @@ class KineticParameter(sdRDM.DataModel):
     __commit__: Optional[str] = PrivateAttr(
         default="70285185b8d9c7baf61e12dd52d943624695a510"
     )
+
+    @property
+    def perc_error(self) -> float:
+        """Calculates the percentage error of the estimated parameter."""
+        if not self.stdev or not self.value:
+            return None
+
+        return self.stdev / self.value * 100
