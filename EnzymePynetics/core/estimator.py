@@ -951,7 +951,7 @@ class Estimator(sdRDM.DataModel):
                 ontology = SBOTerm.K_M
                 initial_value = self._init_km
                 unit = self.substrate_unit
-                upper = initial_value * 10
+                upper = initial_value * 5
                 lower = initial_value / 1000
 
             elif param == ParamType.K_IC.value:
@@ -959,14 +959,14 @@ class Estimator(sdRDM.DataModel):
                 unit = self.substrate_unit
                 ontology = None
                 upper = initial_value * 5
-                lower = initial_value / 100
+                lower = initial_value / 1000
 
             elif param == ParamType.K_IU.value:
                 initial_value = self._init_km
                 unit = self.substrate_unit
                 ontology = None
-                upper = initial_value * 10
-                lower = initial_value / 100
+                upper = initial_value * 5
+                lower = initial_value / 1000
 
             elif param == ParamType.K_IE.value:
                 if self.time_unit == "s" or self.time_unit == "sec":
@@ -1498,7 +1498,6 @@ class Estimator(sdRDM.DataModel):
                     init_conditions[0, 2] = substrate.init_conc - np.nanmean(
                         [rep.data[index] for rep in substrate.replicates]
                     )
-                print(init_conditions)
                 simulated_substrates = system.simulate(
                     [dense_time], init_conditions, system.fitted_params_dict
                 )[:, :, vismode]
