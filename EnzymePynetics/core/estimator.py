@@ -373,6 +373,15 @@ class Estimator(sdRDM.DataModel):
             modifiers (): List of modifiers (Proteins, snhibitors, stimulators) containing ReactionElement objects.. Defaults to ListPlus()
         """
 
+        if isinstance(educt, str):
+            educt = self._get_species(educt)
+
+        if isinstance(product, str):
+            product = self._get_species(product)
+
+        if isinstance(catalyst, str):
+            catalyst = self._get_species(catalyst)
+
         # add educt and product to ReactionElements
         if educt:
             educt_reaction_element = [
@@ -483,6 +492,7 @@ class Estimator(sdRDM.DataModel):
         }
 
         new_model = KineticModel(**params)
+        new_model.check_equation_symbols()
         self._init_parameters(new_model)
 
         if any([model.id == new_model.id for model in self.models]):
@@ -999,7 +1009,21 @@ class Estimator(sdRDM.DataModel):
         reaction_system: ReactionSystem = None,
         out_path: str = None,
     ) -> "EnzymeML.EnzymeMLDocument":
+        self._handel_equations(reaction_system)
         return _to_enzymeml(enzymeml, reaction_system, out_path)
+
+    def _handel_equations(self, reaction_system: ReactionSystem):
+        for reaction_id, reaction in enumerate(reaction_system.reactions):
+            eq = reaction.model.equation
+            eq = eq.split("=")[1]
+            if "substrate" in eq:
+                eq = eq.replace("substrate", self.substrate.id)
+            if "product" in eq:
+                eq = eq.replace("product", self.product.id)
+            if "catalyst" in eq:
+                eq = eq.replace("catalyst", self.enzyme.id)
+
+            reaction.model.equation = eq
 
     def remove_replicate(self, replicate_id: str):
         for measurement in self.measurements:
@@ -1251,6 +1275,11 @@ class Estimator(sdRDM.DataModel):
         for species in self.species:
             if species.id == species_id:
                 return species
+
+        raise ValueError(
+            f"Species '{species_id}' not found in species "
+            + f"({[s.id for s in self.species]})."
+        )
 
     def _get_substrate_rates(self):
         substrsate_rates = np.diff(self.substrate_data)
