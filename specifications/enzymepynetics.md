@@ -16,7 +16,7 @@
     - Multiple: True
 - species
     - Type: https://github.com/EnzymeML/enzymeml-specifications.git@Protein, https://github.com/EnzymeML/enzymeml-specifications.git@Reactant
-    - Description: Reactants, Inhibitor, Activators and Catalysts of the reaction
+    - Description: Reactants, Inhibitor, Activators, and Catalysts of the reaction
     - Multiple: True
 - reactions
     - Type: https://github.com/EnzymeML/enzymeml-specifications.git@Reaction
@@ -24,7 +24,7 @@
     - Multiple: True
 - models
     - Type: https://github.com/EnzymeML/enzymeml-specifications.git@KineticModel
-    - Description: Kinetic model options used to fit to measurement data.
+    - Description: Kinetic model options are used to fit measurement data.
     - Multiple: True
 - measurements
     - Type: https://github.com/EnzymeML/enzymeml-specifications.git@Measurement
