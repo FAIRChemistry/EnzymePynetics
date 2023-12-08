@@ -95,12 +95,11 @@ class KineticModel(sdRDM.DataModel):
         self.parameters.append(KineticParameter(**params))
         return self.parameters[-1]
 
-    @validator("equation")
-    def check_equation_symbols(cls, v):
+    def check_equation_symbols(self):
         SPECIES = "substrate", "product", "catalyst", "inhibitor"
         sp_dict = {"product": sp.Symbol("product")}
 
-        symbol_str, rate_law_str = v.split("=")
+        symbol_str, rate_law_str = self.equation.split("=")
 
         symbol = sp.parse_expr(symbol_str, sp_dict)
         if not len(symbol.free_symbols) == 1:
@@ -121,12 +120,10 @@ class KineticModel(sdRDM.DataModel):
 
         if len(unknowns) > 0:
             raise ValueError(
-                f"Equation '{v}' contains unknown symbols: {unknowns}",
+                f"Equation '{self.equation}' contains unknown symbols: {unknowns}",
                 f"Allowed species are: {SPECIES}",
                 f"Allowed parameters are: {[param.name for param in ParamType]}",
             )
-
-        return v
 
     def add_to_parameters(
         self,
@@ -216,9 +213,9 @@ class KineticModel(sdRDM.DataModel):
     @property
     def _equality(self):
         sp_dict = {"product": sp.Symbol("product")}
-        return sp.Equality(*[
-            sp.parse_expr(side, sp_dict) for side in self.equation.split("=")
-        ])
+        return sp.Equality(
+            *[sp.parse_expr(side, sp_dict) for side in self.equation.split("=")]
+        )
 
     @property
     def eq_parameters(self):
