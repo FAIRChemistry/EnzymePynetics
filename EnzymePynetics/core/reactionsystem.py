@@ -5,7 +5,7 @@ from typing import Callable, List, Optional
 from pydantic import Field, PrivateAttr
 from sdRDM.base.listplus import ListPlus
 from sdRDM.base.utils import forge_signature, IDGenerator
-from lmfit import Parameters, minimize
+from lmfit import Parameters, minimize, report_fit
 from lmfit.minimizer import MinimizerResult
 from scipy.integrate import odeint
 from .kineticparameter import KineticParameter
@@ -115,7 +115,7 @@ class ReactionSystem(sdRDM.DataModel):
     @property
     def enzyme(self) -> Reaction:
         for reaction in self.reactions:
-            if reaction.educts[0].ontology == SBOTerm.CATALYST.value:
+            if reaction.educts[0].ontology == SBOTerm.PROTEIN.value:
                 return reaction
 
         return None
@@ -178,15 +178,17 @@ class ReactionSystem(sdRDM.DataModel):
     def simulate(
         self, times: np.ndarray, init_conditions: np.ndarray, params: Parameters
     ):
-        return np.array([
-            odeint(
-                func=self._setup_ode_model(),
-                y0=init_condition,
-                t=time,
-                args=(params,),
-            )
-            for init_condition, time in zip(init_conditions, times)
-        ])
+        return np.array(
+            [
+                odeint(
+                    func=self._setup_ode_model(),
+                    y0=init_condition,
+                    t=time,
+                    args=(params,),
+                )
+                for init_condition, time in zip(init_conditions, times)
+            ]
+        )
 
     def residuals(
         self,
@@ -232,8 +234,8 @@ class ReactionSystem(sdRDM.DataModel):
             max_nfev=300,
         )
 
-        self._update_param_values(lmfit_result)
-        self._update_fit_statistics(lmfit_result)
+        self._update_param_values(lmfit_result, fixed_params=fixed_params)
+        self._update_fit_statistics(lmfit_result, fixed_params=fixed_params)
 
         return lmfit_result
 
@@ -243,25 +245,29 @@ class ReactionSystem(sdRDM.DataModel):
 
         raise ValueError(f"Parameter '{param_name}' not found in kinetic model.")
 
-    def _update_param_values(self, result: MinimizerResult):
+    def _update_param_values(self, result: MinimizerResult, fixed_params: List[str]):
         if not result.success:
             return
 
         for reaction in self.reactions:
             for param in reaction.model.parameters:
-                param.value = result.params[param.name].value
-                param.stdev = result.params[param.name].stderr
+                if param.name not in fixed_params:
+                    param.value = result.params[param.name].value
+                    param.stdev = result.params[param.name].stderr
 
-    def _update_fit_statistics(self, result: MinimizerResult):
+    def _update_fit_statistics(self, result: MinimizerResult, fixed_params: List[str]):
         self.result.fit_success = result.success
         if not result.success:
             return
 
         self.result.AIC = result.aic
         self.result.BIC = result.bic
-        self.result.RMSD = None
 
         for param in result.params.values():
+            print(fixed_params)
+            if param.name in fixed_params:
+                print("continue")
+                continue
             if param.correl:
                 self.result.parameters.append(
                     Parameter(
