@@ -1,3 +1,4 @@
+from turtle import st
 import sdRDM
 
 import numpy as np
@@ -12,7 +13,7 @@ from plotly import graph_objects as go
 from plotly.subplots import make_subplots
 from IPython.display import display
 from tqdm import tqdm
-from EnzymePynetics.ioutils import parse_enzymeml, _to_enzymeml
+from ..ioutils import parse_enzymeml, _to_enzymeml, _to_omex
 from lmfit import report_fit
 from .modelresult import ModelResult
 from .abstractspecies import AbstractSpecies
@@ -118,7 +119,7 @@ class Estimator(sdRDM.DataModel):
         organism: Optional[str] = None,
         organism_tax_id: Optional[str] = None,
         uniprotid: Optional[str] = None,
-        ontology: SBOTerm = SBOTerm.CATALYST,
+        ontology: SBOTerm = SBOTerm.PROTEIN,
         init_conc: Optional[float] = None,
         unit: Optional[str] = None,
         uri: Optional[str] = None,
@@ -138,7 +139,7 @@ class Estimator(sdRDM.DataModel):
             organism (): Organism the protein was expressed in.. Defaults to None
             organism_tax_id (): Taxonomy identifier of the expression host.. Defaults to None
             uniprotid (): Unique identifier referencing a protein entry at UniProt. Use this identifier to initialize the object from the UniProt database.. Defaults to None
-            ontology (): None. Defaults to SBOTerm.CATALYST
+            ontology (): None. Defaults to SBOTerm.PROTEIN
             init_conc (): None. Defaults to None
             unit (): None. Defaults to None
             uri (): None. Defaults to None
@@ -384,24 +385,32 @@ class Estimator(sdRDM.DataModel):
 
         # add educt and product to ReactionElements
         if educt:
-            educt_reaction_element = [
-                ReactionElement(
-                    species_id=educt.id,
-                    constant=educt.constant,
-                    ontology=SBOTerm.SUBSTRATE,
+            if not isinstance(educt, list):
+                educt = [educt]
+            educt_reaction_element = []
+            for edu in educt:
+                educt_reaction_element.append(
+                    ReactionElement(
+                        species_id=edu.id,
+                        constant=edu.constant,
+                        ontology=SBOTerm.SUBSTRATE,
+                    )
                 )
-            ]
         else:
             educt_reaction_element = ListPlus()
 
         if product:
-            product_reaction_element = [
-                ReactionElement(
-                    species_id=product.id,
-                    constant=product.constant,
-                    ontology=SBOTerm.PRODUCT,
+            if not isinstance(product, list):
+                product = [product]
+            product_reaction_element = []
+            for prod in product:
+                product_reaction_element.append(
+                    ReactionElement(
+                        species_id=prod.id,
+                        constant=prod.constant,
+                        ontology=SBOTerm.PRODUCT,
+                    )
                 )
-            ]
         else:
             product_reaction_element = ListPlus()
 
@@ -416,7 +425,7 @@ class Estimator(sdRDM.DataModel):
                 ReactionElement(
                     species_id=catalyst.id,
                     constant=catalyst.constant,
-                    ontology=SBOTerm.CATALYST,
+                    ontology=SBOTerm.PROTEIN,
                 )
             )
         else:
@@ -553,7 +562,7 @@ class Estimator(sdRDM.DataModel):
 
         inactive = Species(**self.enzyme.to_dict())
         inactive.name += " (inactive)"
-        inactive.id += "_inactive"
+        inactive.id = f"{inactive.id[0]}{int(inactive.id[1:])+1}"
         inactive.constant = False
         self.species.append(inactive)
 
@@ -565,7 +574,7 @@ class Estimator(sdRDM.DataModel):
             ReactionElement(
                 species_id=active.id,
                 constant=False,
-                ontology=SBOTerm.CATALYST,
+                ontology=SBOTerm.PROTEIN,
             )
         ]
         inactivation.products = [
@@ -676,7 +685,9 @@ class Estimator(sdRDM.DataModel):
                 times=time,
             )
 
-        self.reaction_systems.sort(key=lambda x: x.result.AIC)
+        self.reaction_systems.sort(
+            key=lambda x: float("inf") if x.result.AIC is None else x.result.AIC
+        )
 
         display(self.fit_statistics())
 
@@ -716,6 +727,12 @@ class Estimator(sdRDM.DataModel):
 
             for reaction in system.reactions:
                 for param in reaction.model.parameters:
+                    if param.name == ParamType.K_CAT.value:
+                        kcat = param.value
+                        kcat_stdev = param.stdev
+                    elif param.name == ParamType.K_M.value:
+                        km = param.value
+                        km_stdev = param.stdev
                     if param.stdev:
                         per_stderr = param.stdev / param.value * 100
                         if per_stderr > 100:
@@ -725,6 +742,15 @@ class Estimator(sdRDM.DataModel):
                         entry[param.name] = f"{param.value:.3f}\n± {per_stderr} %"
                     else:
                         entry[param.name] = float("nan")
+
+                kcat_km = kcat / km
+                kcat_km_stdev = kcat_km * np.sqrt(
+                    (kcat_stdev / kcat) ** 2 + (km_stdev / km) ** 2
+                )
+                perc_kcat_km_stdev = kcat_km_stdev / kcat_km * 100
+                entry[
+                    f"{ParamType.K_CAT.value} / {ParamType.K_M.value}"
+                ] = f"{kcat_km:.3f}\n± {perc_kcat_km_stdev:.3f} %"
 
             entries.append(entry)
 
@@ -737,17 +763,7 @@ class Estimator(sdRDM.DataModel):
             .background_gradient(cmap="Blues", subset=["AIC"], gmap=-df["AIC"])
         )
 
-        # df[f"{ParamType.K_CAT.value} / {ParamType.K_M.value}"] = (
-        #     df[ParamType.K_CAT.value].values / df[ParamType.K_M.value].values
-        # )
-
         return df
-
-        return (
-            df.style.format("{:.3f}", na_rep="")
-            .format("{:.0f}", subset=["AIC"], na_rep="failed")
-            .background_gradient(cmap="Blues", subset=["AIC"], gmap=-df["AIC"])
-        )
 
     def _format_html(self, param: str):
         if param == f"{ParamType.K_CAT.value} {ParamType.K_M.value}":
@@ -955,28 +971,28 @@ class Estimator(sdRDM.DataModel):
                 initial_value = self._init_kcat
                 unit = f"1 / {self.time_unit}"
                 upper = initial_value * 10
-                lower = initial_value / 100
+                lower = initial_value / 10
 
             elif param == ParamType.K_M.value:
                 ontology = SBOTerm.K_M
                 initial_value = self._init_km
                 unit = self.substrate_unit
                 upper = initial_value * 5
-                lower = initial_value / 1000
+                lower = initial_value / 100
 
             elif param == ParamType.K_IC.value:
                 initial_value = self._init_km
                 unit = self.substrate_unit
                 ontology = None
                 upper = initial_value * 5
-                lower = initial_value / 1000
+                lower = initial_value / 100
 
             elif param == ParamType.K_IU.value:
                 initial_value = self._init_km
                 unit = self.substrate_unit
                 ontology = None
                 upper = initial_value * 5
-                lower = initial_value / 1000
+                lower = initial_value / 100
 
             elif param == ParamType.K_IE.value:
                 if self.time_unit == "s" or self.time_unit == "sec":
@@ -1003,6 +1019,22 @@ class Estimator(sdRDM.DataModel):
                 lower=lower,
             )
 
+    def to_omex(
+        self,
+        enzymeml: "EnzymeML.EnzymeMLDocument",
+        reaction_system: ReactionSystem,
+        out_path: str = None,
+    ) -> str:
+        self._handel_equations(reaction_system)
+        # add species
+        for spec in self.species:
+            if (
+                spec.id not in [protein.id for protein in enzymeml.proteins]
+                and spec.ontology == SBOTerm.PROTEIN.value
+            ):
+                enzymeml.proteins.append(spec)
+        return _to_omex(enzymeml, reaction_system, out_path)
+
     def to_enzymeml(
         self,
         enzymeml: "EnzymeML.EnzymeMLDocument",
@@ -1010,6 +1042,7 @@ class Estimator(sdRDM.DataModel):
         out_path: str = None,
     ) -> "EnzymeML.EnzymeMLDocument":
         self._handel_equations(reaction_system)
+
         return _to_enzymeml(enzymeml, reaction_system, out_path)
 
     def _handel_equations(self, reaction_system: ReactionSystem):
@@ -1023,6 +1056,7 @@ class Estimator(sdRDM.DataModel):
             if "catalyst" in eq:
                 eq = eq.replace("catalyst", self.enzyme.id)
 
+            eq = eq.replace(" ", "")
             reaction.model.equation = eq
 
     def remove_replicate(self, replicate_id: str):
@@ -1114,7 +1148,7 @@ class Estimator(sdRDM.DataModel):
         return [
             species
             for species in self.species
-            if species.ontology == SBOTerm.CATALYST.value
+            if species.ontology == SBOTerm.PROTEIN.value
         ]
 
     @property
@@ -1145,15 +1179,39 @@ class Estimator(sdRDM.DataModel):
 
     @property
     def substrate(self):
-        return self._get_species_of_role(SBOTerm.SUBSTRATE)
+        ids = []
+        for reaction in self.reactions:
+            for educt in reaction.educts:
+                if educt.ontology == SBOTerm.SUBSTRATE.value:
+                    ids.append(educt.species_id)
+
+        for id in ids:
+            if id in [species.species_id for species in self.measurements[0].species]:
+                return self._get_species(id)
 
     @property
     def product(self):
-        return self._get_species_of_role(SBOTerm.PRODUCT)
+        ids = []
+        for reaction in self.reactions:
+            for product in reaction.products:
+                if product.ontology == SBOTerm.PRODUCT.value:
+                    ids.append(product.species_id)
+
+        for id in ids:
+            if id in [species.species_id for species in self.measurements[0].species]:
+                return self._get_species(id)
 
     @property
     def enzyme(self):
-        return self._get_species_of_role(SBOTerm.CATALYST)
+        ids = []
+        for reaction in self.reactions:
+            for modifier in reaction.modifiers:
+                if modifier.ontology == SBOTerm.PROTEIN.value:
+                    ids.append(modifier.species_id)
+
+        for id in ids:
+            if id in [species.species_id for species in self.measurements[0].species]:
+                return self._get_species(id)
 
     @property
     def inhibitor(self):
