@@ -1,4 +1,3 @@
-
 from typing import Optional
 from pydantic import Field, PrivateAttr
 from sdRDM.base.utils import forge_signature, IDGenerator
@@ -51,7 +50,7 @@ class Protein(AbstractSpecies):
 
     ontology: SBOTerm = Field(
         description="None",
-        default=SBOTerm.CATALYST,
+        default=SBOTerm.PROTEIN,
     )
     __repo__: Optional[str] = PrivateAttr(
         default="https://github.com/haeussma/EnzymePynetics"
