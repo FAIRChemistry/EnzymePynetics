@@ -738,7 +738,7 @@ class Estimator(sdRDM.DataModel):
                         if per_stderr > 100:
                             per_stderr = "> 100"
                         else:
-                            per_stderr = f"{per_stderr:.2f}"
+                            per_stderr = f"{per_stderr:.0f}"
                         entry[param.name] = f"{param.value:.3f}\n± {per_stderr} %"
                     else:
                         entry[param.name] = float("nan")
@@ -750,7 +750,7 @@ class Estimator(sdRDM.DataModel):
                 perc_kcat_km_stdev = kcat_km_stdev / kcat_km * 100
                 entry[
                     f"{ParamType.K_CAT.value} / {ParamType.K_M.value}"
-                ] = f"{kcat_km:.3f}\n± {perc_kcat_km_stdev:.3f} %"
+                ] = f"{kcat_km:.3f}\n± {perc_kcat_km_stdev:.0f} %"
 
             entries.append(entry)
 
