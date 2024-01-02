@@ -264,9 +264,7 @@ class ReactionSystem(sdRDM.DataModel):
         self.result.BIC = result.bic
 
         for param in result.params.values():
-            print(fixed_params)
             if param.name in fixed_params:
-                print("continue")
                 continue
             if param.correl:
                 self.result.parameters.append(

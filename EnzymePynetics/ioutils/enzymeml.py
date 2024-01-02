@@ -153,7 +153,6 @@ def _to_omex(
     out_path: str,
 ) -> pe.EnzymeMLDocument:
     enzml = _to_enzymeml(enzymeml, reaction_system, out_path=None)
-    print(enzml.reactions[0].temperature)
     doc = map_to_pyenzyme(enzml)
     doc.toFile(
         out_path, name=f"{enzymeml.name} {reaction_system.reactions[0].temperature}C"
