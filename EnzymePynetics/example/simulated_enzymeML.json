@@ -1,9 +1,9 @@
 {
-  "id": "enzymemldocument0",
+  "id": "enzymemldocument1",
   "name": "simulated data",
   "vessels": [
     {
-      "id": "vessel0",
+      "id": "vessel1",
       "name": "vessel",
       "volume": 1.0,
       "unit": "litre",
@@ -12,9 +12,9 @@
   ],
   "proteins": [
     {
-      "id": "protein0",
+      "id": "p0",
       "name": "enzyme",
-      "vessel_id": "vessel0",
+      "vessel_id": "vessel1",
       "constant": false,
       "sequence": "MSDGJSDGSDFGBSFBS",
       "ontology": "SBO:0000252"
@@ -22,39 +22,39 @@
   ],
   "reactants": [
     {
-      "id": "reactant0",
+      "id": "reactant2",
       "name": "substrate",
-      "vessel_id": "vessel0",
+      "vessel_id": "vessel1",
       "constant": false,
       "ontology": "SBO:0000247"
     },
     {
-      "id": "reactant1",
+      "id": "reactant3",
       "name": "product",
-      "vessel_id": "vessel0",
+      "vessel_id": "vessel1",
       "constant": false,
       "ontology": "SBO:0000247"
     }
   ],
   "measurements": [
     {
-      "id": "measurement0",
+      "id": "measurement3",
       "name": "measurement",
       "temperature": 30.0,
       "temperature_unit": "C",
       "ph": 4.0,
       "species": [
         {
-          "id": "measurementdata0",
+          "id": "measurementdata9",
           "init_conc": 10.0,
           "unit": "mmol / l",
-          "measurement_id": "measurement0",
-          "species_id": "reactant0",
+          "measurement_id": "measurement3",
+          "species_id": "reactant2",
           "replicates": [
             {
-              "id": "replicate0",
-              "species_id": "reactant0",
-              "measurement_id": "measurement0",
+              "id": "replicate3",
+              "species_id": "reactant2",
+              "measurement_id": "measurement3",
               "data_type": "conc",
               "data_unit": "mmol / l",
               "time_unit": "min",
@@ -107,40 +107,40 @@
           ]
         },
         {
-          "id": "measurementdata1",
+          "id": "measurementdata10",
           "init_conc": 0.0,
           "unit": "mmol / l",
-          "measurement_id": "measurement0",
-          "species_id": "reactant1"
+          "measurement_id": "measurement3",
+          "species_id": "reactant3"
         },
         {
-          "id": "measurementdata2",
+          "id": "measurementdata11",
           "init_conc": 1.0,
           "unit": "mmol / l",
-          "measurement_id": "measurement0",
-          "species_id": "protein0"
+          "measurement_id": "measurement3",
+          "species_id": "p0"
         }
       ],
       "global_time_unit": "min"
     },
     {
-      "id": "measurement1",
+      "id": "measurement4",
       "name": "measurement",
       "temperature": 30.0,
       "temperature_unit": "C",
       "ph": 4.0,
       "species": [
         {
-          "id": "measurementdata3",
+          "id": "measurementdata12",
           "init_conc": 35.0,
           "unit": "mmol / l",
-          "measurement_id": "measurement1",
-          "species_id": "reactant0",
+          "measurement_id": "measurement4",
+          "species_id": "reactant2",
           "replicates": [
             {
-              "id": "replicate1",
-              "species_id": "reactant0",
-              "measurement_id": "measurement1",
+              "id": "replicate4",
+              "species_id": "reactant2",
+              "measurement_id": "measurement4",
               "data_type": "conc",
               "data_unit": "mmol / l",
               "time_unit": "min",
@@ -193,40 +193,40 @@
           ]
         },
         {
-          "id": "measurementdata4",
+          "id": "measurementdata13",
           "init_conc": 0.0,
           "unit": "mmol / l",
-          "measurement_id": "measurement1",
-          "species_id": "reactant1"
+          "measurement_id": "measurement4",
+          "species_id": "reactant3"
         },
         {
-          "id": "measurementdata5",
+          "id": "measurementdata14",
           "init_conc": 1.0,
           "unit": "mmol / l",
-          "measurement_id": "measurement1",
-          "species_id": "protein0"
+          "measurement_id": "measurement4",
+          "species_id": "p0"
         }
       ],
       "global_time_unit": "min"
     },
     {
-      "id": "measurement2",
+      "id": "measurement5",
       "name": "measurement",
       "temperature": 30.0,
       "temperature_unit": "C",
       "ph": 4.0,
       "species": [
         {
-          "id": "measurementdata6",
+          "id": "measurementdata15",
           "init_conc": 60.0,
           "unit": "mmol / l",
-          "measurement_id": "measurement2",
-          "species_id": "reactant0",
+          "measurement_id": "measurement5",
+          "species_id": "reactant2",
           "replicates": [
             {
-              "id": "replicate2",
-              "species_id": "reactant0",
-              "measurement_id": "measurement2",
+              "id": "replicate5",
+              "species_id": "reactant2",
+              "measurement_id": "measurement5",
               "data_type": "conc",
               "data_unit": "mmol / l",
               "time_unit": "min",
@@ -279,18 +279,18 @@
           ]
         },
         {
-          "id": "measurementdata7",
+          "id": "measurementdata16",
           "init_conc": 0.0,
           "unit": "mmol / l",
-          "measurement_id": "measurement2",
-          "species_id": "reactant1"
+          "measurement_id": "measurement5",
+          "species_id": "reactant3"
         },
         {
-          "id": "measurementdata8",
+          "id": "measurementdata17",
           "init_conc": 1.0,
           "unit": "mmol / l",
-          "measurement_id": "measurement2",
-          "species_id": "protein0"
+          "measurement_id": "measurement5",
+          "species_id": "p0"
         }
       ],
       "global_time_unit": "min"
