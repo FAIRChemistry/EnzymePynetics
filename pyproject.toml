@@ -8,7 +8,6 @@ readme = "README.md"
 packages = [
     { include = "EnzymePynetics/core" },
     { include = "EnzymePynetics/ioutils" },
-    { include = "EnzymePynetics/tools" },
 ]
 
 [tool.poetry.dependencies]
