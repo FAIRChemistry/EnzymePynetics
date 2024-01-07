@@ -15,7 +15,7 @@ packages = [
 python = ">=3.9,<3.12"
 lmfit = "^1.2.2"
 scipy = "^1.11.3"
-numpy = "^1.26.1"
+numpy = "1.24.4"
 plotly = "^5.18.0"
 pandas = "^2.1.2"
 sdrdm = {git = "https://github.com/JR-1991/software-driven-rdm.git", branch = "linking-refactor"}
