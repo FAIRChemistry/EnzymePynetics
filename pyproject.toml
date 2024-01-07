@@ -20,6 +20,7 @@ pandas = "^2.1.2"
 sdrdm = {git = "https://github.com/JR-1991/software-driven-rdm.git", branch = "linking-refactor"}
 sympy = "^1.12"
 tqdm = "^4.66.1"
+pyenzyme = "1.1.5"
 
 
 [build-system]
