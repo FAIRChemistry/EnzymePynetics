@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "enzymepynetics"
+name = "EnzymePynetics"
 version = "0.1.0"
 description = "Kinetic parameter estimation and model comparison for catalyzed reactions"
 authors = ["haeussma <83341109+haeussma@users.noreply.github.com>"]
